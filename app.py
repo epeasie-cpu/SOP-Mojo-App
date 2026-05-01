@@ -112,6 +112,14 @@ st.markdown("""
     div.stDownloadButton > button:hover {
         opacity: 0.8;
     }
+    [data-testid="collapsedControl"] {
+        color: #b0ff56 !important;
+    }
+    [data-testid="collapsedControl"] svg {
+        fill: #b0ff56 !important;
+        color: #b0ff56 !important;
+        stroke: #b0ff56 !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -136,6 +144,7 @@ st.markdown("Generate a legal-grade, custom Acceptable Use Policy for your organ
 with st.sidebar:
     st.header("🏢 Company Information")
     company_name = st.text_input("Legal Company Name", value="Acme Corp LLC")
+    short_name = st.text_input("Short Name", value="")
     industry = st.text_input("Industry", value="Financial Services")
     policy_owner = st.text_input("Policy Owner (Name/Title)", value="Director of IT")
     security_contact = st.text_input("Security Contact Email", value="security@acmecorp.com")
@@ -269,27 +278,48 @@ def generate_pdf():
 
 st.divider()
 
-# Download Buttons
-col3, col4 = st.columns(2)
+# Legal disclaimer (highly visible but unobtrusive)
+st.caption(
+    "Disclaimer: SOP Mojo is an operational frameworks provider, not a law firm. "
+    "This tool generates a structural foundation for an Acceptable Use Policy based "
+    "on standard industry practices. It does not constitute formal legal advice. We "
+    "strongly recommend having your final document reviewed by qualified legal counsel "
+    "prior to official company deployment."
+)
 
-with col3:
-    docx_file = generate_docx()
-    st.download_button(
-        label="📝 Download Professional Word / Google Doc",
-        data=docx_file,
-        file_name=f"{company_name.replace(' ', '_')}_AUP.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        use_container_width=True,
-        type="primary"
-    )
+if "documents_ready" not in st.session_state:
+    st.session_state["documents_ready"] = False
 
-with col4:
-    pdf_file = generate_pdf()
-    st.download_button(
-        label="📥 Download Legal-Grade PDF",
-        data=pdf_file,
-        file_name=f"{company_name.replace(' ', '_')}_AUP.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-        type="primary"
-    )
+if st.button("Generate Policy Documents", type="primary", use_container_width=True):
+    required_business_details = [company_name, short_name, industry, policy_owner, security_contact]
+    if any(not str(detail).strip() for detail in required_business_details):
+        st.error("Action Required: Please fill out all business details before generating your policy.")
+        st.session_state["documents_ready"] = False
+        st.stop()
+    st.session_state["documents_ready"] = True
+
+if st.session_state["documents_ready"]:
+    # Download Buttons
+    col3, col4 = st.columns(2)
+
+    with col3:
+        docx_file = generate_docx()
+        st.download_button(
+            label="📝 Download Professional Word / Google Doc",
+            data=docx_file,
+            file_name=f"{company_name.replace(' ', '_')}_AUP.docx",
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            use_container_width=True,
+            type="primary"
+        )
+
+    with col4:
+        pdf_file = generate_pdf()
+        st.download_button(
+            label="📥 Download Legal-Grade PDF",
+            data=pdf_file,
+            file_name=f"{company_name.replace(' ', '_')}_AUP.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            type="primary"
+        )
