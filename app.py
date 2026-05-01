@@ -84,11 +84,12 @@ st.set_page_config(page_title="SOP Mojo | AUP Engine", page_icon="⚡", layout="
 # Live token source (published Google Sheet)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrHS44BtJEmfCFcYEsfAs7V88mxrK5KVLVBSLxe-tUl84Y26DUjrHiusjundmCdAVDAYccTtdJSmpx/pubhtml"
 SHEET_URL = SHEET_URL.strip().replace("/pubhtml", "/pub?output=csv")
-orders_df = pd.read_csv(SHEET_URL)
+orders_df = pd.read_csv(SHEET_URL, dtype=str)
 VALID_TOKENS = (
     orders_df["Order ID"]
     .dropna()
-    .astype(str)
+    .str.replace(r'\.0$', '', regex=True)
+    .str.strip()
     .tolist()
 )
 token_param = st.query_params.get("token")
