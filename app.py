@@ -165,34 +165,326 @@ with col2:
     remote_tier = st.selectbox("3. Remote Work / VPN Tier", options=["Flexible", "Standard", "High-Security"], index=1)
     byod_tier = st.selectbox("4. Personal Device (BYOD) Tier", options=["Flexible", "Standard", "High-Security"], index=1)
 
-# Function to compile the final text
-def compile_policy():
-    compiled_text = {}
-    
-    # Add Base sections 1-3
-    compiled_text["1. PURPOSE"] = BASE_POLICY["1. PURPOSE"].format(company_name=company_name)
-    compiled_text["2. SCOPE"] = BASE_POLICY["2. SCOPE"].format(company_name=company_name)
-    compiled_text["3. USER RESPONSIBILITIES"] = BASE_POLICY["3. USER RESPONSIBILITIES"].format(company_name=company_name, security_contact=security_contact)
-    
-    # Add Tiered sections 4-7
-    compiled_text["4. CORE IT RULES"] = TIERED_POLICY["4. CORE IT RULES"][core_tier].format(company_name=company_name)
-    compiled_text["5. GENERATIVE AI USAGE"] = TIERED_POLICY["5. GENERATIVE AI USAGE"][ai_tier].format(company_name=company_name)
-    compiled_text["6. REMOTE WORK / VPN"] = TIERED_POLICY["6. REMOTE WORK / VPN"][remote_tier].format(company_name=company_name)
-    compiled_text["7. PERSONAL DEVICE / BYOD"] = TIERED_POLICY["7. PERSONAL DEVICE / BYOD"][byod_tier].format(company_name=company_name)
-    
-    # Add Base sections 8-11
-    compiled_text["8. MONITORING AND PRIVACY"] = BASE_POLICY["8. MONITORING AND PRIVACY"].format(company_name=company_name)
-    compiled_text["9. ENFORCEMENT & DISCIPLINARY ACTION"] = BASE_POLICY["9. ENFORCEMENT & DISCIPLINARY ACTION"].format(company_name=company_name)
-    compiled_text["10. INCIDENT REPORTING"] = BASE_POLICY["10. INCIDENT REPORTING"].format(company_name=company_name, security_contact=security_contact)
-    compiled_text["11. ACKNOWLEDGMENT"] = BASE_POLICY["11. ACKNOWLEDGMENT"].format(company_name=company_name)
-    
-    return compiled_text
+def get_company_display_name():
+    short = short_name.strip() if isinstance(short_name, str) else ""
+    legal = company_name.strip() if isinstance(company_name, str) else ""
+    return short or legal
 
-policy_content = compile_policy()
+
+def with_company(text, company_display):
+    return text.replace("(Company)", company_display)
+
+
+def build_policy_structure():
+    return [
+        {
+            "type": "h1",
+            "text": "Purpose",
+            "children": [
+                {
+                    "type": "paragraph",
+                    "text": "The purpose of the (Company) Acceptable Use Policy is to establish acceptable practices regarding the use of (Company) Information Resources in order to protect the confidentiality, integrity and availability of information created, collected, and maintained."
+                }
+            ],
+        },
+        {
+            "type": "h1",
+            "text": "Audience",
+            "children": [
+                {
+                    "type": "paragraph",
+                    "text": "The (Company) Acceptable Use Policy applies to any individual, entity, or process that interacts with any (Company) Information Resource."
+                }
+            ],
+        },
+        {
+            "type": "h1",
+            "text": "Policy",
+            "children": [
+                {
+                    "type": "h2",
+                    "text": "Acceptable Use",
+                    "children": [
+                        {"type": "paragraph", "text": "Personnel are responsible for complying with (Company) policies when using (Company) information resources and/or on (Company) time. If requirements or responsibilities are unclear, please seek assistance from the Information Security Committee."},
+                        {"type": "paragraph", "text": "Personnel must promptly report harmful events or policy violations involving (Company) assets or information to their manager or a member of the Incident Handling Team. Events include, but are not limited to, the following:"},
+                        {"type": "bullet", "text": "Technology incident: any potentially harmful event that may cause a failure, interruption, or loss in availability to (Company) Information Resources."},
+                        {"type": "bullet", "text": "Data incident: any potential loss, theft, or compromise of (Company) information."},
+                        {"type": "bullet", "text": "Unauthorized access incident: any potential unauthorized access to a (Company) Information Resource."},
+                        {"type": "bullet", "text": "Facility security incident: any damage or potentially unauthorized access to a (Company) owned, leased, or managed facility."},
+                        {"type": "bullet", "text": "Policy violation: any potential violation to this or other (Company) policies, standards, or procedures."},
+                        {"type": "paragraph", "text": "Personnel should not purposely engage in activities that may harass, threaten, impersonate, or abuse others; degrade the performance of (Company) Information Resources; deprive authorized (Company) personnel access to a (Company) Information Resource; obtain additional resources beyond those allocated; or circumvent (Company) computer security measures."},
+                        {"type": "paragraph", "text": "Personnel should not download, install, or run security programs or utilities that reveal or exploit weakness in the security of a system. For example, (Company) personnel should not run password cracking programs, packet sniffers, port scanners, or any other non-approved programs on any (Company) Information Resource."},
+                        {"type": "paragraph", "text": "All inventions, intellectual property, and proprietary information, including reports, drawings, blueprints, software codes, computer programs, data, writings, and technical information, developed on (Company) time and/or using (Company) Information Resources are the property of (Company)."},
+                        {"type": "paragraph", "text": "Use of encryption should be managed in a manner that allows designated (Company) personnel to promptly access all data."},
+                        {"type": "paragraph", "text": "(Company) Information Resources are provided to facilitate company business and should not be used for personal financial gain."},
+                        {"type": "paragraph", "text": "Personnel are expected to cooperate with incident investigations, including any federal or state investigations."},
+                        {"type": "paragraph", "text": "Personnel are expected to respect and comply with all legal protections provided by patents, copyrights, trademarks, and intellectual property rights for any software and/or materials viewed, used, or obtained using (Company) Information Resources."},
+                        {"type": "paragraph", "text": "Personnel should not intentionally access, create, store or transmit material which (Company) may deem to be offensive, indecent, or obscene."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Access Management",
+                    "children": [
+                        {"type": "bullet", "text": "Access to information is based on a 'need to know'."},
+                        {"type": "bullet", "text": "Personnel are permitted to use only those network and host addresses issued to them by (Company) IT and should not attempt to access any data or programs contained on (Company) systems for which they do not have authorization or explicit consent."},
+                        {"type": "bullet", "text": "All remote access connections made to internal (Company) networks and/or environments must be made through approved, and (Company)-provided, virtual private networks (VPNs)."},
+                        {"type": "bullet", "text": "Personnel should not divulge any access information to anyone not specifically authorized to receive such information, including IT support personnel."},
+                        {"type": "paragraph", "text": "Personnel must not share their personal authentication information, including:"},
+                        {"type": "bullet", "text": "Account passwords"},
+                        {"type": "bullet", "text": "Personal Identification Numbers (PINs)"},
+                        {"type": "bullet", "text": "Security Tokens (i.e. Smartcard)"},
+                        {"type": "bullet", "text": "Multi-factor authentication information"},
+                        {"type": "bullet", "text": "Access cards and/or keys"},
+                        {"type": "bullet", "text": "Digital certificates"},
+                        {"type": "bullet", "text": "Similar information or devices used for identification and authentication purposes"},
+                        {"type": "bullet", "text": "Access cards and/or keys that are no longer required must be returned to physical security personnel."},
+                        {"type": "bullet", "text": "Lost or stolen access cards, security tokens, and/or keys must be reported to physical security personnel as soon as possible."},
+                        {"type": "bullet", "text": "A service charge may be assessed for access cards, security tokens, and/or keys that are lost, stolen, or are not returned."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Authentication/Passwords",
+                    "children": [
+                        {"type": "paragraph", "text": "All personnel are required to maintain the confidentiality of personal authentication information."},
+                        {"type": "paragraph", "text": "Any group/shared authentication information must be maintained solely among the authorized members of the group."},
+                        {"type": "paragraph", "text": "All passwords, including initial and/or temporary passwords, must be constructed, and implemented according to the following (Company) rules:"},
+                        {"type": "bullet", "text": "Must meet all requirements including minimum length, complexity, and reuse history."},
+                        {"type": "bullet", "text": "Must not be easily tied back to the account owner by using things like username, social security number, nickname, relative's names, birth date, etc."},
+                        {"type": "bullet", "text": "Must not be the same passwords used for non-business purposes."},
+                        {"type": "bullet", "text": "Unique passwords should be used for each system, whenever possible."},
+                        {"type": "paragraph", "text": "User account passwords must not be divulged to anyone. (Company) support personnel and/or contractors should never ask for user account passwords."},
+                        {"type": "paragraph", "text": "If the security of a password is in doubt, the password should be changed immediately."},
+                        {"type": "paragraph", "text": "Personnel should not circumvent password entry with application remembering, embedded scripts or hard coded passwords in client software."},
+                        {"type": "paragraph", "text": "Security tokens (i.e. Smartcard) must be returned on demand or upon termination of the relationship with (Company), if issued."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Clear Desk/Clear Screen",
+                    "children": [
+                        {"type": "bullet", "text": "Personnel should log off from applications or network services when they are no longer needed."},
+                        {"type": "bullet", "text": "Personnel should log off or lock their workstations and laptops when their workspace is unattended."},
+                        {"type": "bullet", "text": "Confidential or internal information should be removed or placed in a locked drawer or file cabinet when the workstation is unattended and at the end of the workday if physical access to the workspace cannot be secured by other means."},
+                        {"type": "bullet", "text": "Personal items, such as phones, wallets, and keys, should be removed or placed in a locked drawer or file cabinet when the workstation is unattended."},
+                        {"type": "bullet", "text": "File cabinets containing confidential information should be locked when not in use or when unattended."},
+                        {"type": "bullet", "text": "Physical and/or electronic keys used to access confidential information should not be left on an unattended desk or in an unattended workspace if the workspace itself is not physically secured."},
+                        {"type": "bullet", "text": "Laptops should be either locked with a locking cable or locked away in a drawer or cabinet when the work area is unattended or at the end of the workday if the laptop is not encrypted."},
+                        {"type": "bullet", "text": "Passwords must not be posted on or under a computer or in any other physically accessible location."},
+                        {"type": "bullet", "text": "Copies of documents containing confidential information should be immediately removed from printers and fax machines."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Data Security",
+                    "children": [
+                        {"type": "bullet", "text": "Personnel should use approved encrypted communication methods whenever sending confidential information over public computer networks (Internet)."},
+                        {"type": "bullet", "text": "Confidential information transmitted via USPS or other mail service must be secured in compliance with the Information Classification and Management Policy."},
+                        {"type": "bullet", "text": "Only authorized cloud computing applications may be used for sharing, storing, and transferring confidential or internal information."},
+                        {"type": "bullet", "text": "Information must be appropriately shared, handled, transferred, saved, and destroyed, based on the information sensitivity."},
+                        {"type": "bullet", "text": "Personnel should not have confidential conversations in public places or over insecure communication channels, open offices, and meeting places."},
+                        {"type": "bullet", "text": "Confidential information must be transported either by an (Company) employee or a courier approved by IT Management."},
+                        {"type": "bullet", "text": "All electronic media containing confidential information must be securely disposed. Please contact IT for guidance or assistance."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Email and Electronic Communication",
+                    "children": [
+                        {"type": "bullet", "text": "Auto-forwarding electronic messages outside the (Company) internal systems is prohibited."},
+                        {"type": "bullet", "text": "Electronic communications should not misrepresent the originator or (Company)."},
+                        {"type": "bullet", "text": "Personnel are responsible for the accounts assigned to them and for the actions taken with their accounts."},
+                        {"type": "bullet", "text": "Accounts must not be shared without prior authorization from (Company) IT, with the exception of calendars and related calendaring functions."},
+                        {"type": "bullet", "text": "Employees should not use personal email accounts to send or receive (Company) confidential information."},
+                        {"type": "paragraph", "text": "Any personal use of (Company) provided email should not:"},
+                        {"type": "bullet", "text": "Involve solicitation"},
+                        {"type": "bullet", "text": "Be associated with any political entity, excluding the (Company) sponsored PAC"},
+                        {"type": "bullet", "text": "Have the potential to harm the reputation of (Company)"},
+                        {"type": "bullet", "text": "Forward chain emails"},
+                        {"type": "bullet", "text": "Contain or promote anti-social or unethical behavior"},
+                        {"type": "bullet", "text": "Violate local, state, federal, or international laws or regulations"},
+                        {"type": "bullet", "text": "Result in unauthorized disclosure of (Company) confidential information"},
+                        {"type": "bullet", "text": "Or otherwise violate any other (Company) policies"},
+                        {"type": "bullet", "text": "Personnel should only send confidential information using approved secure electronic messaging solutions."},
+                        {"type": "bullet", "text": "Personnel should use caution when responding to, clicking on links within, or opening attachments included in electronic communications."},
+                        {"type": "bullet", "text": "Personnel should use discretion in disclosing confidential or internal information in Out of Office or other automated responses, such as employment data, internal telephone numbers, location information or other sensitive data."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Hardware and Software",
+                    "children": [
+                        {"type": "bullet", "text": "All hardware must be formally approved by IT Management before being connected to (Company) networks."},
+                        {"type": "bullet", "text": "Software installed on (Company) equipment must be approved by IT Management and installed by (Company) IT personnel."},
+                        {"type": "bullet", "text": "All (Company) assets taken off-site should be physically secured at all times."},
+                        {"type": "bullet", "text": "Personnel traveling to a High-Risk location, as defined by FBI and Office of Foreign Asset control, must contact IT for approval to travel with corporate assets."},
+                        {"type": "bullet", "text": "Employees should not allow family members or other non-employees to access (Company) Information Resources."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Internet",
+                    "children": [
+                        {"type": "paragraph", "text": "The Internet must not be used to communicate (Company) confidential or internal information, unless the confidentiality and integrity of the information is ensured and the identity of the recipient(s) is established."},
+                        {"type": "paragraph", "text": "Use of the Internet with (Company) networking or computing resources must only be used for business-related activities. Unapproved activities include, but are not limited to:"},
+                        {"type": "bullet", "text": "Recreational games"},
+                        {"type": "bullet", "text": "Streaming media"},
+                        {"type": "bullet", "text": "Personal social media"},
+                        {"type": "bullet", "text": "Accessing or distributing pornographic or sexually oriented materials"},
+                        {"type": "bullet", "text": "Attempting or making unauthorized entry to any network or computer accessible from the Internet"},
+                        {"type": "bullet", "text": "Or otherwise violate any other (Company) policies"},
+                        {"type": "paragraph", "text": "Access to the Internet from outside the (Company) network using a (Company) owned computer must adhere to all of the same policies that apply to use from within (Company) facilities."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Mobile Devices and Bring Your Own Device (BYOD)",
+                    "children": [
+                        {"type": "bullet", "text": "The use of a personally owned mobile device to connect to the (Company) network is a privilege granted to employees only upon formal approval of IT Management."},
+                        {"type": "bullet", "text": "All personally owned laptops and/or workstations must have approved virus and spyware detection/protection software along with personal firewall protection active."},
+                        {"type": "bullet", "text": "Mobile devices that access (Company) email must have a PIN or other authentication mechanism enabled."},
+                        {"type": "bullet", "text": "Confidential information should only be stored on devices that are encrypted in compliance with the (Company) Encryption Standard."},
+                        {"type": "bullet", "text": "(Company) confidential information should not be stored on any personally owned mobile device."},
+                        {"type": "bullet", "text": "Theft or loss of any mobile device that has been used to create, store, or access confidential or internal information must be reported to the (Company) Security Team immediately."},
+                        {"type": "bullet", "text": "All mobile devices must maintain up-to-date versions of all software and applications."},
+                        {"type": "bullet", "text": "All personnel are expected to use mobile devices in an ethical manner."},
+                        {"type": "bullet", "text": "Jail-broken or rooted devices should not be used to connect to (Company) Information Resources."},
+                        {"type": "bullet", "text": "(Company) IT Management may choose to execute 'remote wipe' capabilities for mobile devices without warning."},
+                        {"type": "bullet", "text": "In the event that there is a suspected incident or breach associated with a mobile device, it may be necessary to remove the device from the personnel's possession as part of a formal investigation."},
+                        {"type": "bullet", "text": "All mobile device usage in relation to (Company) Information Resources may be monitored, at the discretion of (Company) IT Management."},
+                        {"type": "bullet", "text": "(Company) IT support for personally owned mobile devices is limited to assistance in complying with this policy. (Company) IT support may not assist in troubleshooting device usability issues."},
+                        {"type": "bullet", "text": "Use of personally owned devices must be in compliance with all other (Company) policies."},
+                        {"type": "bullet", "text": "(Company) reserves the right to revoke personally owned mobile device use privileges in the event that personnel do not abide by the requirements set forth in this policy."},
+                        {"type": "bullet", "text": "Texting or emailing while driving is not permitted while on company time or using (Company) resources. Only hands-free talking while driving is permitted, while on company time or when using (Company) resources."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Physical Security",
+                    "children": [
+                        {"type": "bullet", "text": "Photographic, video, audio, or other recording equipment, such as cameras and cameras in mobile devices, is not allowed in secure areas."},
+                        {"type": "bullet", "text": "Personnel must display photo ID access card at all times while in the building."},
+                        {"type": "bullet", "text": "Personnel must badge in and out of access-controlled areas. Piggy-backing, tailgating, door propping and any other activity to circumvent door access controls are prohibited."},
+                        {"type": "bullet", "text": "Visitors accessing card-controlled areas of facilities must be accompanied by authorized personnel at all times."},
+                        {"type": "bullet", "text": "Eating or drinking are not allowed in data centers. Caution must be used when eating or drinking near workstations or information processing facilities."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Privacy",
+                    "children": [
+                        {"type": "paragraph", "text": "Information created, sent, received, or stored on (Company) Information Resources are not private and may be accessed by (Company) IT employees at any time, under the direction of (Company) executive management and/or Human Resources, without knowledge of the user or resource owner."},
+                        {"type": "paragraph", "text": "(Company) may log, review, and otherwise utilize any information stored on or passing through its Information Resources."},
+                        {"type": "paragraph", "text": "Systems Administrators, (Company) IT, and other authorized (Company) personnel may have privileges that extend beyond those granted to standard business personnel. Personnel with extended privileges should not access files and/or other information that is not specifically required to carry out an employment-related task."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Removable Media",
+                    "children": [
+                        {"type": "bullet", "text": "The use of removable media for storage of (Company) information must be supported by a reasonable business case."},
+                        {"type": "bullet", "text": "All removable media use must be approved by (Company) IT prior to use."},
+                        {"type": "bullet", "text": "Personally owned removable media use is not permitted for storage of (Company) information."},
+                        {"type": "bullet", "text": "Personnel are not permitted to connect removable media from an unknown origin without prior approval from the (Company)."},
+                        {"type": "bullet", "text": "Confidential and internal (Company) information should not be stored on removable media without the use of encryption."},
+                        {"type": "bullet", "text": "All removable media must be stored in a safe and secure environment."},
+                        {"type": "bullet", "text": "The loss or theft of a removable media device that may have contained any (Company) information must be reported to the (Company)."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Security Training and Awareness",
+                    "children": [
+                        {"type": "bullet", "text": "All new personnel must complete an approved security awareness training class prior to, or at least within 30 days of, being granted access to any (Company) Information Resources."},
+                        {"type": "bullet", "text": "All personnel must be provided with and acknowledge they have received and agree to adhere to the (Company) Information Security Policies before they are granted to access to (Company) Information Resources."},
+                        {"type": "bullet", "text": "All personnel must complete the annual security awareness training."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Social Media",
+                    "children": [
+                        {"type": "bullet", "text": "Communications made with respect to social media should be made in compliance with all applicable (Company) policies."},
+                        {"type": "bullet", "text": "Personnel are personally responsible for the content they publish online."},
+                        {"type": "bullet", "text": "Creating any public social media account intended to represent (Company), including accounts that could reasonably be assumed to be an official (Company) account, requires the permission of the (Company) Communications Departments."},
+                        {"type": "paragraph", "text": "When discussing (Company) or (Company)-related matters, you should:"},
+                        {"type": "bullet", "text": "Identify yourself by name"},
+                        {"type": "bullet", "text": "Identify yourself as an (Company) representative"},
+                        {"type": "bullet", "text": "Make it clear that you are speaking for yourself and not on behalf of (Company), unless you have been explicitly approved to do so"},
+                        {"type": "bullet", "text": "Personnel should not misrepresent their role at (Company)."},
+                        {"type": "paragraph", "text": "When publishing (Company)-relevant content online in a personal capacity, a disclaimer should accompany the content. An example disclaimer could be; 'The opinions and content are my own and do not necessarily represent (Company)'s position or opinion.'"},
+                        {"type": "bullet", "text": "Content posted online should not violate any applicable laws (i.e. copyright, fair use, financial disclosure, or privacy laws)."},
+                        {"type": "bullet", "text": "The use of discrimination in published content that is affiliated with (Company) will not be tolerated."},
+                        {"type": "bullet", "text": "Confidential information, internal communications and non-public financial or operational information may not be published online in any form."},
+                        {"type": "bullet", "text": "Personal information belonging to customers may not be published online."},
+                        {"type": "bullet", "text": "Personnel approved to post, review, or approve content on (Company) social media sites must follow the (Company) Social Media Management Procedures."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "VoiceMail",
+                    "children": [
+                        {"type": "bullet", "text": "Personnel should use discretion in disclosing confidential or internal information in voicemail greetings, such as employment data, internal telephone numbers, location information or other sensitive data."},
+                        {"type": "bullet", "text": "Personnel should not access another user's voicemail account unless it has been explicitly authorized."},
+                        {"type": "bullet", "text": "Personnel must not disclose confidential information in voicemail messages."},
+                    ],
+                },
+                {
+                    "type": "h2",
+                    "text": "Incidental Use",
+                    "children": [
+                        {"type": "paragraph", "text": "As a convenience to (Company) personnel, incidental use of Information Resources is permitted. The following restrictions apply:"},
+                        {"type": "bullet", "text": "Incidental personal use of electronic communications, Internet access, fax machines, printers, copiers, and so on, is restricted to (Company) approved personnel; it does not extend to family members or other acquaintances."},
+                        {"type": "bullet", "text": "Incidental use should not result in direct costs to (Company)."},
+                        {"type": "bullet", "text": "Incidental use should not interfere with the normal performance of an employee's work duties."},
+                        {"type": "bullet", "text": "No files or documents may be sent or received that may cause legal action against, or embarrassment to, (Company) or its customers."},
+                        {"type": "bullet", "text": "Storage of personal email messages, voice messages, files and documents within (Company) Information Resources must be nominal."},
+                        {"type": "bullet", "text": "All information located on (Company) Information Resources are owned by (Company) may be subject to open records requests and may be accessed in accordance with this policy."},
+                    ],
+                },
+            ],
+        },
+        {
+            "type": "h1",
+            "text": "References",
+            "children": [
+                {"type": "bullet", "text": "ISO 27002: 6, 7, 8, 9, 11, 12, 13, 16, 18"},
+                {"type": "bullet", "text": "NIST CSF: PR.AC, PR.AT, PR.DS, DE.CM, DE.DP, RS.CO"},
+                {"type": "bullet", "text": "Asset Management Policy"},
+                {"type": "bullet", "text": "Encryption Management Policy"},
+                {"type": "bullet", "text": "Encryption Standard"},
+                {"type": "bullet", "text": "Identity and Access Management Policy"},
+                {"type": "bullet", "text": "Incident Management Policy"},
+                {"type": "bullet", "text": "Information Classification and Management Policy"},
+                {"type": "bullet", "text": "Mobile Device Acknowledgement"},
+                {"type": "bullet", "text": "Personnel Security and Awareness Policy"},
+                {"type": "bullet", "text": "Physical Security Policy"},
+                {"type": "bullet", "text": "Social Media Management Procedure"},
+            ],
+        },
+        {
+            "type": "h1",
+            "text": "Waivers",
+            "children": [
+                {"type": "paragraph", "text": "Waivers from certain policy provisions may be sought following the (Company) Waiver Process."}
+            ],
+        },
+        {
+            "type": "h1",
+            "text": "Enforcement",
+            "children": [
+                {"type": "paragraph", "text": "Personnel found to have violated this policy may be subject to disciplinary action, up to and including termination of employment, and related civil or criminal penalties."},
+                {"type": "paragraph", "text": "Any vendor, consultant, or contractor found to have violated this policy may be subject to sanctions up to and including removal of access rights, termination of contract(s), and related civil or criminal penalties."},
+            ],
+        },
+    ]
 
 # Document Generation Functions
 def generate_docx():
     doc = Document()
+    company_display = get_company_display_name()
+    policy_structure = build_policy_structure()
     
     # --- TITLE PAGE ---
     # Add some spacing before title
@@ -224,16 +516,27 @@ def generate_docx():
     footer_para.runs[0].font.size = Pt(9)
     
     # --- CONTENT ---
-    for heading, text in policy_content.items():
-        h = doc.add_heading(heading, level=1)
-        h.runs[0].font.size = Pt(14)
-        p = doc.add_paragraph(text)
-        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        
-    # --- DOCUMENT CONTROL BLOCK ---
-    doc.add_heading("12. DOCUMENT CONTROL", level=1).runs[0].font.size = Pt(14)
-    control_text = f"Policy Owner: {policy_owner}\nIndustry: {industry}\nVersion: 1.0\nNext Review Date: {datetime.today().replace(year=datetime.today().year + 1).strftime('%B %d, %Y')}"
-    doc.add_paragraph(control_text)
+    for section in policy_structure:
+        heading = doc.add_heading(with_company(section["text"], company_display), level=1)
+        heading.runs[0].font.size = Pt(14)
+        for child in section["children"]:
+            if child["type"] == "h2":
+                subheading = doc.add_heading(with_company(child["text"], company_display), level=2)
+                subheading.runs[0].font.size = Pt(12)
+                for sub_item in child["children"]:
+                    text = with_company(sub_item["text"], company_display)
+                    if sub_item["type"] == "bullet":
+                        para = doc.add_paragraph(text, style="List Bullet")
+                    else:
+                        para = doc.add_paragraph(text)
+                    para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+            else:
+                text = with_company(child["text"], company_display)
+                if child["type"] == "bullet":
+                    para = doc.add_paragraph(text, style="List Bullet")
+                else:
+                    para = doc.add_paragraph(text)
+                para.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     
     buffer = io.BytesIO()
     doc.save(buffer)
@@ -242,6 +545,8 @@ def generate_docx():
 
 def generate_pdf():
     pdf = LegalPDF(company_name=company_name)
+    company_display = get_company_display_name()
+    policy_structure = build_policy_structure()
     pdf.add_page()
     
     # --- TITLE PAGE ---
@@ -263,19 +568,32 @@ def generate_pdf():
     pdf.add_page()
     
     # --- CONTENT ---
-    for heading, text in policy_content.items():
+    for section in policy_structure:
         pdf.set_font("Times", "B", 14)
-        pdf.cell(0, 10, sanitize_text(heading), ln=True)
-        pdf.set_font("Times", "", 11)
-        pdf.multi_cell(0, 7, sanitize_text(text))
-        pdf.ln(5)
-        
-    # --- DOCUMENT CONTROL BLOCK ---
-    pdf.set_font("Times", "B", 14)
-    pdf.cell(0, 10, sanitize_text("12. DOCUMENT CONTROL"), ln=True)
-    pdf.set_font("Times", "", 11)
-    control_text = f"Policy Owner: {policy_owner}\nIndustry: {industry}\nVersion: 1.0\nNext Review Date: {datetime.today().replace(year=datetime.today().year + 1).strftime('%B %d, %Y')}"
-    pdf.multi_cell(0, 7, sanitize_text(control_text))
+        pdf.multi_cell(0, 8, sanitize_text(with_company(section["text"], company_display)))
+        pdf.ln(1)
+
+        for child in section["children"]:
+            if child["type"] == "h2":
+                pdf.set_font("Times", "B", 12)
+                pdf.multi_cell(0, 7, sanitize_text(with_company(child["text"], company_display)))
+                pdf.set_font("Times", "", 11)
+                for sub_item in child["children"]:
+                    text = with_company(sub_item["text"], company_display)
+                    if sub_item["type"] == "bullet":
+                        pdf.multi_cell(0, 7, sanitize_text(f"- {text}"))
+                    else:
+                        pdf.multi_cell(0, 7, sanitize_text(text))
+                    pdf.ln(1)
+            else:
+                pdf.set_font("Times", "", 11)
+                text = with_company(child["text"], company_display)
+                if child["type"] == "bullet":
+                    pdf.multi_cell(0, 7, sanitize_text(f"- {text}"))
+                else:
+                    pdf.multi_cell(0, 7, sanitize_text(text))
+                pdf.ln(1)
+        pdf.ln(2)
     
     # Output to byte array
     return bytes(pdf.output())
