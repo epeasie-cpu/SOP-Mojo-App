@@ -1,6 +1,7 @@
 import streamlit as st
 import io
 from datetime import datetime
+import pandas as pd
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.shared import Pt, Inches
@@ -80,10 +81,19 @@ class LegalPDF(FPDF):
 # ==========================================
 st.set_page_config(page_title="SOP Mojo | AUP Engine", page_icon="⚡", layout="wide")
 
-# Temporary token lock (to be backed by DB later)
-VALID_TOKENS = ["test-token-123"]
+# Live token source (published Google Sheet)
+SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrHS44BtJEmfCFcYEsfAs7V88mxrK5KVLVBSLxe-tUl84Y26DUjrHiusjundmCdAVDAYccTtdJSmpx/pubhtml "
+SHEET_URL = SHEET_URL.strip().replace("/pubhtml", "/export?format=csv")
+orders_df = pd.read_csv(SHEET_URL)
+VALID_TOKENS = (
+    orders_df["Order ID"]
+    .dropna()
+    .astype(str)
+    .tolist()
+)
 token_param = st.query_params.get("token")
 provided_token = token_param[0] if isinstance(token_param, list) and token_param else token_param
+provided_token = str(provided_token) if provided_token is not None else ""
 
 if provided_token not in VALID_TOKENS:
     st.error("🛑 Access Denied: Invalid or missing authorization token.")
