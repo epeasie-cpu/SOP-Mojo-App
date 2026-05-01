@@ -568,32 +568,55 @@ def generate_pdf():
     pdf.add_page()
     
     # --- CONTENT ---
+    pdf.set_left_margin(10)
+    policy_lines = []
     for section in policy_structure:
-        pdf.set_font("Times", "B", 14)
-        pdf.multi_cell(0, 8, sanitize_text(with_company(section["text"], company_display)))
-        pdf.ln(1)
-
+        policy_lines.append(f"## {with_company(section['text'], company_display)}")
         for child in section["children"]:
             if child["type"] == "h2":
-                pdf.set_font("Times", "B", 12)
-                pdf.multi_cell(0, 7, sanitize_text(with_company(child["text"], company_display)))
-                pdf.set_font("Times", "", 11)
+                policy_lines.append(f"### {with_company(child['text'], company_display)}")
                 for sub_item in child["children"]:
-                    text = with_company(sub_item["text"], company_display)
+                    line_text = with_company(sub_item["text"], company_display)
                     if sub_item["type"] == "bullet":
-                        pdf.multi_cell(0, 7, sanitize_text(f"- {text}"))
+                        policy_lines.append(f"* {line_text}")
                     else:
-                        pdf.multi_cell(0, 7, sanitize_text(text))
-                    pdf.ln(1)
+                        policy_lines.append(line_text)
             else:
-                pdf.set_font("Times", "", 11)
-                text = with_company(child["text"], company_display)
+                line_text = with_company(child["text"], company_display)
                 if child["type"] == "bullet":
-                    pdf.multi_cell(0, 7, sanitize_text(f"- {text}"))
+                    policy_lines.append(f"* {line_text}")
                 else:
-                    pdf.multi_cell(0, 7, sanitize_text(text))
-                pdf.ln(1)
-        pdf.ln(2)
+                    policy_lines.append(line_text)
+        policy_lines.append("")
+
+    for line in policy_lines:
+        if line.startswith("## "):
+            pdf.set_font("Times", "B", 14)
+            pdf.set_x(10)
+            pdf.multi_cell(0, 8, sanitize_text(line[3:].strip()))
+            pdf.ln(1)
+            continue
+
+        if line.startswith("### "):
+            pdf.set_font("Times", "B", 12)
+            pdf.set_x(10)
+            pdf.multi_cell(0, 7, sanitize_text(line[4:].strip()))
+            pdf.ln(1)
+            continue
+
+        pdf.set_font("Times", "", 11)
+        if line.startswith(" * "):
+            pdf.set_x(25)
+            text = line[3:].strip()
+            pdf.multi_cell(0, 7, sanitize_text(text))
+        elif line.startswith("* "):
+            pdf.set_x(15)
+            text = line[2:].strip()
+            pdf.multi_cell(0, 7, sanitize_text(text))
+        else:
+            pdf.set_x(10)
+            pdf.multi_cell(0, 7, sanitize_text(line))
+        pdf.ln(1)
     
     # Output to byte array
     return bytes(pdf.output())
