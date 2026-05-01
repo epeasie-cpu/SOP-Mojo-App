@@ -112,6 +112,10 @@ st.markdown("""
     div.stDownloadButton > button:hover {
         opacity: 0.8;
     }
+    div.stButton > button[kind="primary"] p {
+        color: black !important;
+        font-weight: 600 !important;
+    }
     [data-testid="collapsedControl"] {
         color: #b0ff56 !important;
     }
