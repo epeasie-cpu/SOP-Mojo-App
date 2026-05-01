@@ -1,0 +1,15 @@
+[theme]
+# The SOP Mojo Neon Green for active elements and primary buttons
+primaryColor = "#b0ff56"
+
+# Pure black background for that sleek, cyber-security aesthetic
+backgroundColor = "#000000"
+
+# A very dark charcoal for the sidebar to create depth without being pure black
+secondaryBackgroundColor = "#111111"
+
+# Pure white text for high contrast readability
+textColor = "#ffffff"
+
+# Modern, clean sans-serif font
+font = "sans serif"
