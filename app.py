@@ -84,20 +84,30 @@ st.set_page_config(page_title="SOP Mojo | AUP Engine", page_icon="⚡", layout="
 # Live token source (published Google Sheet)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRrHS44BtJEmfCFcYEsfAs7V88mxrK5KVLVBSLxe-tUl84Y26DUjrHiusjundmCdAVDAYccTtdJSmpx/pubhtml"
 SHEET_URL = SHEET_URL.strip().replace("/pubhtml", "/pub?output=csv")
-orders_df = pd.read_csv(SHEET_URL, dtype=str)
-VALID_TOKENS = (
-    orders_df["Order ID"]
-    .dropna()
-    .str.replace(r'\.0$', '', regex=True)
-    .str.strip()
-    .tolist()
-)
-token_param = st.query_params.get("token")
-provided_token = token_param[0] if isinstance(token_param, list) and token_param else token_param
-provided_token = str(provided_token) if provided_token is not None else ""
 
-if provided_token not in VALID_TOKENS:
+
+@st.cache_data(ttl=15)
+def load_valid_tokens(sheet_url: str):
+    orders_df = pd.read_csv(sheet_url, dtype=str)
+    return (
+        orders_df["Order ID"]
+        .dropna()
+        .astype(str)
+        .str.replace(r"\.0$", "", regex=True)
+        .str.strip()
+        .tolist()
+    )
+
+
+VALID_TOKENS = load_valid_tokens(SHEET_URL)
+token_param = st.query_params.get("token")
+token = token_param[0] if isinstance(token_param, list) and token_param else token_param
+token = str(token).strip() if token is not None else ""
+
+if token not in VALID_TOKENS:
     st.error("🛑 Access Denied: Invalid or missing authorization token.")
+    st.error(f"Debug Info -> URL Token: '{token}' (Length: {len(str(token)) if token else 0})")
+    st.write("Valid Tokens in System:", VALID_TOKENS)
     st.markdown("[Purchase Access Here](https://samcart.com)")
     st.stop()
 
