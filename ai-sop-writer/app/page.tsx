@@ -50,9 +50,10 @@ export default function HomePage() {
               ))}
             </ul>
           </div>
-          <Generator />
+          <Generator outputSlotId="sop-output-slot" />
         </PageShell>
       </section>
+      <div id="sop-output-slot" className="mx-auto w-full max-w-6xl px-4 sm:px-6" />
       <PageShell className="py-14">
         <ArticleSections entry={entry} />
         <section className="mt-14">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
 import { SITE } from "@/lib/site";
@@ -16,6 +17,7 @@ const BUSINESS_SUGGESTIONS = [
 
 type Props = {
   defaults?: Partial<SopInput>;
+  outputSlotId?: string;
 };
 
 function downloadFile(filename: string, contents: string, type: string) {
@@ -28,7 +30,7 @@ function downloadFile(filename: string, contents: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-export function Generator({ defaults }: Props) {
+export function Generator({ defaults, outputSlotId }: Props) {
   const [form, setForm] = useState<SopInput>({
     businessType: defaults?.businessType ?? "",
     processName: defaults?.processName ?? "",
@@ -45,6 +47,11 @@ export function Generator({ defaults }: Props) {
   const [copied, setCopied] = useState<"md" | "none">("none");
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
+  const isClient = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
 
   const markdown = useMemo(() => (sop ? sopToMarkdown(sop) : ""), [sop]);
 
@@ -189,7 +196,53 @@ export function Generator({ defaults }: Props) {
         </button>
       </form>
 
-      {sop ? (
+      <SopOutput
+        sop={sop}
+        mode={mode}
+        llmFailed={llmFailed}
+        markdown={markdown}
+        copied={copied}
+        email={email}
+        emailStatus={emailStatus}
+        outputSlotId={outputSlotId}
+        isClient={isClient}
+        onCopyMarkdown={copyMarkdown}
+        onEmailChange={setEmail}
+        onCaptureEmail={captureEmail}
+      />
+    </div>
+  );
+}
+
+function SopOutput({
+  sop,
+  mode,
+  llmFailed,
+  markdown,
+  copied,
+  email,
+  emailStatus,
+  outputSlotId,
+  isClient,
+  onCopyMarkdown,
+  onEmailChange,
+  onCaptureEmail,
+}: {
+  sop: SopDraft | null;
+  mode: GenerateMode | null;
+  llmFailed: boolean;
+  markdown: string;
+  copied: "md" | "none";
+  email: string;
+  emailStatus: string | null;
+  outputSlotId?: string;
+  isClient: boolean;
+  onCopyMarkdown: () => void;
+  onEmailChange: (value: string) => void;
+  onCaptureEmail: (event: React.FormEvent) => void;
+}) {
+  if (!sop) return null;
+  const output = (
         <article
           id="sop-output"
           className="sop-document mt-8 rounded-xl border border-line bg-white p-5 sm:p-8"
@@ -213,15 +266,15 @@ export function Generator({ defaults }: Props) {
           <div className="no-print mt-6 flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={copyMarkdown}
-              className="rounded-sm border border-line px-3 py-2 text-sm hover:bg-paper"
+              onClick={onCopyMarkdown}
+              className="rounded-sm bg-forest px-3 py-2 text-sm font-semibold text-white hover:bg-forest/90"
             >
               {copied === "md" ? "Copied Markdown" : "Copy Markdown"}
             </button>
             <button
               type="button"
               onClick={() => window.print()}
-              className="rounded-sm border border-line px-3 py-2 text-sm hover:bg-paper"
+              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
             >
               Print
             </button>
@@ -230,7 +283,7 @@ export function Generator({ defaults }: Props) {
               onClick={() =>
                 downloadFile(sopFilename(sop, "md"), markdown, "text/markdown;charset=utf-8")
               }
-              className="rounded-sm border border-line px-3 py-2 text-sm hover:bg-paper"
+              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
             >
               Download Markdown
             </button>
@@ -243,12 +296,12 @@ export function Generator({ defaults }: Props) {
                   "text/html;charset=utf-8",
                 )
               }
-              className="rounded-sm border border-line px-3 py-2 text-sm hover:bg-paper"
+              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
             >
               Download print HTML
             </button>
           </div>
-          <form onSubmit={captureEmail} className="no-print mt-6 border-t border-line pt-4">
+          <form onSubmit={onCaptureEmail} className="no-print mt-6 border-t border-line pt-4">
             <p className="text-sm font-medium text-ink">
               Optional: save your email locally with this draft
             </p>
@@ -259,7 +312,7 @@ export function Generator({ defaults }: Props) {
               <input
                 type="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => onEmailChange(event.target.value)}
                 placeholder="you@company.com"
                 className="w-full rounded-md border border-line bg-paper px-3 py-2 text-sm"
               />
@@ -291,9 +344,9 @@ export function Generator({ defaults }: Props) {
             </div>
           </div>
         </article>
-      ) : null}
-    </div>
   );
+  const slot = outputSlotId && isClient ? document.getElementById(outputSlotId) : null;
+  return slot ? createPortal(output, slot) : output;
 }
 
 function SopSections({ sop }: { sop: SopDraft }) {
