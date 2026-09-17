@@ -2,9 +2,10 @@
 
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { buildRefinePrompt } from "@/lib/refine-prompt";
+import { SITE } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
-import { SITE } from "@/lib/site";
 
 const BUSINESS_SUGGESTIONS = [
   "Professional services firm",
@@ -44,7 +45,7 @@ export function Generator({ defaults, outputSlotId }: Props) {
   const [llmFailed, setLlmFailed] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copied, setCopied] = useState<"md" | "none">("none");
+  const [copied, setCopied] = useState<"md" | "prompt" | "none">("none");
   const [email, setEmail] = useState("");
   const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const isClient = useSyncExternalStore(
@@ -54,6 +55,10 @@ export function Generator({ defaults, outputSlotId }: Props) {
   );
 
   const markdown = useMemo(() => (sop ? sopToMarkdown(sop) : ""), [sop]);
+  const refinePrompt = useMemo(
+    () => (sop ? buildRefinePrompt(sop, form) : ""),
+    [sop, form],
+  );
 
   function update<K extends keyof SopInput>(key: K, value: SopInput[K]) {
     setForm((current) => ({ ...current, [key]: value }));
@@ -96,6 +101,12 @@ export function Generator({ defaults, outputSlotId }: Props) {
     if (!markdown) return;
     await navigator.clipboard.writeText(markdown);
     setCopied("md");
+  }
+
+  async function copyPrompt() {
+    if (!refinePrompt) return;
+    await navigator.clipboard.writeText(refinePrompt);
+    setCopied("prompt");
   }
 
   async function captureEmail(event: React.FormEvent) {
@@ -207,6 +218,7 @@ export function Generator({ defaults, outputSlotId }: Props) {
         outputSlotId={outputSlotId}
         isClient={isClient}
         onCopyMarkdown={copyMarkdown}
+        onCopyPrompt={copyPrompt}
         onEmailChange={setEmail}
         onCaptureEmail={captureEmail}
       />
@@ -225,6 +237,7 @@ function SopOutput({
   outputSlotId,
   isClient,
   onCopyMarkdown,
+  onCopyPrompt,
   onEmailChange,
   onCaptureEmail,
 }: {
@@ -232,12 +245,13 @@ function SopOutput({
   mode: GenerateMode | null;
   llmFailed: boolean;
   markdown: string;
-  copied: "md" | "none";
+  copied: "md" | "prompt" | "none";
   email: string;
   emailStatus: string | null;
   outputSlotId?: string;
   isClient: boolean;
   onCopyMarkdown: () => void;
+  onCopyPrompt: () => void;
   onEmailChange: (value: string) => void;
   onCaptureEmail: (event: React.FormEvent) => void;
 }) {
@@ -270,6 +284,14 @@ function SopOutput({
               className="rounded-sm bg-forest px-3 py-2 text-sm font-semibold text-white hover:bg-forest/90"
             >
               {copied === "md" ? "Copied Markdown" : "Copy Markdown"}
+            </button>
+            <button
+              type="button"
+              onClick={onCopyPrompt}
+              title="Paste into ChatGPT, Claude, Gemini, or any GPT tool"
+              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
+            >
+              {copied === "prompt" ? "Prompt copied" : "Copy AI prompt"}
             </button>
             <button
               type="button"
