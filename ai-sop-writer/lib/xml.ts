@@ -4,9 +4,9 @@ import {
   getUseCaseSitemapEntries,
   type ContentEntry,
 } from "./content";
-import { SITE, absoluteUrl } from "./site";
+import { SITE, WRITER_UPGRADE_URL, absoluteUrl } from "./site";
 
-const LASTMOD_FALLBACK = "2026-09-16";
+const LASTMOD_FALLBACK = "2026-09-17";
 
 function escapeXml(value: string): string {
   return value
@@ -98,7 +98,8 @@ export function llmsTxt(): string {
 
 - Canonical host: ${SITE.host}
 - Parent: ${SITE.parent}
-- Living system (upsell): ${SITE.builder}
+- Upgrade / Builder Pro: ${WRITER_UPGRADE_URL}
+- Living system: ${SITE.builder}
 - SOP Library: ${SITE.library}
 - Founder contact: ${SITE.founderEmail}
 

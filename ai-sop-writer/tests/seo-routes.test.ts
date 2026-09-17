@@ -6,7 +6,7 @@ import { GET as sitemapUseCases } from "@/app/sitemap-use-cases.xml/route";
 import { GET as contentTree } from "@/app/content-tree.xml/route";
 import { GET as llms } from "@/app/llms.txt/route";
 import { CONTENT } from "@/lib/content";
-import { SITE } from "@/lib/site";
+import { SITE, WRITER_UPGRADE_URL } from "@/lib/site";
 import { generateTemplateSop } from "@/lib/template-engine";
 
 const REQUIRED_PATHS = [
@@ -92,6 +92,7 @@ describe("SEO routes", () => {
     expect(body).toContain("AI SOP Writer");
     expect(body).toContain(SITE.host);
     expect(body).toContain("standard operating procedure");
+    expect(body).toContain(WRITER_UPGRADE_URL);
   });
 });
 

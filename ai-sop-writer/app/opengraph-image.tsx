@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { hostLabel } from "@/lib/site";
 
 export const alt = "AI SOP Writer — SOP Mojo";
 export const size = { width: 1200, height: 630 };
@@ -51,7 +52,7 @@ export default function OpenGraphImage() {
             First-draft standard operating procedures — not statements of purpose.
           </div>
         </div>
-        <div style={{ fontSize: 22, color: "#b8bbae" }}>writer.sopmojo.com</div>
+        <div style={{ fontSize: 22, color: "#b8bbae" }}>{hostLabel()}</div>
       </div>
     ),
     { ...size },

@@ -3,7 +3,7 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { buildRefinePrompt } from "@/lib/refine-prompt";
-import { SITE } from "@/lib/site";
+import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
 
@@ -300,14 +300,17 @@ function SopOutput({
               or visit SOP Mojo.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
-              <a href={SITE.builder} className="font-semibold text-forest underline">
-                builder.sopmojo.com
+              <a href={WRITER_UPGRADE_URL} className="font-semibold text-forest underline">
+                Get Builder Pro
+              </a>
+              <a href={SITE.builder} className="underline">
+                Living system
               </a>
               <a href={SITE.library} className="underline">
                 SOP Library
               </a>
               <a href={SITE.parent} className="underline">
-                sopmojo.com
+                {hostLabel(SITE.parent)}
               </a>
             </div>
           </div>
