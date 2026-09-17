@@ -34,7 +34,7 @@ export function isAccessOverdue(
 
 export function buildEscalationTask(item: EscalatableAccessItem): EscalationTaskDraft {
   return {
-    title: `Escalate: ${item.itemName} access overdue`,
+    title: `Escalate: ${item.itemName} overdue`,
     boardColumn: "WEEK_1",
     status: "BLOCKED",
     ownerRole: "AccountLead",

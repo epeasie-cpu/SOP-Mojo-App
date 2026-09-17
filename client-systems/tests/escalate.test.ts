@@ -15,7 +15,7 @@ describe("access SLA escalation", () => {
     };
     expect(isAccessOverdue(item, now)).toBe(true);
     expect(buildEscalationTask(item)).toMatchObject({
-      title: "Escalate: Brand kit access overdue",
+      title: "Escalate: Brand kit overdue",
       status: "BLOCKED",
       ownerRole: "AccountLead",
       boardColumn: "WEEK_1",
