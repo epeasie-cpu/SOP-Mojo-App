@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+:root {
+  --ink: #12150f;
+  --paper: #f6f4ec;
+  --lime: #c6ff4a;
+  --lime-ink: #10140c;
+  --forest: #1c2a14;
+  --muted: #5c6454;
+  --line: #d9d6c8;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
+  --color-lime: var(--lime);
+  --color-lime-ink: var(--lime-ink);
+  --color-forest: var(--forest);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+html {
+  background: var(--paper);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
