@@ -2,7 +2,7 @@
 
 Canonical host: **https://clients.sopmojo.com**
 
-**Client Systems** is the SOP Mojo product workspace for the Client Systems Kit. Buyers run client onboarding in the browser: intake, sales-to-delivery handoff, access SLAs, and the 31-task Kanban. It is not Notion, not ClickUp, and not “duplicate an Airtable.”
+**Client Systems** is the SOP Mojo workspace for the client path after yes: proposal → welcome → onboard. Buyers run intake, sales-to-delivery handoff, access SLAs, and the 31-task board in the browser. It is **not** AI SOP Writer, **not** a Notion template marketplace, and **not** ClickUp.
 
 This app lives in `/client-systems` so **AI SOP Writer** (`/ai-sop-writer`) and the Streamlit AUP Engine at the repository root stay untouched.
 
@@ -38,6 +38,7 @@ Open http://localhost:3000. Create a workspace at `/signup`, add a project from 
 | `AUTH_SECRET` | Yes in production | HMAC secret for the session cookie. Generate with `openssl rand -base64 32`. |
 | `CRON_SECRET` | No | Bearer token for `GET /api/cron/escalate`. |
 | `WORKSPACE_SLACK_WEBHOOK` | No | Fallback Slack incoming-webhook URL if the workspace setting is empty. |
+| `NEXT_PUBLIC_KIT_CHECKOUT_URL` | No | Live kit checkout. Empty or `#` keeps **Get the $39 Kit** as a placeholder. Product+Offer JSON-LD on `/client-systems-kit` is emitted only when this is a real URL. |
 
 Auth is a lightweight httpOnly JWT cookie plus bcrypt on `User`. Each buyer signup creates one `Workspace` and an `OWNER` membership. Invited emails (workspace settings, one per line) join that workspace on signup instead of opening a second account workspace.
 
@@ -54,7 +55,13 @@ Same bar as AI SOP Writer. Marketing pages are App Router server components. One
 
 Per-page `<title>` pattern: `{keyword} | Client Systems | SOP Mojo`, plus unique meta description, canonical, Open Graph, Twitter, and robots index/follow.
 
-JSON-LD (`Organization`, `WebSite` + `SearchAction`, `SoftwareApplication`, plus `FAQPage`, `HowTo`, and `BreadcrumbList` where relevant) is emitted from the same registry.
+JSON-LD from the same registry:
+
+- Home (`/`): `Organization`, `WebSite` + `SearchAction`, `SoftwareApplication`, `BreadcrumbList`
+- `/client-onboarding-checklist`: `FAQPage`, `HowTo`, `BreadcrumbList`
+- `/faq`: `FAQPage`, `BreadcrumbList`
+- `/client-systems-kit`: `Product` + `Offer` only when `NEXT_PUBLIC_KIT_CHECKOUT_URL` is set; `BreadcrumbList` always
+- Every indexed page: `BreadcrumbList`
 
 | URL | Role |
 | --- | --- |
@@ -66,11 +73,26 @@ JSON-LD (`Organization`, `WebSite` + `SearchAction`, `SoftwareApplication`, plus
 | `/llms.txt` | LLM-oriented site summary |
 | `/search?q=` | `SearchAction` target (noindex) |
 
-Indexed v1 landings: `/`, `/client-onboarding-checklist`, `/client-proposal-template`, `/client-welcome-pack`, `/client-intake-form`, `/agency-client-onboarding`, `/how-it-works`, `/pricing`, `/faq`.
+Day-one indexed landings on https://clients.sopmojo.com:
+
+- `/`
+- `/client-onboarding`
+- `/client-onboarding-checklist`
+- `/client-proposal-template`
+- `/client-welcome-pack`
+- `/client-intake-form`
+- `/sales-to-delivery-handoff`
+- `/client-systems-kit`
+- `/how-it-works`
+- `/faq`
+
+Permanent redirects: `/pricing` → `/client-systems-kit`, `/agency-client-onboarding` → `/client-onboarding`. Phase-two pages (meeting agenda, RACI, handbook) are not shipped.
+
+Every landing uses the same CTA row: **Start free in Client Systems** (`/signup`), **Get the $39 Kit** (`NEXT_PUBLIC_KIT_CHECKOUT_URL` or `#`), then Writer and Builder Pro bridges.
 
 `/app` routes remain `noindex`. Canonical URLs always use `https://clients.sopmojo.com`.
 
-Pricing copy is soft: Client Systems Kit is **$39**; the workspace is where you run the kit. No invented seat counts or discounts.
+The Client Systems Kit is **$39**; the workspace is where you run it after yes. No invented seat counts or discounts.
 
 ## Vercel
 
@@ -78,7 +100,7 @@ Create a Vercel project with **root directory** `client-systems`.
 
 1. Set `DATABASE_URL` to a Postgres connection string (Supabase or Neon).
 2. Set `AUTH_SECRET`.
-3. Optional: `CRON_SECRET`, `WORKSPACE_SLACK_WEBHOOK`.
+3. Optional: `CRON_SECRET`, `WORKSPACE_SLACK_WEBHOOK`, `NEXT_PUBLIC_KIT_CHECKOUT_URL`.
 4. Build command: `npm run build` (runs `prisma generate` then `next build`).
 5. After first deploy, run `npx prisma db push` against production (or `prisma migrate deploy` once you add migrations). The build script switches the Prisma `provider` to `postgresql` when `DATABASE_URL` starts with `postgres`.
 

@@ -4,9 +4,10 @@ import { indexedContent } from "@/lib/content";
 import { Logo } from "./Logo";
 
 const NAV = [
+  { href: "/client-onboarding", label: "Onboarding" },
   { href: "/how-it-works", label: "How it works" },
   { href: "/client-onboarding-checklist", label: "Checklist" },
-  { href: "/pricing", label: "Pricing" },
+  { href: "/client-systems-kit", label: "Kit" },
   { href: "/faq", label: "FAQ" },
 ];
 
@@ -36,7 +37,7 @@ export function MarketingHeader() {
             href="/signup"
             className="rounded-sm bg-lime px-3 py-1.5 font-semibold text-lime-ink hover:bg-lime/90"
           >
-            Create workspace
+            Start free
           </Link>
         </nav>
         <details className="relative lg:hidden">
@@ -66,7 +67,7 @@ export function MarketingHeader() {
               href="/signup"
               className="mt-2 block rounded-sm bg-lime px-2 py-2 text-center font-semibold text-lime-ink"
             >
-              Create workspace
+              Start free
             </Link>
           </div>
         </details>

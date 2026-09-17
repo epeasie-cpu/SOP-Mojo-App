@@ -3,10 +3,10 @@ import { MarketingPage } from "@/components/MarketingPage";
 import { getEntry } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 
-const entry = getEntry("/pricing");
+const entry = getEntry("/client-onboarding");
 
 export const metadata: Metadata = buildMetadata(entry);
 
-export default function PricingPage() {
+export default function ClientOnboardingPage() {
   return <MarketingPage entry={entry} />;
 }

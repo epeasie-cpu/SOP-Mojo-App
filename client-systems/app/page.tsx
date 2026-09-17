@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArticleSections } from "@/components/Article";
-import { CtaRow } from "@/components/CtaRow";
+import { CtaRow, LandingCtas } from "@/components/CtaRow";
 import { FaqList } from "@/components/FaqList";
 import { JsonLd, PageShell } from "@/components/JsonLd";
 import { MarketingFooter, MarketingHeader } from "@/components/MarketingChrome";
@@ -25,38 +25,21 @@ export default function HomePage() {
             {hostLabel()}
           </p>
           <h1 className="font-display mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
-            Client Systems
+            After yes: proposal, welcome, onboard
           </h1>
           <p className="mt-4 max-w-2xl text-lg text-white/80">{entry.lede}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              href="/signup"
-              className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink"
-            >
-              Create a workspace
-            </Link>
-            <Link
-              href="/login"
-              className="rounded-sm border border-white/20 px-4 py-2 text-sm text-white hover:border-lime"
-            >
-              Log in
-            </Link>
-            <Link
-              href="/how-it-works"
-              className="rounded-sm border border-white/20 px-4 py-2 text-sm text-white hover:border-lime"
-            >
-              How it works
-            </Link>
+          <div className="mt-8">
+            <LandingCtas tone="hero" />
           </div>
         </PageShell>
       </section>
       <PageShell className="py-12">
         <ArticleSections entry={{ ...entry, lede: undefined }} />
         <section className="mt-14">
-          <h2 className="font-display text-2xl font-semibold">Guides</h2>
+          <h2 className="font-display text-2xl font-semibold">Day-one landings</h2>
           <p className="mt-2 max-w-2xl text-muted">
-            High-intent pages for the kit and the workspace. Sales may refine
-            keywords; these slugs are the v1 set.
+            The client path after yes. Not SOP Writer. Not a Notion or ClickUp
+            template marketplace.
           </p>
           <ul className="mt-6 grid gap-4 sm:grid-cols-2">
             {pages.map((item) => (

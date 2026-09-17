@@ -5,8 +5,9 @@ import { signupAction } from "@/lib/actions/auth";
 import { marketingMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = marketingMetadata({
-  keyword: "Create workspace",
-  description: "Create a Client Systems workspace for SOP Mojo client onboarding.",
+  keyword: "Start free",
+  description:
+    "Start free in Client Systems, the SOP Mojo workspace for the client path after yes.",
   path: "/signup",
   index: false,
 });
@@ -21,7 +22,9 @@ export default async function SignupPage({
     <>
       <MarketingHeader />
       <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-4 py-12">
-        <h1 className="font-display text-3xl font-semibold">Create a workspace</h1>
+        <h1 className="font-display text-3xl font-semibold">
+          Start free in Client Systems
+        </h1>
         <p className="mt-2 text-sm text-muted">
           One workspace per buyer account. If your email was invited, you join
           that workspace instead of creating a new one.
@@ -64,7 +67,7 @@ export default async function SignupPage({
             />
           </label>
           <button className="w-full rounded-sm bg-lime px-4 py-2 font-semibold text-lime-ink">
-            Create workspace
+            Start free in Client Systems
           </button>
         </form>
         <p className="mt-4 text-sm text-muted">

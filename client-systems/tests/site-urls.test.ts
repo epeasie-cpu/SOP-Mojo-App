@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BUILDER_CTA_URL, SITE, WRITER_CTA_URL, absoluteUrl, hostLabel } from "@/lib/site";
+import { BUILDER_CTA_URL, SITE, WRITER_CTA_URL, absoluteUrl, hostLabel, kitCheckoutIsLive, kitCheckoutUrl } from "@/lib/site";
 
 describe("canonical product URLs", () => {
   it("keeps clients.sopmojo.com as the canonical host", () => {
@@ -16,5 +16,14 @@ describe("canonical product URLs", () => {
     expect(SITE.library).toBe("https://www.sopmojo.com/soplibrary");
     expect(WRITER_CTA_URL).toContain("https://writer.sopmojo.com");
     expect(BUILDER_CTA_URL).toContain("https://www.sopmojo.com/lp/ai-sop-writer");
+  });
+
+  it("keeps kit checkout as a placeholder until NEXT_PUBLIC_KIT_CHECKOUT_URL is set", () => {
+    const previous = process.env.NEXT_PUBLIC_KIT_CHECKOUT_URL;
+    delete process.env.NEXT_PUBLIC_KIT_CHECKOUT_URL;
+    expect(kitCheckoutUrl()).toBe("#");
+    expect(kitCheckoutIsLive()).toBe(false);
+    if (previous === undefined) delete process.env.NEXT_PUBLIC_KIT_CHECKOUT_URL;
+    else process.env.NEXT_PUBLIC_KIT_CHECKOUT_URL = previous;
   });
 });

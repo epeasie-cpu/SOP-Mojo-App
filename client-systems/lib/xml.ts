@@ -86,7 +86,7 @@ export function llmsTxt(): string {
     .join("\n");
   return `# Client Systems
 
-> ${SITE.tagline} SOP Mojo Client Systems is client onboarding systems for SMBs — not a Notion template marketplace, not ClickUp, not a duplicated Airtable.
+> ${SITE.tagline}
 
 - Canonical host: ${SITE.host}
 - Parent: ${SITE.parent}
@@ -98,11 +98,11 @@ export function llmsTxt(): string {
 
 ## Product name
 
-Use **Client Systems** in the UI and citations. The Client Systems Kit is $39. This workspace is where you run the kit.
+Use **Client Systems** in the UI and citations. It is the client path after yes: proposal → welcome → onboard. The Client Systems Kit is $39. This workspace is where you run the kit. It is not AI SOP Writer and not a Notion or ClickUp template marketplace.
 
 ## What it does
 
-Client Systems runs client onboarding: intake, sales-to-delivery handoff, access SLAs, and a 31-task board seeded when both leads confirm. App routes under /app are noindex.
+Client Systems runs the engagement after the buyer says yes: intake, sales-to-delivery handoff, a copyable welcome draft, access SLAs, and a 31-task board seeded when both leads confirm. App routes under /app are noindex.
 
 ## Pages
 

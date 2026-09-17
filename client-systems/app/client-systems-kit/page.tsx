@@ -3,10 +3,10 @@ import { MarketingPage } from "@/components/MarketingPage";
 import { getEntry } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 
-const entry = getEntry("/agency-client-onboarding");
+const entry = getEntry("/client-systems-kit");
 
 export const metadata: Metadata = buildMetadata(entry);
 
-export default function AgencyClientOnboardingPage() {
+export default function ClientSystemsKitPage() {
   return <MarketingPage entry={entry} />;
 }
