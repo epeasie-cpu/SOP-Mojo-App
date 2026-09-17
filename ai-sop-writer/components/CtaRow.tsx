@@ -1,4 +1,4 @@
-import { SITE } from "@/lib/site";
+import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 
 export function CtaRow() {
   return (
@@ -16,10 +16,16 @@ export function CtaRow() {
       </p>
       <div className="mt-6 flex flex-wrap gap-3">
         <a
-          href={SITE.builder}
+          href={WRITER_UPGRADE_URL}
           className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink"
         >
-          Open SOP Builder Pro
+          Get Builder Pro
+        </a>
+        <a
+          href={SITE.builder}
+          className="rounded-sm border border-white/20 px-4 py-2 text-sm text-white hover:border-lime"
+        >
+          Living system
         </a>
         <a
           href={SITE.library}
@@ -31,7 +37,7 @@ export function CtaRow() {
           href={SITE.parent}
           className="rounded-sm border border-white/20 px-4 py-2 text-sm text-white hover:border-lime"
         >
-          sopmojo.com
+          {hostLabel(SITE.parent)}
         </a>
       </div>
     </section>

@@ -36,7 +36,7 @@ export type ContentEntry = {
   prefill?: Partial<SopInput>;
 };
 
-const LASTMOD = "2026-09-16";
+const LASTMOD = "2026-09-17";
 
 const SHARED_FAQS: FaqItem[] = [
   {
@@ -47,7 +47,7 @@ const SHARED_FAQS: FaqItem[] = [
   {
     question: "Is this the same product as SOP Builder Pro?",
     answer:
-      "No. AI SOP Writer produces a first-draft procedure. SOP Builder Pro is the living system — ownership, revision control, training, and floor-ready access. Generate a draft here, then graduate it to Builder Pro at builder.sopmojo.com.",
+      "No. AI SOP Writer produces a first-draft procedure. SOP Builder Pro is the living system — ownership, revision control, training, and floor-ready access. Generate a draft here on writer.sopmojo.com, then graduate it to Builder Pro. The living system runs at builder.sopmojo.com.",
   },
   {
     question: "Do I need an AI API key?",
@@ -146,7 +146,7 @@ export const CONTENT: ContentEntry[] = [
         },
         {
           name: "Move it into SOP Builder Pro",
-          text: "Take the approved procedure into builder.sopmojo.com so it can live as an owned, measurable, revisable operating asset.",
+          text: "Take the approved procedure into SOP Builder Pro so it can live as an owned, measurable, revisable operating asset. The living system is at builder.sopmojo.com.",
         },
       ],
     },
@@ -350,7 +350,7 @@ export const CONTENT: ContentEntry[] = [
       {
         question: "Where do I get help?",
         answer:
-          "Email ryan@sopmojo.com. For the parent company, visit www.sopmojo.com. For downloadable SOP Mojo products, visit www.sopmojo.com/soplibrary. For the living SOP system, visit builder.sopmojo.com.",
+          "Email ryan@sopmojo.com. For the parent company, visit www.sopmojo.com. For downloadable SOP Mojo products, visit www.sopmojo.com/soplibrary. For SOP Builder Pro, visit www.sopmojo.com/lp/ai-sop-writer. The living SOP system is at builder.sopmojo.com.",
       },
       {
         question: "Will you train my team on the draft?",
@@ -382,7 +382,7 @@ export const CONTENT: ContentEntry[] = [
       {
         heading: "What SOP Builder Pro is for",
         body: [
-          "The draft is not enough. You need a living library: a human owner, a KPI that stays attached, revisions when the work changes, and a way for people on the floor to find the current version instead of asking the founder. That is SOP Builder Pro at builder.sopmojo.com — developed by Ryan Pease, founder of SOP Mojo.",
+          "The draft is not enough. You need a living library: a human owner, a KPI that stays attached, revisions when the work changes, and a way for people on the floor to find the current version instead of asking the founder. That is SOP Builder Pro — developed by Ryan Pease, founder of SOP Mojo. The living system runs at builder.sopmojo.com.",
         ],
       },
       {

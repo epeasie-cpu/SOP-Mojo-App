@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { hostLabel } from "@/lib/site";
 
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
@@ -27,7 +28,7 @@ export default function TwitterImage() {
             First-draft standard operating procedures
           </div>
         </div>
-        <div style={{ fontSize: 22 }}>writer.sopmojo.com</div>
+        <div style={{ fontSize: 22 }}>{hostLabel()}</div>
       </div>
     ),
     { ...size },

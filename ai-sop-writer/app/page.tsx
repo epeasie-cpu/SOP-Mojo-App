@@ -8,6 +8,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PageShell } from "@/components/JsonLd";
 import { getEntry, getUseCaseEntries } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
+import { SITE, hostLabel } from "@/lib/site";
 
 const entry = getEntry("/");
 
@@ -22,7 +23,7 @@ export default function HomePage() {
         <PageShell className="grid gap-10 py-12 lg:grid-cols-[1.05fr_0.95fr] lg:items-start">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] text-lime uppercase">
-              writer.sopmojo.com
+              {hostLabel(SITE.host)}
             </p>
             <h1 className="font-display mt-3 text-4xl font-semibold tracking-tight sm:text-5xl">
               AI SOP Writer

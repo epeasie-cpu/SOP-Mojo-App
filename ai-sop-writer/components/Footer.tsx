@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { indexedContent } from "@/lib/content";
-import { SITE } from "@/lib/site";
+import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 
 export function Footer() {
   const pages = indexedContent().filter((entry) => entry.type !== "use-case");
@@ -49,7 +49,7 @@ export function Footer() {
           <ul className="mt-3 space-y-2 text-sm text-white/80">
             <li>
               <a href={SITE.parent} className="hover:text-lime">
-                sopmojo.com
+                {hostLabel(SITE.parent)}
               </a>
             </li>
             <li>
@@ -58,8 +58,13 @@ export function Footer() {
               </a>
             </li>
             <li>
+              <a href={WRITER_UPGRADE_URL} className="hover:text-lime">
+                Get Builder Pro
+              </a>
+            </li>
+            <li>
               <a href={SITE.builder} className="hover:text-lime">
-                SOP Builder Pro
+                Living system
               </a>
             </li>
             <li>
@@ -77,7 +82,9 @@ export function Footer() {
       </div>
       <div className="border-t border-white/10">
         <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <p>© 2026 SOP Mojo. AI SOP Writer on writer.sopmojo.com.</p>
+          <p>
+            © 2026 SOP Mojo. AI SOP Writer on {hostLabel(SITE.host)}.
+          </p>
           <p>
             <Link href="/sitemap" className="hover:text-lime">
               Sitemap

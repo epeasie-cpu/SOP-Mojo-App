@@ -7,6 +7,7 @@ import { JsonLd } from "@/components/JsonLd";
 import { PageShell } from "@/components/JsonLd";
 import type { ContentEntry } from "@/lib/content";
 import { getUseCaseEntries } from "@/lib/content";
+import { SITE, hostLabel } from "@/lib/site";
 
 export function MarketingPage({
   entry,
@@ -78,7 +79,7 @@ function ComparisonTable() {
     ["Output", "Purpose, owner, trigger, tools, KPI, steps, exceptions, checklist, safety notes", "Owned procedures with revisions, training, and floor-ready access"],
     ["Best moment", "The job is still in someone’s head", "The draft has been reviewed and must stay true"],
     ["Training", "Do not train from an unreviewed draft", "Train from the current owned version"],
-    ["Host", "writer.sopmojo.com", "builder.sopmojo.com"],
+    ["Host", hostLabel(SITE.host), hostLabel(SITE.builder)],
   ];
   return (
     <section className="mt-12 overflow-x-auto">

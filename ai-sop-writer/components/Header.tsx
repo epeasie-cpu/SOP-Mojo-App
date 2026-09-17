@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { WRITER_UPGRADE_URL } from "@/lib/site";
 import { Logo } from "./Logo";
 
 const NAV = [
@@ -23,10 +24,10 @@ export function Header() {
             </Link>
           ))}
           <a
-            href="https://builder.sopmojo.com"
+            href={WRITER_UPGRADE_URL}
             className="rounded-sm bg-lime px-3 py-1.5 font-semibold text-lime-ink hover:bg-lime/90"
           >
-            SOP Builder Pro
+            Get Builder Pro
           </a>
         </nav>
         <details className="relative lg:hidden">
@@ -44,10 +45,10 @@ export function Header() {
               </Link>
             ))}
             <a
-              href="https://builder.sopmojo.com"
+              href={WRITER_UPGRADE_URL}
               className="mt-2 block rounded-sm bg-lime px-2 py-2 text-center font-semibold text-lime-ink"
             >
-              SOP Builder Pro
+              Get Builder Pro
             </a>
           </div>
         </details>
