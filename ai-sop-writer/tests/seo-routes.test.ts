@@ -102,6 +102,33 @@ describe("content registry", () => {
       expect(paths.has(path)).toBe(true);
     }
   });
+
+  it("does not advertise local email capture or an email service provider", () => {
+    const forbidden =
+      /email service provider|optional email capture|logged on this server|save your email locally/i;
+    for (const entry of CONTENT) {
+      expect(entry.description).not.toMatch(forbidden);
+      expect(entry.lede ?? "").not.toMatch(forbidden);
+      for (const faq of entry.faqs ?? []) {
+        expect(faq.question).not.toMatch(forbidden);
+        expect(faq.answer).not.toMatch(forbidden);
+      }
+      for (const section of entry.sections ?? []) {
+        expect(section.heading).not.toMatch(forbidden);
+        for (const body of section.body) {
+          expect(body).not.toMatch(forbidden);
+        }
+      }
+    }
+  });
+
+  it("documents free generate and export without an email gate", () => {
+    const faq = CONTENT.find((entry) => entry.path === "/faq")
+      ?.faqs?.find((item) => /copy, print, or download/i.test(item.question));
+    expect(faq?.answer).toMatch(/copy the Markdown/i);
+    expect(faq?.answer).toMatch(/AI prompt/i);
+    expect(faq?.answer).toMatch(/no email gate/i);
+  });
 });
 
 describe("template engine", () => {

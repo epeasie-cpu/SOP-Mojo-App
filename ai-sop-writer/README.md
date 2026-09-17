@@ -40,8 +40,6 @@ npm test
 | `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` |
 
-Optional email capture appends JSON lines to `data/email-log.jsonl` on the local filesystem. No email service provider is required. That file is gitignored.
-
 ## SEO surfaces
 
 All marketing pages are App Router server components (SSR/static HTML). Crawlers do not need a SPA shell for titles, copy, or metadata.
