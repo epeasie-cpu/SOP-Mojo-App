@@ -340,7 +340,7 @@ export const CONTENT: ContentEntry[] = [
       {
         question: "Can I copy, print, or download the draft?",
         answer:
-          "Yes. You can copy the Markdown, print the page, download a .md file, or download print-ready HTML. Optional email capture is local only; no email service provider is required.",
+          "Yes. You can copy the Markdown, copy an AI prompt, print the page, download a .md file, or download print-ready HTML. Generate and export are free — there is no email gate.",
       },
       {
         question: "Is the output original?",

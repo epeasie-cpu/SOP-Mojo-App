@@ -34,9 +34,6 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local email capture log
-/data
-
 # vercel
 .vercel
 

@@ -46,8 +46,6 @@ export function Generator({ defaults, outputSlotId }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"md" | "prompt" | "none">("none");
-  const [email, setEmail] = useState("");
-  const [emailStatus, setEmailStatus] = useState<string | null>(null);
   const isClient = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -107,22 +105,6 @@ export function Generator({ defaults, outputSlotId }: Props) {
     if (!refinePrompt) return;
     await navigator.clipboard.writeText(refinePrompt);
     setCopied("prompt");
-  }
-
-  async function captureEmail(event: React.FormEvent) {
-    event.preventDefault();
-    setEmailStatus(null);
-    const response = await fetch("/api/capture-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, processName: form.processName }),
-    });
-    const data = (await response.json()) as { ok?: boolean; error?: string };
-    setEmailStatus(
-      response.ok && data.ok
-        ? "Saved locally. We did not send this to an email provider."
-        : data.error || "Could not save email.",
-    );
   }
 
   return (
@@ -213,14 +195,10 @@ export function Generator({ defaults, outputSlotId }: Props) {
         llmFailed={llmFailed}
         markdown={markdown}
         copied={copied}
-        email={email}
-        emailStatus={emailStatus}
         outputSlotId={outputSlotId}
         isClient={isClient}
         onCopyMarkdown={copyMarkdown}
         onCopyPrompt={copyPrompt}
-        onEmailChange={setEmail}
-        onCaptureEmail={captureEmail}
       />
     </div>
   );
@@ -232,28 +210,20 @@ function SopOutput({
   llmFailed,
   markdown,
   copied,
-  email,
-  emailStatus,
   outputSlotId,
   isClient,
   onCopyMarkdown,
   onCopyPrompt,
-  onEmailChange,
-  onCaptureEmail,
 }: {
   sop: SopDraft | null;
   mode: GenerateMode | null;
   llmFailed: boolean;
   markdown: string;
   copied: "md" | "prompt" | "none";
-  email: string;
-  emailStatus: string | null;
   outputSlotId?: string;
   isClient: boolean;
   onCopyMarkdown: () => void;
   onCopyPrompt: () => void;
-  onEmailChange: (value: string) => void;
-  onCaptureEmail: (event: React.FormEvent) => void;
 }) {
   if (!sop) return null;
   const output = (
@@ -323,30 +293,6 @@ function SopOutput({
               Download print HTML
             </button>
           </div>
-          <form onSubmit={onCaptureEmail} className="no-print mt-6 border-t border-line pt-4">
-            <p className="text-sm font-medium text-ink">
-              Optional: save your email locally with this draft
-            </p>
-            <p className="text-xs text-muted">
-              Logged on this server only. No email service provider required.
-            </p>
-            <div className="mt-2 flex flex-col gap-2 sm:flex-row">
-              <input
-                type="email"
-                value={email}
-                onChange={(event) => onEmailChange(event.target.value)}
-                placeholder="you@company.com"
-                className="w-full rounded-md border border-line bg-paper px-3 py-2 text-sm"
-              />
-              <button
-                type="submit"
-                className="rounded-sm bg-forest px-4 py-2 text-sm text-white"
-              >
-                Save email
-              </button>
-            </div>
-            {emailStatus ? <p className="mt-2 text-xs text-muted">{emailStatus}</p> : null}
-          </form>
           <div className="no-print mt-6 rounded-md bg-paper p-4 text-sm">
             <p className="font-semibold text-ink">Ready for a living system?</p>
             <p className="mt-1 text-muted">
