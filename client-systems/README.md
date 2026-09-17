@@ -50,7 +50,27 @@ Auth is a lightweight httpOnly JWT cookie plus bcrypt on `User`. Each buyer sign
 
 ## SEO
 
-`/robots.txt` allows crawlers and points at `/sitemap.xml`. The sitemap lists the marketing home only. `/app`, `/login`, `/signup`, and `/api` are disallowed / `noindex`. Canonical URLs use `https://clients.sopmojo.com`.
+Same bar as AI SOP Writer. Marketing pages are App Router server components. One registry (`lib/content.ts`) drives titles, copy, XML sitemaps, and the scrapable content tree.
+
+Per-page `<title>` pattern: `{keyword} | Client Systems | SOP Mojo`, plus unique meta description, canonical, Open Graph, Twitter, and robots index/follow.
+
+JSON-LD (`Organization`, `WebSite` + `SearchAction`, `SoftwareApplication`, plus `FAQPage`, `HowTo`, and `BreadcrumbList` where relevant) is emitted from the same registry.
+
+| URL | Role |
+| --- | --- |
+| `/robots.txt` | Allows crawlers; disallows `/app`, `/login`, `/signup`, `/api`; `Sitemap: https://clients.sopmojo.com/sitemap.xml` |
+| `/sitemap.xml` | Sitemap index |
+| `/sitemap-pages.xml` | Marketing pages (`loc`, `lastmod`, `changefreq`, `priority`) |
+| `/content-tree.xml` | Scrapable tree: `loc`, `title`, `description`, `type`, `parent`, `lastmod` |
+| `/sitemap` | HTML sitemap |
+| `/llms.txt` | LLM-oriented site summary |
+| `/search?q=` | `SearchAction` target (noindex) |
+
+Indexed v1 landings: `/`, `/client-onboarding-checklist`, `/client-proposal-template`, `/client-welcome-pack`, `/client-intake-form`, `/agency-client-onboarding`, `/how-it-works`, `/pricing`, `/faq`.
+
+`/app` routes remain `noindex`. Canonical URLs always use `https://clients.sopmojo.com`.
+
+Pricing copy is soft: Client Systems Kit is **$39**; the workspace is where you run the kit. No invented seat counts or discounts.
 
 ## Vercel
 

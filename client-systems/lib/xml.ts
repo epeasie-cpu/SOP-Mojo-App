@@ -1,6 +1,7 @@
-import { SITE, absoluteUrl } from "./site";
+import { CONTENT, pagesForSitemap, type ContentEntry } from "./content";
+import { BUILDER_CTA_URL, SITE, WRITER_CTA_URL, absoluteUrl } from "./site";
 
-const LASTMOD = "2026-09-17";
+const LASTMOD_FALLBACK = "2026-09-17";
 
 function escapeXml(value: string): string {
   return value
@@ -11,16 +12,59 @@ function escapeXml(value: string): string {
     .replaceAll("'", "&apos;");
 }
 
-export function sitemapXml(): string {
+function urlset(entries: ContentEntry[]): string {
+  const urls = entries
+    .map((entry) => {
+      return `  <url>
+    <loc>${escapeXml(absoluteUrl(entry.path))}</loc>
+    <lastmod>${entry.lastmod}</lastmod>
+    <changefreq>${entry.changefreq}</changefreq>
+    <priority>${entry.priority.toFixed(1)}</priority>
+  </url>`;
+    })
+    .join("\n");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>${escapeXml(absoluteUrl("/"))}</loc>
-    <lastmod>${LASTMOD}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>1.0</priority>
-  </url>
+${urls}
 </urlset>
+`;
+}
+
+export function sitemapIndexXml(): string {
+  const lastmod = CONTENT.reduce(
+    (max, entry) => (entry.lastmod > max ? entry.lastmod : max),
+    LASTMOD_FALLBACK,
+  );
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <sitemap>
+    <loc>${escapeXml(`${SITE.host}/sitemap-pages.xml`)}</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>
+</sitemapindex>
+`;
+}
+
+export function sitemapPagesXml(): string {
+  return urlset(pagesForSitemap());
+}
+
+export function contentTreeXml(): string {
+  const items = CONTENT.map((entry) => {
+    const parent = entry.parent ? absoluteUrl(entry.parent) : "";
+    return `  <item>
+    <loc>${escapeXml(absoluteUrl(entry.path))}</loc>
+    <title>${escapeXml(entry.heading)}</title>
+    <description>${escapeXml(entry.description)}</description>
+    <type>${escapeXml(entry.type)}</type>
+    <parent>${escapeXml(parent)}</parent>
+    <lastmod>${entry.lastmod}</lastmod>
+  </item>`;
+  }).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<content-tree>
+${items}
+</content-tree>
 `;
 }
 
@@ -33,6 +77,36 @@ Disallow: /signup
 Disallow: /api
 
 Sitemap: ${SITE.host}/sitemap.xml
+`;
+}
+
+export function llmsTxt(): string {
+  const pages = CONTENT.filter((entry) => entry.index)
+    .map((entry) => `- [${entry.heading}](${absoluteUrl(entry.path)}): ${entry.description}`)
+    .join("\n");
+  return `# Client Systems
+
+> ${SITE.tagline} SOP Mojo Client Systems is client onboarding systems for SMBs — not a Notion template marketplace, not ClickUp, not a duplicated Airtable.
+
+- Canonical host: ${SITE.host}
+- Parent: ${SITE.parent}
+- AI SOP Writer: ${WRITER_CTA_URL}
+- SOP Builder Pro: ${SITE.builder}
+- Builder Pro launch LP: ${BUILDER_CTA_URL}
+- SOP Library: ${SITE.library}
+- Founder contact: ${SITE.founderEmail}
+
+## Product name
+
+Use **Client Systems** in the UI and citations. The Client Systems Kit is $39. This workspace is where you run the kit.
+
+## What it does
+
+Client Systems runs client onboarding: intake, sales-to-delivery handoff, access SLAs, and a 31-task board seeded when both leads confirm. App routes under /app are noindex.
+
+## Pages
+
+${pages}
 `;
 }
 

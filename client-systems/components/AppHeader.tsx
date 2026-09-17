@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { logoutAction } from "@/lib/actions/auth";
-import { BUILDER_CTA_URL, WRITER_CTA_URL } from "@/lib/site";
+import { BUILDER_CTA_URL, SITE, WRITER_CTA_URL } from "@/lib/site";
 import { Logo } from "./Logo";
 
 export function AppHeader({
@@ -29,6 +29,9 @@ export function AppHeader({
           <a href={WRITER_CTA_URL} className="hover:text-lime">
             Writer
           </a>
+          <a href={SITE.library} className="hover:text-lime">
+            Library
+          </a>
           <a
             href={BUILDER_CTA_URL}
             className="rounded-sm bg-lime px-3 py-1.5 font-semibold text-lime-ink hover:bg-lime/90"
@@ -52,6 +55,7 @@ export function AppHeader({
         <Link href="/app/projects/new">New</Link>
         <Link href="/app/settings">Settings</Link>
         <a href={WRITER_CTA_URL}>Writer</a>
+        <a href={SITE.library}>Library</a>
         <a href={BUILDER_CTA_URL}>Builder Pro</a>
       </div>
     </header>

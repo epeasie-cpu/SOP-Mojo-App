@@ -30,3 +30,22 @@ body {
   background: var(--paper);
   color: var(--ink);
 }
+
+.prose-sop p {
+  margin-top: 0.75rem;
+  max-width: 42rem;
+  color: var(--muted);
+  line-height: 1.65;
+}
+
+.prose-sop .lede {
+  font-size: 1.125rem;
+  color: var(--ink);
+}
+
+.prose-sop h2 {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--ink);
+}

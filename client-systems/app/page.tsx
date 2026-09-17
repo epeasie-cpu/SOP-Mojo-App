@@ -1,34 +1,33 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ArticleSections } from "@/components/Article";
+import { CtaRow } from "@/components/CtaRow";
+import { FaqList } from "@/components/FaqList";
+import { JsonLd, PageShell } from "@/components/JsonLd";
 import { MarketingFooter, MarketingHeader } from "@/components/MarketingChrome";
-import { marketingMetadata } from "@/lib/seo";
-import { BUILDER_CTA_URL, SITE, WRITER_CTA_URL, hostLabel } from "@/lib/site";
+import { getEntry, indexedContent } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
+import { hostLabel } from "@/lib/site";
 
-export const metadata: Metadata = marketingMetadata({
-  keyword: "Client onboarding workspace",
-  description: SITE.tagline,
-  path: "/",
-  index: true,
-});
+const entry = getEntry("/");
+
+export const metadata: Metadata = buildMetadata(entry);
 
 export default function HomePage() {
+  const pages = indexedContent().filter((item) => item.type === "page");
   return (
     <>
       <MarketingHeader />
+      <JsonLd entry={entry} />
       <section className="border-b border-line bg-forest text-white">
-        <div className="mx-auto max-w-6xl px-4 py-14 sm:px-6">
+        <PageShell className="py-14">
           <p className="text-xs font-semibold tracking-[0.18em] text-lime uppercase">
             {hostLabel()}
           </p>
           <h1 className="font-display mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
             Client Systems
           </h1>
-          <p className="mt-4 max-w-2xl text-lg text-white/80">
-            The SOP Mojo product workspace for the Client Systems Kit. Invite
-            the team, run intake, complete the sales-to-delivery handoff, and
-            operate the onboarding board in the browser — not in Notion,
-            ClickUp, or a duplicated Airtable.
-          </p>
+          <p className="mt-4 max-w-2xl text-lg text-white/80">{entry.lede}</p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/signup"
@@ -42,60 +41,48 @@ export default function HomePage() {
             >
               Log in
             </Link>
+            <Link
+              href="/how-it-works"
+              className="rounded-sm border border-white/20 px-4 py-2 text-sm text-white hover:border-lime"
+            >
+              How it works
+            </Link>
           </div>
-        </div>
+        </PageShell>
       </section>
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-3">
-        {[
-          {
-            title: "Intake lives here",
-            body: "Capture the client, commercial facts, brand-kit status, and success metric in one record.",
-          },
-          {
-            title: "Handoff is a gate",
-            body: "Account lead and delivery lead both confirm. Complete seeds the 31-task onboarding board.",
-          },
-          {
-            title: "Access has an SLA",
-            body: "Later items get a deadline. Overdue access creates a blocked task for the account lead.",
-          },
-        ].map((item) => (
-          <article key={item.title} className="rounded-lg border border-line bg-white p-5">
-            <h2 className="font-display text-xl font-semibold">{item.title}</h2>
-            <p className="mt-2 text-sm text-muted">{item.body}</p>
-          </article>
-        ))}
-      </div>
-      <div className="mx-auto max-w-6xl px-4 pb-14 sm:px-6">
-        <section className="rounded-xl bg-black px-6 py-8 text-white">
-          <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">
-            SOP Mojo products
+      <PageShell className="py-12">
+        <ArticleSections entry={{ ...entry, lede: undefined }} />
+        <section className="mt-14">
+          <h2 className="font-display text-2xl font-semibold">Guides</h2>
+          <p className="mt-2 max-w-2xl text-muted">
+            High-intent pages for the kit and the workspace. Sales may refine
+            keywords; these slugs are the v1 set.
           </p>
-          <h2 className="font-display mt-2 text-2xl font-semibold">
-            Onboarding here. Drafts in Writer. Living SOPs in Builder Pro.
-          </h2>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <a
-              href={WRITER_CTA_URL}
-              className="rounded-sm border border-white/20 px-4 py-2 text-sm hover:border-lime"
-            >
-              AI SOP Writer
-            </a>
-            <a
-              href={BUILDER_CTA_URL}
-              className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink"
-            >
-              SOP Builder Pro
-            </a>
-            <a
-              href={SITE.parent}
-              className="rounded-sm border border-white/20 px-4 py-2 text-sm hover:border-lime"
-            >
-              {hostLabel(SITE.parent)}
-            </a>
-          </div>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+            {pages.map((item) => (
+              <li key={item.path} className="rounded-lg border border-line bg-white p-5">
+                <h3 className="font-semibold">
+                  <Link href={item.path} className="hover:underline">
+                    {item.keyword}
+                  </Link>
+                </h3>
+                <p className="mt-2 text-sm text-muted">{item.description}</p>
+              </li>
+            ))}
+          </ul>
         </section>
-      </div>
+        {entry.faqs ? (
+          <section className="mt-14">
+            <h2 className="font-display text-2xl font-semibold">FAQ</h2>
+            <div className="mt-4">
+              <FaqList faqs={entry.faqs} />
+            </div>
+          </section>
+        ) : null}
+        <div className="mt-14">
+          <CtaRow />
+        </div>
+      </PageShell>
       <MarketingFooter />
     </>
   );

@@ -1,7 +1,7 @@
-import { sitemapXml, xmlResponse } from "@/lib/xml";
+import { sitemapIndexXml, xmlResponse } from "@/lib/xml";
 
 export const dynamic = "force-static";
 
 export function GET() {
-  return xmlResponse(sitemapXml());
+  return xmlResponse(sitemapIndexXml());
 }
