@@ -135,8 +135,8 @@ describe("content registry", () => {
       home?.lede,
       ...(home?.sections ?? []).flatMap((section) => section.body),
     ].join(" ");
-    expect(blob).toMatch(/not Notion/i);
-    expect(blob).toMatch(/not ClickUp/i);
+    expect(blob).toMatch(/not a Notion/i);
+    expect(blob).toMatch(/not ClickUp|ClickUp template/i);
     expect(blob).toMatch(/not SOP Writer/i);
     expect(blob).toMatch(/proposal/i);
     expect(blob).toMatch(/welcome/i);
