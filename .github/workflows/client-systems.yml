@@ -1,0 +1,34 @@
+name: Client Systems
+
+on:
+  pull_request:
+    paths:
+      - "client-systems/**"
+      - ".github/workflows/client-systems.yml"
+  push:
+    branches: [main]
+    paths:
+      - "client-systems/**"
+      - ".github/workflows/client-systems.yml"
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client-systems
+    env:
+      DATABASE_URL: file:./dev.db
+      AUTH_SECRET: ci-client-systems-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: client-systems/package-lock.json
+      - run: npm ci
+      - run: npx prisma db push
+      - run: npm test
+      - run: npm run lint
+      - run: npm run build

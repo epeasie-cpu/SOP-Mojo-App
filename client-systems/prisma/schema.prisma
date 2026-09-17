@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String       @id @default(cuid())
+  email        String       @unique
+  name         String?
+  passwordHash String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  memberships  Membership[]
+}
+
+model Workspace {
+  id               String       @id @default(cuid())
+  name             String
+  slackWebhookUrl  String?
+  inviteEmails     String       @default("[]")
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+  memberships      Membership[]
+  clients          Client[]
+  projects         Project[]
+}
+
+model Membership {
+  id          String    @id @default(cuid())
+  role        String    @default("OWNER")
+  userId      String
+  workspaceId String
+  createdAt   DateTime  @default(now())
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, workspaceId])
+}
+
+model Client {
+  id                     String    @id @default(cuid())
+  workspaceId            String
+  clientName             String
+  companyLegalName       String?
+  website                String?
+  industryOffer          String?
+  companySize            String?
+  clientOwnerName        String?
+  clientOwnerTitle       String?
+  clientOwnerEmail       String?
+  clientOwnerPhone       String?
+  dayToDayContact        String?
+  billingContact         String?
+  timezone               String?
+  hours                  String?
+  endState               String?
+  successMetric          String?
+  secondaryOutcomes      String?
+  failureDefinition      String?
+  hardDeadline           String?
+  deadlineReason         String?
+  whatsWorking           String?
+  whatsBroken            String?
+  currentTools           String?
+  priorWorkLinks         String?
+  constraints            String?
+  mustHaves              String?
+  niceToHaves            String?
+  knownOutOfScope        String?
+  thirdParties           String?
+  brandKitStatus         String    @default("LATER")
+  brandKitUrl            String?
+  analyticsAccessStatus  String?
+  priorCreativeStatus    String?
+  complianceNotes        String?
+  preferredChannel       String?
+  meetingPreference      String?
+  clientFeedbackSla      String?
+  changeApprover         String?
+  hardNos                String?
+  poRequired             String?
+  invoiceEmail           String?
+  paymentTermsConfirm    String?
+  contractStatus         String?
+  clientSideRisk         String?
+  vendorWatchRisk        String?
+  anythingElse           String?
+  intakeCompletedBy      String?
+  decisionSla            String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  workspace              Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  projects               Project[]
+}
+
+model Project {
+  id                 String        @id @default(cuid())
+  workspaceId        String
+  clientId           String
+  engagementName     String
+  dealId             String?
+  proposalId         String?
+  kickoffDate        DateTime?
+  endDate            DateTime?
+  totalInvestment    String?
+  paymentTerms       String?
+  accountLeadEmail   String?
+  deliveryLeadEmail  String?
+  billingOwnerEmail  String?
+  projectTool        String        @default("Client Systems")
+  primaryChannel     String?
+  stage              String        @default("INTAKE")
+  handoffStatus      String        @default("DRAFT")
+  accessDeadlineDay  Int           @default(5)
+  checkpointDay      Int           @default(7)
+  successMetric      String?
+  inScope            String?
+  outOfScope         String?
+  milestones         String        @default("[]")
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  workspace          Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  client             Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  deliverables       Deliverable[]
+  tasks              Task[]
+  accessItems        AccessItem[]
+  blockers           Blocker[]
+  handoff            Handoff?
+}
+
+model Deliverable {
+  id        String    @id @default(cuid())
+  projectId String
+  sortOrder Int       @default(0)
+  name      String
+  format    String?
+  status    String    @default("TODO")
+  dueDate   DateTime?
+  project   Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Task {
+  id            String    @id @default(cuid())
+  projectId     String
+  title         String
+  boardColumn   String
+  status        String    @default("TODO")
+  ownerRole     String?
+  ownerEmail    String?
+  dueDate       DateTime?
+  dueRule       String?
+  sortOrder     Int       @default(0)
+  sourceSection String?
+  completedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId, boardColumn])
+}
+
+model AccessItem {
+  id              String    @id @default(cuid())
+  projectId       String
+  itemName        String
+  canProvide      String    @default("LATER")
+  url             String?
+  notes           String?
+  slaDeadline     DateTime?
+  receivedAt      DateTime?
+  escalationSent  Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  project         Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Blocker {
+  id          String    @id @default(cuid())
+  projectId   String
+  description String
+  ownerEmail  String?
+  since       DateTime  @default(now())
+  nextAction  String?
+  due         DateTime?
+  status      String    @default("OPEN")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
+
+model Handoff {
+  id                      String    @id @default(cuid())
+  projectId               String    @unique
+  status                  String    @default("DRAFT")
+  completedByAccountLead  Boolean   @default(false)
+  acceptedByDeliveryLead  Boolean   @default(false)
+  accountLeadConfirmedAt  DateTime?
+  deliveryLeadConfirmedAt DateTime?
+  risk1                   String?
+  risk2                   String?
+  risk3                   String?
+  commercialNotes         String?
+  paymentNotes            String?
+  scopePromises           String?
+  kickoffAgendaNotes      String?
+  proposalLink            String?
+  contractLink            String?
+  welcomeDraft            String?
+  tasksSeededAt           DateTime?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+  project                 Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+}
