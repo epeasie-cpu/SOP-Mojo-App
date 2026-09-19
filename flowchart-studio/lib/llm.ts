@@ -20,12 +20,15 @@ const GRAPH_RULES = `You build process flowcharts for SOP Mojo Flowchart Studio.
 Return ONLY valid JSON matching ${GRAPH_SCHEMA}.
 Rules:
 - Always include exactly one start node and one end node.
-- Use kind "decision" for yes/no branches. Label those edges "yes" and "no".
-- Every other node is kind "step".
+- Extract EVERY sequential action (First / Next / After / Then). Do not collapse a long paragraph into one or two nodes.
+- Use kind "decision" only for the actual choice (e.g. "Oven or microwave?"). Never put earlier narrative on the diamond.
+- Label decision edges "yes" and "no". Put the first alternative on yes, the second on no.
+- Both branches must use real steps from the source. Do not invent "Handle the no / exception path" when the source describes both sides.
+- "If we used X" / "If it was Y" continues that branch through to End — do not attach those sentences to the spine.
+- Every other node is kind "step" with a short imperative label.
 - Every node except end must have at least one outgoing edge.
 - Every node except start must have at least one incoming edge.
-- Keep 4 to 12 nodes besides start/end unless the source is clearly shorter.
-- Labels are short, imperative, and editable (people will fix typos on the canvas).
+- Use as many nodes as there are distinct actions (typically 6–16 for a cooked process).
 - Do not invent legal, medical, or ISO citations.`;
 
 export function extractJson(text: string): unknown {
@@ -151,7 +154,7 @@ async function completeJson(system: string, user: string): Promise<unknown> {
 export async function generateGraphFromText(text: string): Promise<FlowGraph> {
   const payload = await completeJson(
     GRAPH_RULES,
-    `Turn this process description into a flowchart graph.\n\n${text}`,
+    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then action and both sides of any decide/if/or branch (including “If we used X” endings).\n\n${text}`,
   );
   return graphFromModel(payload, "Untitled process");
 }
