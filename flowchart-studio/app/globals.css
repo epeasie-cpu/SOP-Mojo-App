@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --lime: #b0ff56;
+  --lime-ink: #10140c;
+  --zinc: #09090b;
+  --background: #09090b;
+  --foreground: #f4f4f5;
+}
+
+@theme inline {
+  --color-lime: var(--lime);
+  --color-lime-ink: var(--lime-ink);
+  --color-zinc-950: #09090b;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--zinc);
+  color: var(--foreground);
+}
+
+.react-flow {
+  --xy-background-color-default: #09090b;
+  --xy-node-background-color-default: #18181b;
+  --xy-node-border-default: 1px solid #3f3f46;
+  --xy-node-color-default: #f4f4f5;
+  --xy-edge-stroke-default: #b0ff56;
+  --xy-controls-button-background-color-default: #18181b;
+  --xy-controls-button-color-default: #f4f4f5;
+  --xy-minimap-background-color-default: #18181b;
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+@media print {
+  .no-print,
+  header {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: #18181b;
+  }
+
+  .print-only {
+    display: block !important;
+    padding: 2rem;
+  }
+
+  .flowchart-canvas {
+    break-inside: avoid;
+    height: 70vh !important;
+  }
+}
