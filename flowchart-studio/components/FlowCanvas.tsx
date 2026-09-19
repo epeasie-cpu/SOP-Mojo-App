@@ -5,8 +5,10 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
+  ConnectionLineType,
   Controls,
   MiniMap,
+  Panel,
   ReactFlow,
   ReactFlowProvider,
   type Connection,
@@ -16,17 +18,34 @@ import {
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { newId, type FlowGraph } from "@/lib/graph";
+import { layoutGraph, NODE_DIMS } from "@/lib/layout";
 import { nodeTypes, type FlowNodeData, type StudioNode } from "./FlowNodes";
 
 import "@xyflow/react/dist/style.css";
 
+const EDGE_PATH = { borderRadius: 16, offset: 28 } as const;
+
+const defaultEdgeOptions = {
+  type: "smoothstep" as const,
+  pathOptions: EDGE_PATH,
+  style: { stroke: "#B0FF56", strokeWidth: 1.6 },
+  labelStyle: { fill: "#e4e4e7", fontSize: 11, fontWeight: 600 },
+  labelBgStyle: { fill: "#18181b" },
+  labelBgPadding: [4, 6] as [number, number],
+};
+
 function toNodes(graph: FlowGraph, onRename: (id: string, label: string) => void): StudioNode[] {
-  return graph.nodes.map((node) => ({
-    id: node.id,
-    type: node.kind,
-    position: node.position,
-    data: { label: node.label, kind: node.kind, onRename } satisfies FlowNodeData,
-  }));
+  return graph.nodes.map((node) => {
+    const dim = NODE_DIMS[node.kind];
+    return {
+      id: node.id,
+      type: node.kind,
+      position: node.position,
+      width: dim.width,
+      height: dim.height,
+      data: { label: node.label, kind: node.kind, onRename } satisfies FlowNodeData,
+    };
+  });
 }
 
 function toEdges(graph: FlowGraph): Edge[] {
@@ -37,9 +56,7 @@ function toEdges(graph: FlowGraph): Edge[] {
     label: edge.label,
     sourceHandle: edge.sourceHandle,
     targetHandle: edge.targetHandle,
-    style: { stroke: "#B0FF56" },
-    labelStyle: { fill: "#e4e4e7", fontSize: 11 },
-    labelBgStyle: { fill: "#18181b" },
+    ...defaultEdgeOptions,
   }));
 }
 
@@ -139,7 +156,7 @@ function FlowInner({
             ...connection,
             id: newId("e"),
             label,
-            style: { stroke: "#B0FF56" },
+            ...defaultEdgeOptions,
           },
           current,
         );
@@ -161,9 +178,11 @@ function FlowInner({
         push(nextNodes as StudioNode[], edges);
       }}
       nodeTypes={nodeTypes}
+      defaultEdgeOptions={defaultEdgeOptions}
+      connectionLineType={ConnectionLineType.SmoothStep}
       colorMode="dark"
       fitView
-      fitViewOptions={{ padding: 0.2 }}
+      fitViewOptions={{ padding: 0.24 }}
       deleteKeyCode={["Backspace", "Delete"]}
       edgesReconnectable
       nodesConnectable
@@ -172,6 +191,15 @@ function FlowInner({
     >
       <Background color="#3f3f46" gap={20} />
       <Controls />
+      <Panel position="top-right">
+        <button
+          type="button"
+          className="rounded-sm border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:border-lime"
+          onClick={() => onChange(layoutGraph(graph))}
+        >
+          Tidy layout
+        </button>
+      </Panel>
       <MiniMap
         pannable
         zoomable
