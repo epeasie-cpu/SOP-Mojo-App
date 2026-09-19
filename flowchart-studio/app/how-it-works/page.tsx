@@ -52,10 +52,11 @@ export default function HowItWorksPage() {
           </p>
         </li>
         <li>
-          <h2 className="font-display text-2xl font-semibold">4. Unlock export</h2>
+          <h2 className="font-display text-2xl font-semibold">4. Export with Builder Pro</h2>
           <p className="mt-2 text-zinc-400">
-            Free is create + iterate. {PRICING.unlockLabel} unlocks print, PNG/JSON
-            export, and Send to Builder Pro. {PRICING.builderLabel}.
+            Free is create + iterate. {PRICING.builderLabel}.{" "}
+            {PRICING.unlockLabel} is a secondary path if you only need print and
+            export.
           </p>
         </li>
       </ol>

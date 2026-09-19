@@ -51,14 +51,15 @@ export function jsonLdGraph(): JsonLd {
           },
           {
             "@type": "Offer",
-            name: PRICING.unlockLabel,
-            price: "19",
+            name: "Builder Pro",
+            price: "39",
             priceCurrency: "USD",
+            description: PRICING.builderLabel,
           },
           {
             "@type": "Offer",
-            name: "Builder Pro",
-            price: "47",
+            name: PRICING.unlockLabel,
+            price: "19",
             priceCurrency: "USD",
           },
         ],
@@ -96,7 +97,7 @@ export function howToJsonLd(): JsonLd {
       },
       {
         "@type": "HowToStep",
-        name: "Unlock export",
+        name: "Export with Builder Pro",
         text: "Print, export, or send the mapped steps to SOP Builder Pro.",
       },
     ],

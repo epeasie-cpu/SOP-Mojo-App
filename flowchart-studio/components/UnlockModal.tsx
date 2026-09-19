@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react";
 import { UNLOCK_COPY } from "@/lib/entitlements";
-import { builderCheckoutUrl, flowchartCheckoutUrl } from "@/lib/site";
+import { builderCheckoutUrl, flowchartCheckoutUrl, PRICING } from "@/lib/site";
 
 export function UnlockModal({
   open,
@@ -35,44 +35,45 @@ export function UnlockModal({
         </h2>
         <p className="mt-3 text-sm text-zinc-400">{detail}</p>
         <p className="mt-3 text-sm text-zinc-400">
-          Free covers create and iterate. Print, export, and Send to Builder Pro need unlock.
+          Free covers create and iterate. Print, export, and Send to Builder Pro
+          come with a Builder Pro subscription.
         </p>
         <div className="mt-5 grid gap-2">
+          <a
+            href={builderUrl}
+            className="rounded-sm bg-lime px-4 py-2.5 text-center text-sm font-semibold text-lime-ink hover:bg-lime/90"
+          >
+            {PRICING.builderCta}
+          </a>
           {flowchartUrl ? (
             <a
               href={flowchartUrl}
-              className="rounded-sm bg-lime px-4 py-2.5 text-center text-sm font-semibold text-lime-ink hover:bg-lime/90"
+              className="rounded-sm border border-zinc-600 px-4 py-2.5 text-center text-sm text-zinc-300 hover:border-zinc-400"
             >
-              Unlock $19
+              {UNLOCK_COPY.standalone}
             </a>
           ) : (
             <button
               type="button"
-              className="rounded-sm bg-lime px-4 py-2.5 text-sm font-semibold text-lime-ink hover:bg-lime/90"
+              className="rounded-sm border border-zinc-600 px-4 py-2.5 text-sm text-zinc-300 hover:border-zinc-400"
               onClick={() => onUnlockBrowser("standalone")}
             >
-              Unlock $19
+              {UNLOCK_COPY.standalone}
             </button>
           )}
-          <a
-            href={builderUrl}
-            className="rounded-sm border border-lime/40 px-4 py-2.5 text-center text-sm font-semibold text-lime hover:bg-lime/10"
-          >
-            Builder Pro $47 includes flowchart + import
-          </a>
           <button
             type="button"
             className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
-            onClick={() => onUnlockBrowser("standalone")}
+            onClick={() => onUnlockBrowser("builder-pro")}
           >
-            Already purchased? Unlock this browser
+            I have Builder Pro
           </button>
           <button
             type="button"
             className="text-xs text-zinc-600 hover:text-zinc-400"
-            onClick={() => onUnlockBrowser("builder-pro")}
+            onClick={() => onUnlockBrowser("standalone")}
           >
-            I have Builder Pro
+            Already purchased? Unlock this browser
           </button>
         </div>
         <button
@@ -97,13 +98,13 @@ export function UnlockHint({ onOpen }: { onOpen: () => void }) {
       className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-400"
     >
       <p>
-        <span className="font-semibold text-lime">Unlock $19</span>
+        <span className="font-semibold text-lime">{UNLOCK_COPY.headline}</span>
         {" · "}
-        Builder Pro $47 includes flowchart + import
+        {PRICING.builderPrice} includes print, export, and import
       </p>
       <div className="flex items-center gap-3">
         <button type="button" className="font-semibold text-lime hover:underline" onClick={onOpen}>
-          Unlock
+          Unlock with Builder Pro
         </button>
         <button type="button" className="text-zinc-600" onClick={() => setDismissed(true)}>
           Dismiss

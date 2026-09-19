@@ -49,8 +49,8 @@ Living system: ${SITE.builder}
 
 ## Product
 - Free: create and iterate a process flowchart from text, voice, or a photo of handwriting.
-- Unlock $19: print, PNG/JSON export, send-to-Builder import package.
-- Builder Pro $47: includes flowchart unlock plus clean import into SOP Builder Pro.
+- Builder Pro $39/mo: includes print, PNG/JSON export, and Send to Builder import.
+- Optional $19 unlock: print/export/import without a Builder Pro subscription.
 
 ## Pages
 - ${absoluteUrl("/")} — studio (handwriting to flowchart, AI process map)
