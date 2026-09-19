@@ -5,13 +5,31 @@ import {
   readUnlockFromStorage,
   writeUnlockToStorage,
 } from "@/lib/entitlements";
-import { builderCheckoutUrl, BUILDER_DEFAULT_CHECKOUT, SITE } from "@/lib/site";
+import {
+  BUILDER_DEFAULT_CHECKOUT,
+  FLOWCHART_DEFAULT_CHECKOUT,
+  SAMCART_SLIDE_SCRIPT,
+  SITE,
+  builderCheckoutUrl,
+  flowchartCheckoutUrl,
+} from "@/lib/site";
 
 describe("site urls", () => {
   it("pins the intended host and Builder checkout default", () => {
     expect(SITE.host).toBe("https://flowchart.sopmojo.com");
     expect(SITE.builder).toBe("https://builder.sopmojo.com");
     expect(builderCheckoutUrl()).toBe(BUILDER_DEFAULT_CHECKOUT);
+  });
+
+  it("resolves Flowchart+ checkout to the SamCart flowchart-studio product", () => {
+    expect(FLOWCHART_DEFAULT_CHECKOUT).toBe(
+      "https://rpease1.mysamcart.com/checkout/flowchart-studio",
+    );
+    expect(flowchartCheckoutUrl()).toBe(FLOWCHART_DEFAULT_CHECKOUT);
+    expect(flowchartCheckoutUrl()).toContain("/checkout/flowchart-studio");
+    expect(SAMCART_SLIDE_SCRIPT).toBe(
+      "https://static.samcart.com/checkouts/sc-slide-script.js",
+    );
   });
 });
 

@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist } from "next/font/google";
+import Script from "next/script";
 import { Header } from "@/components/Header";
-import { SITE } from "@/lib/site";
+import { SAMCART_SLIDE_SCRIPT, SITE } from "@/lib/site";
 import "./globals.css";
 
 const geist = Geist({
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <main id="main" className="flex min-h-0 flex-1 flex-col">
           {children}
         </main>
+        <Script src={SAMCART_SLIDE_SCRIPT} strategy="afterInteractive" />
       </body>
     </html>
   );
