@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { builderCheckoutUrl, hostLabel, SITE } from "@/lib/site";
+import { builderCheckoutUrl, hostLabel, PRICING, SITE } from "@/lib/site";
 import { Logo } from "./Logo";
 
 export function Header() {
@@ -23,7 +23,7 @@ export function Header() {
             href={builderCheckoutUrl()}
             className="rounded-sm bg-lime px-3 py-1.5 font-semibold text-lime-ink hover:bg-lime/90"
           >
-            Builder Pro $47
+            {PRICING.builderCta}
           </a>
         </nav>
       </div>

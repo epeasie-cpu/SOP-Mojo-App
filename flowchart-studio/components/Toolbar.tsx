@@ -70,7 +70,7 @@ export function Toolbar({
       {unlock.unlocked ? (
         <span className="text-[11px] text-lime">Unlocked</span>
       ) : (
-        <span className="hidden text-[11px] text-zinc-500 lg:inline">{UNLOCK_COPY.standalone}</span>
+        <span className="hidden text-[11px] text-zinc-500 lg:inline">{UNLOCK_COPY.headline}</span>
       )}
     </div>
   );

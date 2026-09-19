@@ -12,12 +12,12 @@ export type UnlockState = {
 };
 
 export const UNLOCK_COPY = {
-  headline: "Unlock $19 · Builder Pro $47 includes flowchart + import",
-  standalone: "Unlock $19",
-  builder: "Builder Pro $47 includes flowchart + import",
-  print: "Print is included with unlock.",
-  export: "Export (JSON / PNG) is included with unlock.",
-  send: "Send to Builder Pro is included with unlock.",
+  headline: "Unlock with Builder Pro",
+  standalone: "Optional $19 unlock",
+  builder: "Builder Pro $39/mo includes flowchart print, export, and import",
+  print: "Print is included with Builder Pro.",
+  export: "Export (JSON / PNG) is included with Builder Pro.",
+  send: "Send to Builder Pro is included with Builder Pro.",
 } as const;
 
 export function parseUnlockFlag(value: string | null | undefined): UnlockState {

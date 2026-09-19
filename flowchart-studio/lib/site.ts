@@ -23,9 +23,10 @@ export const BUILDER_DEFAULT_CHECKOUT =
 export const PRICING = {
   free: "Create + iterate",
   unlockPrice: "$19",
-  unlockLabel: "Unlock $19",
-  builderPrice: "$47",
-  builderLabel: "Builder Pro $47 includes flowchart + import",
+  unlockLabel: "Optional $19 unlock",
+  builderPrice: "$39/mo",
+  builderCta: "Builder Pro $39/mo",
+  builderLabel: "Builder Pro $39/mo includes flowchart print, export, and import",
 } as const;
 
 export function flowchartCheckoutUrl(): string {
