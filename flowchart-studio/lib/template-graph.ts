@@ -23,8 +23,12 @@ function titleFrom(text: string, lines: string[]): string {
       return maybeTitle.replace(/:$/, "");
     }
   }
-  const clipped = text.replace(/\s+/g, " ").trim().slice(0, 60);
-  return clipped ? `${clipped}${text.trim().length > 60 ? "…" : ""}` : "Untitled process";
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= 60) return cleaned || "Untitled process";
+  const slice = cleaned.slice(0, 60);
+  const at = slice.lastIndexOf(" ");
+  const clipped = (at > 24 ? slice.slice(0, at) : slice).trimEnd();
+  return `${clipped}…`;
 }
 
 /** Deterministic flowchart when no LLM key is configured (or the model fails). */

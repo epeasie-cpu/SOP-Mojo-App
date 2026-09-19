@@ -1,6 +1,7 @@
 "use client";
 
 import { addStepAfter, listableNodes, removeNode, type FlowGraph, type FlowNode } from "@/lib/graph";
+import { layoutGraph } from "@/lib/layout";
 
 export function StepList({
   graph,
@@ -34,7 +35,7 @@ export function StepList({
           onClick={() => {
             const after =
               items.at(-1) ?? graph.nodes.find((node) => node.kind === "start") ?? graph.nodes[0];
-            if (after) onChange(addStepAfter(graph, after.id, "New step"));
+            if (after) onChange(layoutGraph(addStepAfter(graph, after.id, "New step")));
           }}
         >
           Add
@@ -66,16 +67,17 @@ export function StepList({
                 <button
                   type="button"
                   className="text-[11px] text-zinc-500 hover:text-red-300"
-                  onClick={() => onChange(removeNode(graph, node.id))}
+                  onClick={() => onChange(layoutGraph(removeNode(graph, node.id)))}
                 >
                   Delete
                 </button>
               </div>
-              <input
+              <textarea
                 value={node.label}
+                rows={3}
                 onChange={(event) => rename(node, event.target.value)}
                 onFocus={() => onSelect?.(node.id)}
-                className="w-full bg-transparent text-sm text-zinc-100 outline-none"
+                className="w-full resize-none bg-transparent text-sm leading-snug break-words text-zinc-100 outline-none"
                 aria-label={`Step ${index + 1} label`}
               />
             </li>

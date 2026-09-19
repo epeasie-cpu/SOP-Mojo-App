@@ -120,7 +120,72 @@ export function coerceGraph(value: unknown, fallbackTitle = "Untitled process"):
   });
   const title = String(rec.title ?? fallbackTitle).trim() || fallbackTitle;
   if (nodes.length === 0) return emptyGraph(title);
-  return { title, nodes, edges };
+  return normalizeEdgeHandles({ title, nodes, edges });
+}
+
+export function branchHandle(value?: string): "yes" | "no" | undefined {
+  const v = value?.trim().toLowerCase();
+  if (v === "yes" || v === "no") return v;
+  return undefined;
+}
+
+/**
+ * Decision Yes leaves from the right handle, No from the left.
+ * Loop-backs enter the decision from the bottom so they never share the top inlet
+ * with the incoming process edge (that collision is what twisted the diamond).
+ */
+export function normalizeEdgeHandles(graph: FlowGraph): FlowGraph {
+  const byId = new Map(graph.nodes.map((node) => [node.id, node]));
+  const edges = graph.edges.map((edge) => ({ ...edge }));
+  const yesUsed = new Set<string>();
+  const noUsed = new Set<string>();
+
+  for (const edge of edges) {
+    const tagged = branchHandle(edge.label) ?? branchHandle(edge.sourceHandle);
+    if (tagged === "yes") yesUsed.add(edge.source);
+    if (tagged === "no") noUsed.add(edge.source);
+  }
+
+  for (const edge of edges) {
+    const source = byId.get(edge.source);
+    const target = byId.get(edge.target);
+    if (!source || !target) continue;
+
+    if (source.kind === "decision") {
+      let branch = branchHandle(edge.label) ?? branchHandle(edge.sourceHandle);
+      if (!branch) {
+        if (!yesUsed.has(source.id)) {
+          branch = "yes";
+          yesUsed.add(source.id);
+        } else if (!noUsed.has(source.id)) {
+          branch = "no";
+          noUsed.add(source.id);
+        }
+      }
+      if (branch) {
+        edge.label = branch;
+        edge.sourceHandle = branch;
+      }
+      edge.targetHandle = target.kind === "end" ? undefined : "top";
+      continue;
+    }
+
+    const loopsBackToDecision =
+      target.kind === "decision" &&
+      edges.some((other) => other.source === target.id && other.target === source.id);
+
+    if (loopsBackToDecision) {
+      edge.sourceHandle = "bottom";
+      edge.targetHandle = "back";
+      continue;
+    }
+
+    edge.sourceHandle = source.kind === "start" ? undefined : "bottom";
+    edge.targetHandle =
+      target.kind === "end" ? undefined : target.kind === "decision" ? "in" : "top";
+  }
+
+  return { ...graph, edges };
 }
 
 export function validateGraph(graph: FlowGraph): string | null {

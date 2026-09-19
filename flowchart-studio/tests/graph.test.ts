@@ -18,23 +18,28 @@ describe("graph model", () => {
     expect(graph.nodes.map((node) => node.kind)).toEqual(["start", "end"]);
   });
 
-  it("coerces kind aliases, drops broken edges, and keeps labels", () => {
+  it("coerces kind aliases, drops broken edges, and routes decision handles", () => {
     const graph = coerceGraph({
       title: "Onboard",
       nodes: [
         { id: "a", type: "start", label: "Start", position: { x: 0, y: 0 } },
-        { id: "b", kind: "step", label: "Call the client" },
-        { id: "c", kind: "end", label: "End" },
+        { id: "b", kind: "decision", label: "Ready?" },
+        { id: "c", kind: "step", label: "Call the client" },
+        { id: "d", kind: "end", label: "End" },
       ],
       edges: [
         { source: "a", target: "b" },
         { source: "b", target: "missing" },
         { source: "b", target: "c", label: "yes" },
+        { source: "c", target: "d" },
       ],
     });
     expect(graph.nodes[0].kind).toBe("start");
-    expect(graph.edges).toHaveLength(2);
-    expect(graph.edges[1].sourceHandle).toBe("yes");
+    expect(graph.edges).toHaveLength(3);
+    const yes = graph.edges.find((edge) => edge.source === "b" && edge.target === "c");
+    expect(yes?.sourceHandle).toBe("yes");
+    expect(yes?.targetHandle).toBe("top");
+    expect(graph.edges.find((edge) => edge.source === "a")?.targetHandle).toBe("in");
   });
 
   it("keeps list view in walk order and supports rename-by-ref", () => {
