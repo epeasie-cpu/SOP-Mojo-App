@@ -45,22 +45,12 @@ export function UnlockModal({
           >
             {PRICING.builderCta}
           </a>
-          {flowchartUrl ? (
-            <a
-              href={flowchartUrl}
-              className="rounded-sm border border-zinc-600 px-4 py-2.5 text-center text-sm text-zinc-300 hover:border-zinc-400"
-            >
-              {UNLOCK_COPY.standalone}
-            </a>
-          ) : (
-            <button
-              type="button"
-              className="rounded-sm border border-zinc-600 px-4 py-2.5 text-sm text-zinc-300 hover:border-zinc-400"
-              onClick={() => onUnlockBrowser("standalone")}
-            >
-              {UNLOCK_COPY.standalone}
-            </button>
-          )}
+          <a
+            href={flowchartUrl}
+            className="rounded-sm border border-zinc-600 px-4 py-2.5 text-center text-sm text-zinc-300 hover:border-zinc-400"
+          >
+            {UNLOCK_COPY.standalone}
+          </a>
           <button
             type="button"
             className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"

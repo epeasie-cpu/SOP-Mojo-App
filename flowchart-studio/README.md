@@ -42,7 +42,7 @@ npm run lint
 | `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
 | `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` (vision: `claude-sonnet-4-5`) |
-| `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Optional $19 unlock CTA. If empty, the secondary button stubs “unlock this browser” |
+| `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Flowchart+ / optional $19 SamCart Slide Checkout. Defaults to `https://rpease1.mysamcart.com/checkout/flowchart-studio` |
 | `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Primary CTA. Defaults to `https://rpease1.mysamcart.com/checkout/sop-builder-pro` |
 
 Never hardcode API keys. Unlock state is a `localStorage` flag (`flowchart-studio-unlocked`). Append `?unlock=1` or `?unlock=builder-pro` to mark this browser unlocked.

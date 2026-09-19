@@ -20,6 +20,12 @@ export type SiteConfig = typeof SITE;
 export const BUILDER_DEFAULT_CHECKOUT =
   "https://rpease1.mysamcart.com/checkout/sop-builder-pro";
 
+export const FLOWCHART_DEFAULT_CHECKOUT =
+  "https://rpease1.mysamcart.com/checkout/flowchart-studio";
+
+export const SAMCART_SLIDE_SCRIPT =
+  "https://static.samcart.com/checkouts/sc-slide-script.js";
+
 export const PRICING = {
   free: "Create + iterate",
   unlockPrice: "$19",
@@ -30,7 +36,10 @@ export const PRICING = {
 } as const;
 
 export function flowchartCheckoutUrl(): string {
-  return process.env.NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL?.trim() || "";
+  return (
+    process.env.NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL?.trim() ||
+    FLOWCHART_DEFAULT_CHECKOUT
+  );
 }
 
 export function builderCheckoutUrl(): string {

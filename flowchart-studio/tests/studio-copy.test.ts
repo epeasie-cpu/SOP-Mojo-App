@@ -27,6 +27,14 @@ describe("studio copy", () => {
     expect(source.indexOf("PRICING.builderCta")).toBeLessThan(
       source.indexOf("UNLOCK_COPY.standalone"),
     );
+    expect(source).toContain("href={flowchartUrl}");
+    expect(source).toContain("href={builderUrl}");
+  });
+
+  it("loads SamCart Slide Checkout once in the root layout", () => {
+    const source = readStudio("app/layout.tsx");
+    expect(source).toContain("SAMCART_SLIDE_SCRIPT");
+    expect(source).toContain('strategy="afterInteractive"');
   });
 
   it("gates print, export, and send in the toolbar", () => {
