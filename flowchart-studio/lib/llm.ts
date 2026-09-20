@@ -24,7 +24,9 @@ Rules:
 - Use kind "decision" only for the actual choice (e.g. "Oven or microwave?"). Never put earlier narrative on the diamond.
 - Label decision edges "yes" and "no". Put the first alternative on yes, the second on no.
 - Both branches must use real steps from the source. Do not invent "Handle the no / exception path" when the source describes both sides.
-- "If we used X" / "If it was Y" continues that branch through to End — do not attach those sentences to the spine.
+- "If we used X" / "If it was Y" / "If you plan to X" / "If you prefer Y" continues that branch — do not attach those sentences to the spine.
+- "decide how you prefer…" with following If-you alternatives is a diamond (e.g. "Milk or black?"), not a linear step.
+- Shared "Finally / Lastly" after both branches is a merge (same steps on both paths), not only one side.
 - Every other node is kind "step" with a short imperative label.
 - Every node except end must have at least one outgoing edge.
 - Every node except start must have at least one incoming edge.
@@ -154,7 +156,7 @@ async function completeJson(system: string, user: string): Promise<unknown> {
 export async function generateGraphFromText(text: string): Promise<FlowGraph> {
   const payload = await completeJson(
     GRAPH_RULES,
-    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then action and both sides of any decide/if/or branch (including “If we used X” endings).\n\n${text}`,
+    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then/While/Once action and both sides of any decide/if/or branch (including “If we used X”, “If you plan to…”, “If you prefer…”, and a shared Finally join).\n\n${text}`,
   );
   return graphFromModel(payload, "Untitled process");
 }

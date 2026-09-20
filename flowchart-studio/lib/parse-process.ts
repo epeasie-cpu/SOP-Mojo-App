@@ -1,5 +1,7 @@
 export const BURRITO_PROMPT = `First, we need to pull the bag of burritos out of the freezer. Next, we'll remove the packaging from the frozen burrito. After we've removed the packaging, we need to decide if we'll stick it in the oven or microwave it. If we stick it in the oven, we need to put the burrito on an oven-safe surface, typically a baking sheet. Then, we'll need to ensure the oven has been pre-heated to 450 degrees. After the oven has pre-heated, we'll put the baking sheet with the burrito in the oven for 22 minutes. If we decide to microwave it, we just need to put the frozen burrito on a paper plate and press the start button 3x for a minute and a half cook time. If we used the oven, we'll pull it out, remove it from the baking sheet with a spatula and place it on a paper plate and let cool for 5 minutes before eating. If it was microwaved, we'll pull it out of the microwave and let cool for 2 minutes before eating.`;
 
+export const TEA_PROMPT = `Fill a kettle with fresh water and turn it on to boil. While the water is heating, place a tea bag into an empty mug. Once the kettle whistles, carefully pour the boiling water over the tea bag until the mug is almost full. Now, decide how you prefer to drink your tea. If you plan to add milk, let the bag steep for five full minutes so the stronger flavor can cut through the dairy, then stir in a splash of cold milk. If you prefer your tea black, steep the bag for only three minutes to maintain a lighter, clean taste. Finally, remove the tea bag, discard it, and let the beverage cool slightly before drinking.`;
+
 export type ParsedDecision = {
   question: string;
   yesKey: string;
@@ -16,36 +18,42 @@ export type ParsedProcess = {
 };
 
 const SEQ_LEAD =
-  /^(?:first|next|then|after that|afterwards|finally|lastly)(?:,|\b)\s+/i;
-const AFTER_CLAUSE = /^after\s+[^,]+,\s+/i;
+  /^(?:first|next|then|after that|afterwards|finally|lastly|now)(?:,|\b)\s+/i;
+const LEAD_CLAUSE = /^(?:after|while|once|when)\s+[^,]+,\s+/i;
 const SUBJECT =
   /^(?:we (?:just )?need to |we'll |we will |we |you (?:need to |should )?|(?:just )?need to )/i;
 
 const ACTION_SPLIT =
-  /(?:\s+and then\s+)|(?:;\s+)|(?:,\s+(?=remove |place |put |press |let |pull |ensure |bake |cook |cool |send |create |stamp |file ))|(?:\s+and\s+(?=let |press |put |remove |place |pull |ensure |pre-?heat |bake |cook |cool |send |create |stamp |file |open ))/i;
+  /(?:\s+and then\s+)|(?:,?\s+then\s+)|(?:;\s+)|(?:,\s+(?=remove |place |put |press |let |pull |ensure |bake |cook |cool |send |create |stamp |file |discard |stir |steep |pour ))|(?:\s+and\s+(?=let |press |put |remove |place |pull |ensure |pre-?heat |bake |cook |cool |send |create |stamp |file |open |turn |steep |stir |discard |pour ))/i;
 
 function cleanLabel(text: string): string {
   return text
     .replace(/\s+/g, " ")
     .replace(/^[.?,!\s]+|[.?,!\s]+$/g, "")
     .replace(SEQ_LEAD, "")
-    .replace(AFTER_CLAUSE, "")
+    .replace(LEAD_CLAUSE, "")
     .replace(SUBJECT, "")
     .replace(SUBJECT, "")
     .trim()
     .replace(/^(.)/, (ch) => ch.toUpperCase());
 }
 
+function keepLabel(part: string): boolean {
+  return part.length > 1 && !/^(finally|lastly|then|next|now|afterwards)$/i.test(part);
+}
+
 function splitActions(text: string): string[] {
-  const stripped = text.replace(/[.?!]$/, "").trim();
+  const stripped = text
+    .replace(/[.?!]$/, "")
+    .replace(SEQ_LEAD, "")
+    .replace(LEAD_CLAUSE, "")
+    .trim();
+  if (!stripped) return [];
   const triple = stripped.match(/^(.+?),\s+(.+?),\s+and\s+(.+)$/i);
   if (triple && !/typically|usually|including/i.test(stripped)) {
-    return [triple[1], triple[2], triple[3]].map(cleanLabel).filter((part) => part.length > 1);
+    return [triple[1], triple[2], triple[3]].map(cleanLabel).filter(keepLabel);
   }
-  return stripped
-    .split(ACTION_SPLIT)
-    .map(cleanLabel)
-    .filter((part) => part.length > 1);
+  return stripped.split(ACTION_SPLIT).map(cleanLabel).filter(keepLabel);
 }
 
 function looksNumbered(text: string): boolean {
@@ -84,7 +92,7 @@ function splitProse(text: string): string[] {
 
 function shortKey(text: string): string {
   const known = text.match(
-    /\b(oven|microwave|microwaved|freezer|fridge|email|phone|approve|reject|yes|no)\b/i,
+    /\b(oven|microwave|microwaved|freezer|fridge|email|phone|approve|reject|yes|no|milk|black)\b/i,
   );
   if (known) {
     const word = known[1].toLowerCase();
@@ -142,6 +150,32 @@ function parseDecision(sentence: string): ParsedDecision | null {
       noSteps: [],
     };
   }
+  const how = sentence.match(
+    /\bdecid(?:e|ing)\s+((?:how|what|which|whether)\b.+?)(?:[.?!]|$)/i,
+  );
+  if (how) {
+    const q = cleanLabel(how[1]);
+    return {
+      question: q.endsWith("?") ? q : `${q}?`,
+      yesKey: "yes",
+      noKey: "no",
+      yesSteps: [],
+      noSteps: [],
+    };
+  }
+  if (/\bdecid(?:e|ing)\b/i.test(sentence) && !/\bor\b/i.test(sentence)) {
+    const rest = sentence.replace(/^.*?\bdecid(?:e|ing)\s+/i, "");
+    const q = cleanLabel(rest);
+    if (q.length > 2) {
+      return {
+        question: q.endsWith("?") ? q : `${q}?`,
+        yesKey: "yes",
+        noKey: "no",
+        yesSteps: [],
+        noSteps: [],
+      };
+    }
+  }
   return null;
 }
 
@@ -151,6 +185,9 @@ function parseIf(sentence: string): { condition: string; actions: string[] } | n
     /^if we used (?:the )?([^,]+),\s+(.+)/i,
     /^if it (?:was|were)\s+([^,]+),\s+(.+)/i,
     /^if we decide to ([^,]+),\s+(.+)/i,
+    /^if you plan to ([^,]+),\s+(.+)/i,
+    /^if you prefer (?:your )?([^,]+),\s+(.+)/i,
+    /^if you (?:want to |would like to |choose to )?([^,]+),\s+(.+)/i,
     /^if we ([^,]+),\s+(.+)/i,
     /^if (?:the |it )([^,]+),\s+(.+)/i,
   ];
@@ -165,10 +202,57 @@ function parseIf(sentence: string): { condition: string; actions: string[] } | n
 
 function sideForCondition(decision: ParsedDecision, condition: string): "yes" | "no" | null {
   const key = shortKey(condition);
-  if (key === decision.yesKey || condition.toLowerCase().includes(decision.yesKey)) return "yes";
-  if (key === decision.noKey || condition.toLowerCase().includes(decision.noKey)) return "no";
-  if (decision.yesKey !== "yes" && decision.yesKey && key.includes(decision.yesKey)) return "yes";
-  if (decision.noKey !== "no" && decision.noKey && key.includes(decision.noKey)) return "no";
+  const hay = condition.toLowerCase();
+  if (decision.yesKey && decision.yesKey !== "yes") {
+    if (key === decision.yesKey || hay.includes(decision.yesKey) || key.includes(decision.yesKey)) {
+      return "yes";
+    }
+  }
+  if (decision.noKey && decision.noKey !== "no") {
+    if (key === decision.noKey || hay.includes(decision.noKey) || key.includes(decision.noKey)) {
+      return "no";
+    }
+  }
+  return null;
+}
+
+function isJoinCue(sentence: string): boolean {
+  return /^(finally|lastly|afterwards|after that|in (?:either|both) case)\b/i.test(sentence.trim());
+}
+
+function refineQuestion(decision: ParsedDecision) {
+  if (
+    decision.yesKey &&
+    decision.noKey &&
+    decision.yesKey !== "yes" &&
+    decision.noKey !== "no"
+  ) {
+    decision.question = toQuestion(decision.yesKey, decision.noKey);
+  }
+}
+
+function assignIf(
+  decision: ParsedDecision,
+  iff: { condition: string; actions: string[] },
+): "yes" | "no" | null {
+  const matched = sideForCondition(decision, iff.condition);
+  if (matched) {
+    if (matched === "yes") decision.yesSteps.push(...iff.actions);
+    else decision.noSteps.push(...iff.actions);
+    return matched;
+  }
+  if (decision.yesSteps.length === 0) {
+    const key = shortKey(iff.condition);
+    if (key) decision.yesKey = key;
+    decision.yesSteps.push(...iff.actions);
+    return "yes";
+  }
+  if (decision.noSteps.length === 0) {
+    const key = shortKey(iff.condition);
+    if (key) decision.noKey = key;
+    decision.noSteps.push(...iff.actions);
+    return "no";
+  }
   return null;
 }
 
@@ -200,12 +284,21 @@ export function parseProcess(text: string): ParsedProcess {
     }
 
     const iff = parseIf(sentence);
-    if (iff && decision) {
-      const matched = sideForCondition(decision, iff.condition);
-      if (matched) {
-        side = matched;
-        if (matched === "yes") decision.yesSteps.push(...iff.actions);
-        else decision.noSteps.push(...iff.actions);
+    if (iff) {
+      if (!decision) {
+        decision = {
+          question: `${cleanLabel(iff.condition)}?`,
+          yesKey: shortKey(iff.condition) || "yes",
+          noKey: "no",
+          yesSteps: [...iff.actions],
+          noSteps: [],
+        };
+        side = "yes";
+        continue;
+      }
+      const assigned = assignIf(decision, iff);
+      if (assigned) {
+        side = assigned;
         continue;
       }
     }
@@ -213,6 +306,15 @@ export function parseProcess(text: string): ParsedProcess {
     const actions = splitActions(sentence);
     if (!decision) {
       prelude.push(...actions);
+      continue;
+    }
+    if (
+      isJoinCue(sentence) &&
+      decision.yesSteps.length > 0 &&
+      decision.noSteps.length > 0
+    ) {
+      epilogue.push(...actions);
+      side = "spine";
       continue;
     }
     if (side === "yes") {
@@ -231,6 +333,8 @@ export function parseProcess(text: string): ParsedProcess {
     }
     epilogue.push(...actions);
   }
+
+  if (decision) refineQuestion(decision);
 
   const title =
     heading ||

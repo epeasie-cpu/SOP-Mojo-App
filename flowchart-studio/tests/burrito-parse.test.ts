@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BURRITO_PROMPT, parseProcess } from "@/lib/parse-process";
+import { BURRITO_PROMPT, TEA_PROMPT, parseProcess } from "@/lib/parse-process";
 import { generateTemplateGraph } from "@/lib/template-graph";
 
 describe("prose process parser", () => {
@@ -53,5 +53,59 @@ describe("prose process parser", () => {
     expect(labels).toMatch(/spatula|cool/);
     expect(steps.filter((node) => /450|22 minute|baking sheet|oven-safe/i.test(node.label)).length).toBeGreaterThanOrEqual(2);
     expect(steps.filter((node) => /paper plate|start|microwave/i.test(node.label)).length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maps the tea prompt into prelude + milk/black branches + shared finally", () => {
+    const parsed = parseProcess(TEA_PROMPT);
+    expect(parsed.prelude.join(" ").toLowerCase()).toMatch(/kettle|boil/);
+    expect(parsed.prelude.join(" ").toLowerCase()).toMatch(/tea bag|mug/);
+    expect(parsed.prelude.join(" ").toLowerCase()).toMatch(/pour|boiling/);
+    expect(parsed.decision).toBeTruthy();
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/milk/);
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/black/);
+    expect(parsed.decision?.question.toLowerCase()).not.toMatch(/kettle/);
+
+    const yes = parsed.decision?.yesSteps.join(" ").toLowerCase() ?? "";
+    const no = parsed.decision?.noSteps.join(" ").toLowerCase() ?? "";
+    expect(yes).toMatch(/five|5/);
+    expect(yes).toMatch(/milk/);
+    expect(no).toMatch(/three|3/);
+    expect(no).not.toMatch(/handle the no/);
+    expect(parsed.prelude.some((step) => /^while\b/i.test(step))).toBe(false);
+    expect(parsed.epilogue.some((step) => /^finally$/i.test(step))).toBe(false);
+    expect(parsed.epilogue.join(" ").toLowerCase()).toMatch(/remove|discard/);
+    expect(parsed.epilogue.join(" ").toLowerCase()).toMatch(/cool/);
+    expect(yes).not.toMatch(/discard/);
+    expect(no).not.toMatch(/discard/);
+  });
+
+  it("builds a branched tea flowchart that joins after both steep paths", () => {
+    const graph = generateTemplateGraph(TEA_PROMPT);
+    const steps = graph.nodes.filter((node) => node.kind === "step");
+    const decisions = graph.nodes.filter((node) => node.kind === "decision");
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0].label.toLowerCase()).toMatch(/milk or black/);
+    expect(steps.length).toBeGreaterThanOrEqual(6);
+    expect(graph.nodes.some((node) => /handle the no/i.test(node.label))).toBe(false);
+
+    const decision = decisions[0];
+    const yes = graph.edges.find((edge) => edge.source === decision.id && edge.label === "yes");
+    const no = graph.edges.find((edge) => edge.source === decision.id && edge.label === "no");
+    expect(yes).toBeTruthy();
+    expect(no).toBeTruthy();
+
+    const labels = graph.nodes.map((node) => node.label.toLowerCase()).join(" | ");
+    expect(labels).toMatch(/kettle|boil/);
+    expect(labels).toMatch(/tea bag|mug/);
+    expect(labels).toMatch(/five|5/);
+    expect(labels).toMatch(/three|3/);
+    expect(labels).toMatch(/remove|discard/);
+    expect(labels).toMatch(/cool/);
+
+    const merge = graph.nodes.find((node) => node.id === "m1") ??
+      graph.nodes.find((node) => /^remove/i.test(node.label));
+    expect(merge).toBeTruthy();
+    const intoMerge = graph.edges.filter((edge) => edge.target === merge?.id);
+    expect(intoMerge.length).toBeGreaterThanOrEqual(2);
   });
 });
