@@ -190,6 +190,7 @@ export function StudioApp() {
       return;
     }
     if (action === "print") {
+      // Orientation comes from top-level @page { size: letter landscape } in globals.css.
       window.print();
       return;
     }

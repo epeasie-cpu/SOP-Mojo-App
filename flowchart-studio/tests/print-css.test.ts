@@ -10,7 +10,9 @@ describe("print stylesheet", () => {
   it("hides studio chrome and React Flow widgets only in @media print", () => {
     const css = readStudio("app/globals.css");
     expect(css).toContain("@media print");
-    expect(css).toMatch(/@page\s*\{[^}]*size:\s*landscape/);
+    expect(css.indexOf("@page")).toBeLessThan(css.indexOf("@media print"));
+    expect(css).toMatch(/@page\s*\{[^}]*size:\s*letter landscape/);
+    expect(css).not.toMatch(/size:\s*portrait/);
     expect(css).toContain(".no-print");
     expect(css).toContain(".react-flow__controls");
     expect(css).toContain(".react-flow__minimap");
