@@ -22,10 +22,10 @@ describe("print stylesheet", () => {
     expect(css).toContain("[role=\"dialog\"]");
     expect(css).toContain("background: white");
     expect(css).toContain(".print-steps");
-    expect(css).toContain("6.15in");
+    expect(css).toContain(".print-map");
     expect(css).toContain("page-break-inside: avoid");
     expect(css).toContain(".print-cont");
-    expect(css).toContain(".print-label");
+    expect(css).toMatch(/\.flowchart-canvas[\s\S]*display:\s*none/);
   });
 
   it("keeps capture, chat, unlock, tidy, and zoom off the printed page", () => {
@@ -36,7 +36,10 @@ describe("print stylesheet", () => {
     expect(app).toContain("window.print()");
     expect(app).toContain("print-title");
     expect(app).toContain("print-steps");
-    expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<FlowCanvas"));
+    expect(app).toContain("<PrintMap");
+    expect(app).toContain("studio-workspace no-print");
+    expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<PrintMap"));
+    expect(app.indexOf("<PrintMap")).toBeLessThan(app.indexOf("<FlowCanvas"));
 
     const canvas = readStudio("components/FlowCanvas.tsx");
     expect(canvas).toContain("<Controls className=\"no-print\"");

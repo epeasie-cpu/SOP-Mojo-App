@@ -23,6 +23,7 @@ import { builderSendUrl } from "@/lib/site";
 import { demoGraph } from "@/lib/template-graph";
 import { ChatPanel, type ChatMessage } from "./ChatPanel";
 import { InputDock } from "./InputDock";
+import { PrintMap } from "./PrintMap";
 import { StepList } from "./StepList";
 import { Toolbar } from "./Toolbar";
 import { UnlockHint, UnlockModal } from "./UnlockModal";
@@ -257,7 +258,11 @@ export function StudioApp() {
         <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
       </section>
 
-      <div className="studio-workspace flex min-h-0 flex-1">
+      <section className="print-only print-map-wrap hidden print:block">
+        <PrintMap graph={graph} />
+      </section>
+
+      <div className="studio-workspace no-print flex min-h-0 flex-1">
         <aside
           className={`no-print ${
             tab === "build" ? "flex" : "hidden"
