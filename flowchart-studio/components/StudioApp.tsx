@@ -208,7 +208,7 @@ export function StudioApp() {
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-zinc-950">
+    <div className="studio-shell flex min-h-0 flex-1 flex-col bg-zinc-950">
       {unlock.unlocked ? null : (
         <UnlockHint onOpen={() => openGate("export")} />
       )}
@@ -252,9 +252,13 @@ export function StudioApp() {
         ))}
       </div>
 
-      <div className="flex min-h-0 flex-1">
+      <section className="print-only print-title hidden print:block">
+        <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
+      </section>
+
+      <div className="studio-workspace flex min-h-0 flex-1">
         <aside
-          className={`${
+          className={`no-print ${
             tab === "build" ? "flex" : "hidden"
           } w-full min-h-0 flex-col border-r border-zinc-800 bg-zinc-950 lg:flex lg:w-80`}
         >
@@ -276,7 +280,7 @@ export function StudioApp() {
         </div>
 
         <aside
-          className={`${
+          className={`no-print ${
             tab === "chat" ? "flex" : "hidden"
           } w-full min-h-0 flex-col border-l border-zinc-800 bg-zinc-950 lg:flex lg:w-80`}
         >
@@ -284,17 +288,24 @@ export function StudioApp() {
         </aside>
       </div>
 
-      <section className="print-only hidden print:block">
-        <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
-        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+      <section className="print-only print-steps hidden print:block">
+        <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">
           {graph.nodes
             .filter((node) => node.kind === "step" || node.kind === "decision")
-            .map((node) => (
-              <li key={node.id}>
-                <strong>{node.kind === "decision" ? "Decision: " : ""}</strong>
-                {node.label}
-              </li>
-            ))}
+            .map((node) => {
+              const branches = graph.edges
+                .filter((edge) => edge.source === node.id && edge.label)
+                .map((edge) => String(edge.label));
+              return (
+                <li key={node.id}>
+                  <strong>{node.kind === "decision" ? "Decision: " : ""}</strong>
+                  {node.label}
+                  {node.kind === "decision" && branches.length ? (
+                    <span>{` (${branches.join(" / ")})`}</span>
+                  ) : null}
+                </li>
+              );
+            })}
         </ol>
       </section>
 

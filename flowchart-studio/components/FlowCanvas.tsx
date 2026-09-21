@@ -11,6 +11,7 @@ import {
   Panel,
   ReactFlow,
   ReactFlowProvider,
+  useReactFlow,
   type Connection,
   type Edge,
   type EdgeChange,
@@ -101,6 +102,7 @@ function FlowInner({
   const [nodes, setNodes] = useState<StudioNode[]>(() => toNodes(graph, onRename));
   const [edges, setEdges] = useState<Edge[]>(() => toEdges(graph));
   const skipSync = useRef(false);
+  const { fitView, getViewport, setViewport } = useReactFlow();
 
   useEffect(() => {
     if (skipSync.current) {
@@ -110,6 +112,35 @@ function FlowInner({
     setNodes(toNodes(graph, onRename));
     setEdges(toEdges(graph));
   }, [graph, onRename]);
+
+  useEffect(() => {
+    let saved: { x: number; y: number; zoom: number } | null = null;
+    const refit = () => {
+      fitView({ padding: 0.16 });
+    };
+    const beforePrint = () => {
+      saved = getViewport();
+      refit();
+      requestAnimationFrame(refit);
+    };
+    const afterPrint = () => {
+      if (saved) setViewport(saved);
+      saved = null;
+    };
+    const onPrintMq = (event: MediaQueryListEvent) => {
+      if (event.matches) beforePrint();
+      else afterPrint();
+    };
+    const mq = window.matchMedia("print");
+    window.addEventListener("beforeprint", beforePrint);
+    window.addEventListener("afterprint", afterPrint);
+    mq.addEventListener("change", onPrintMq);
+    return () => {
+      window.removeEventListener("beforeprint", beforePrint);
+      window.removeEventListener("afterprint", afterPrint);
+      mq.removeEventListener("change", onPrintMq);
+    };
+  }, [fitView, getViewport, setViewport]);
 
   const push = useCallback(
     (nextNodes: StudioNode[], nextEdges: Edge[]) => {
@@ -189,9 +220,9 @@ function FlowInner({
       className="bg-zinc-950"
       proOptions={{ hideAttribution: true }}
     >
-      <Background color="#3f3f46" gap={20} />
-      <Controls />
-      <Panel position="top-right">
+      <Background className="no-print" color="#3f3f46" gap={20} />
+      <Controls className="no-print" />
+      <Panel position="top-right" className="no-print">
         <button
           type="button"
           className="rounded-sm border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 hover:border-lime"
@@ -201,6 +232,7 @@ function FlowInner({
         </button>
       </Panel>
       <MiniMap
+        className="no-print"
         pannable
         zoomable
         maskColor="rgba(9,9,11,0.7)"

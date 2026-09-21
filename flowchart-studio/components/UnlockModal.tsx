@@ -21,7 +21,7 @@ export function UnlockModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="unlock-title"
@@ -85,7 +85,7 @@ export function UnlockHint({ onOpen }: { onOpen: () => void }) {
   return (
     <div
       ref={ref}
-      className="flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-400"
+      className="no-print flex items-center justify-between gap-3 border-b border-zinc-800 bg-zinc-900 px-4 py-2 text-xs text-zinc-400"
     >
       <p>
         <span className="font-semibold text-lime">{UNLOCK_COPY.headline}</span>
