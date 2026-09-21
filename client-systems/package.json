@@ -11,7 +11,8 @@
     "test": "vitest run",
     "postinstall": "node scripts/prisma-run.mjs generate",
     "db:push": "node scripts/prisma-run.mjs db push",
-    "db:generate": "node scripts/prisma-run.mjs generate"
+    "db:generate": "node scripts/prisma-run.mjs generate",
+    "db:sql": "node scripts/generate-supabase-sql.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

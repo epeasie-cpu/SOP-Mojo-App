@@ -3,6 +3,12 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  assertProductionDatabaseUrl,
+  isPostgresUrl,
+  resolveDatabaseUrl,
+  rewriteSchemaForProvider,
+} from "./prisma-env.mjs";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const committedSchema = join(root, "prisma", "schema.prisma");
@@ -30,18 +36,23 @@ function loadEnvFile(filePath) {
 loadEnvFile(join(root, ".env"));
 loadEnvFile(join(root, ".env.local"));
 
-const url = process.env.DATABASE_URL || "file:./dev.db";
-const provider = /^postgres(ql)?:/i.test(url) ? "postgresql" : "sqlite";
+const url = resolveDatabaseUrl(process.env);
+assertProductionDatabaseUrl(url, process.env);
+
+const provider = isPostgresUrl(url) ? "postgresql" : "sqlite";
+if (provider === "postgresql" && !process.env.DIRECT_URL) {
+  process.env.DIRECT_URL = url;
+}
 
 let schemaPath = committedSchema;
 if (provider === "postgresql") {
   const outDir = join(root, "prisma", ".generated");
   mkdirSync(outDir, { recursive: true });
   schemaPath = join(outDir, "schema.prisma");
-  const schema = readFileSync(committedSchema, "utf8").replace(
-    /provider\s*=\s*"(sqlite|postgresql)"/,
-    `provider = "${provider}"`,
-  );
+  const schema = rewriteSchemaForProvider(readFileSync(committedSchema, "utf8"), {
+    provider,
+    withDirectUrl: true,
+  });
   writeFileSync(schemaPath, schema);
 }
 
@@ -60,7 +71,11 @@ const result = spawnSync("npx", ["prisma", ...prismaArgs], {
   cwd: root,
   stdio: "inherit",
   shell: process.platform === "win32",
-  env: { ...process.env, DATABASE_URL: url },
+  env: {
+    ...process.env,
+    DATABASE_URL: url,
+    DIRECT_URL: process.env.DIRECT_URL || url,
+  },
 });
 
 process.exit(result.status ?? 1);
