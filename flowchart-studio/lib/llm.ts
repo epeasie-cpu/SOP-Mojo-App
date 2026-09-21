@@ -16,23 +16,23 @@ const GRAPH_SCHEMA = `{
   "edges": [{ "id": string, "source": string, "target": string, "label"?: string }]
 }`;
 
-const GRAPH_RULES = `You build process flowcharts for SOP Mojo Flowchart Studio.
+export const GRAPH_RULES = `You turn natural-language process descriptions into flowcharts for SOP Mojo Flowchart Studio.
 Return ONLY valid JSON matching ${GRAPH_SCHEMA}.
+
+Classify every clause dynamically from the language. Do not wait for a canned phrase list — users invent new wording.
+- STEP: a sequential action (First/Second/Next/Then/After/While/Once, or an imperative).
+- DECISION: any choice or yes/no test. Interrogatives (is/are/does/do/can/should …?), “decide X or Y”, “decide how…”, and any fork implied before If/else.
+- BRANCH: actions that apply on only one side (If yes / If no / Yes: / No: / If we… / If you…).
+- JOIN: actions that resume after both sides (Finally / Lastly / in either case).
+
 Rules:
-- Always include exactly one start node and one end node.
-- Extract EVERY sequential action (First / Next / After / Then). Do not collapse a long paragraph into one or two nodes.
-- Use kind "decision" only for the actual choice (e.g. "Oven or microwave?"). Never put earlier narrative on the diamond.
-- Label decision edges "yes" and "no". Put the first alternative on yes, the second on no.
-- Both branches must use real steps from the source. Do not invent "Handle the no / exception path" when the source describes both sides.
-- "If we used X" / "If it was Y" / "If you plan to X" / "If you prefer Y" continues that branch — do not attach those sentences to the spine.
-- "decide how you prefer…" with following If-you alternatives is a diamond (e.g. "Milk or black?"), not a linear step.
-- Shared "Finally / Lastly" after both branches is a merge (same steps on both paths), not only one side.
-- Interrogative steps (“is/are/does/do/can/should …?”) are decisions, not steps — e.g. “Cash register loaded?”.
-- Bare “If yes” / “If no” / “Yes:” / “No:” are the two arms of the preceding question.
-- Every other node is kind "step" with a short imperative label.
-- Every node except end must have at least one outgoing edge.
-- Every node except start must have at least one incoming edge.
-- Use as many nodes as there are distinct actions (typically 6–16 for a cooked process).
+- Exactly one start node and one end node.
+- A DECISION is kind "decision" with a short question label (e.g. "Cash register loaded?", "Oven or microwave?", "Milk or black?"). Never put earlier narrative on the diamond. Never leave an interrogative or "If yes"/"If no" as a spine step.
+- Decision edges must be labeled "yes" and "no" (first alternative = yes, second = no).
+- Both branches use real source steps. Do not invent "Handle the no / exception path" when the source describes both sides.
+- JOIN steps sit after both branches merge, not on only one arm.
+- Extract every distinct action. Do not collapse a paragraph into one or two nodes (typically 6–16 nodes for a cooked process).
+- Short imperative labels. Every node except end has an outgoing edge; every node except start has an incoming edge.
 - Do not invent legal, medical, or ISO citations.`;
 
 export function extractJson(text: string): unknown {
@@ -158,7 +158,7 @@ async function completeJson(system: string, user: string): Promise<unknown> {
 export async function generateGraphFromText(text: string): Promise<FlowGraph> {
   const payload = await completeJson(
     GRAPH_RULES,
-    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then/While/Once action and both sides of any decide/if/or branch (including “If we used X”, “If you plan to…”, “If you prefer…”, interrogatives like “is it loaded?”, bare If yes/If no, and a shared Finally join).\n\n${text}`,
+    `Structure this process as a flowchart. Classify each clause as step, decision, branch, or join from the language itself. Interrogatives and If yes/If no must become a diamond with two real arms.\n\n${text}`,
   );
   return graphFromModel(payload, "Untitled process");
 }

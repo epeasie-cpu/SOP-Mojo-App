@@ -23,6 +23,19 @@ export function prepareGraph(value: unknown, fallbackTitle?: string): FlowGraph 
   return graph;
 }
 
+async function generateWithLlm(text: string): Promise<FlowGraph> {
+  try {
+    return await generateGraphFromText(text);
+  } catch (first) {
+    try {
+      return await generateGraphFromText(text);
+    } catch (retry) {
+      throw retry instanceof Error ? retry : first;
+    }
+  }
+}
+
+/** LLM is the production Map-it brain. Deterministic parse-process is no-key / LLM-failure fallback only. */
 export async function runGenerate(text: string): Promise<LlmGraphResult> {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -32,8 +45,9 @@ export async function runGenerate(text: string): Promise<LlmGraphResult> {
     return { graph: generateTemplateGraph(trimmed), mode: "template" };
   }
   try {
-    return { graph: await generateGraphFromText(trimmed), mode: "llm" };
-  } catch {
+    return { graph: await generateWithLlm(trimmed), mode: "llm" };
+  } catch (error) {
+    console.error("Map-it LLM failed; using deterministic fallback.", error);
     return { graph: generateTemplateGraph(trimmed), mode: "llm", llmFailed: true };
   }
 }
