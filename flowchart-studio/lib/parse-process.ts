@@ -2,6 +2,11 @@ export const BURRITO_PROMPT = `First, we need to pull the bag of burritos out of
 
 export const TEA_PROMPT = `Fill a kettle with fresh water and turn it on to boil. While the water is heating, place a tea bag into an empty mug. Once the kettle whistles, carefully pour the boiling water over the tea bag until the mug is almost full. Now, decide how you prefer to drink your tea. If you plan to add milk, let the bag steep for five full minutes so the stronger flavor can cut through the dairy, then stir in a splash of cold milk. If you prefer your tea black, steep the bag for only three minutes to maintain a lighter, clean taste. Finally, remove the tea bag, discard it, and let the beverage cool slightly before drinking.`;
 
+export const CASH_REGISTER_PROMPT = `First, open the cash register.
+Second, is the cash register loaded?
+If yes, pull money out.
+If no, don't pull money out.`;
+
 export type ParsedDecision = {
   question: string;
   yesKey: string;
@@ -18,7 +23,7 @@ export type ParsedProcess = {
 };
 
 const SEQ_LEAD =
-  /^(?:first|next|then|after that|afterwards|finally|lastly|now)(?:,|\b)\s+/i;
+  /^(?:first|second|third|fourth|fifth|next|then|after that|afterwards|finally|lastly|now)(?:,|\b)\s+/i;
 const LEAD_CLAUSE = /^(?:after|while|once|when)\s+[^,]+,\s+/i;
 const SUBJECT =
   /^(?:we (?:just )?need to |we'll |we will |we |you (?:need to |should )?|(?:just )?need to )/i;
@@ -85,7 +90,7 @@ function splitNumbered(text: string): { heading: string | null; items: string[] 
 function splitProse(text: string): string[] {
   const normalized = text.replace(/\s+/g, " ").trim();
   return normalized
-    .split(/(?<=[.?!])\s+(?=[A-Z]|If |Then |Next |After |Finally |First |Last )/)
+    .split(/(?<=[.?!])\s+(?=[A-Z]|If |Then |Next |After |Finally |First |Second |Third |Last |Yes[:\s]|No[:\s])/)
     .map((part) => part.trim())
     .filter(Boolean);
 }
@@ -115,6 +120,35 @@ function toQuestion(left: string, right: string): string {
 
 function isYesNoQuestion(sentence: string): boolean {
   return /^(if|whether)\b/i.test(sentence.trim()) && /[?]$/.test(sentence.trim());
+}
+
+const AUX =
+  /^(?:is|are|does|do|can|should|will|has|have|was|were|am)\b(?!\s+not\b)/i;
+
+function questionFromInterrogative(sentence: string): string {
+  const stripped = cleanLabel(sentence.replace(/[?]$/, ""));
+  const noAux = stripped.replace(
+    /^(?:is|are|does|do|can|should|will|has|have|was|were|am)\s+/i,
+    "",
+  );
+  const q = cleanLabel(noAux.replace(/^(?:the )\s*/i, ""));
+  return q.endsWith("?") ? q : `${q}?`;
+}
+
+function parseInterrogative(sentence: string): ParsedDecision | null {
+  const trimmed = sentence.trim();
+  const withoutLead = trimmed.replace(SEQ_LEAD, "");
+  if (!AUX.test(withoutLead)) return null;
+  const hasMark = /[?]$/.test(withoutLead);
+  const afterOrdinal = SEQ_LEAD.test(trimmed);
+  if (!hasMark && !afterOrdinal) return null;
+  return {
+    question: questionFromInterrogative(withoutLead),
+    yesKey: "yes",
+    noKey: "no",
+    yesSteps: [],
+    noSteps: [],
+  };
 }
 
 function parseDecision(sentence: string): ParsedDecision | null {
@@ -176,11 +210,20 @@ function parseDecision(sentence: string): ParsedDecision | null {
       };
     }
   }
-  return null;
+  return parseInterrogative(sentence);
 }
 
 function parseIf(sentence: string): { condition: string; actions: string[] } | null {
   const trimmed = sentence.trim();
+  const bare = trimmed.match(/^if\s+(yes|no|not)\b\s*[,:]?\s*(.*)$/i);
+  if (bare) {
+    const condition = /^not$/i.test(bare[1]) ? "no" : bare[1].toLowerCase();
+    return { condition, actions: splitActions(bare[2] || "") };
+  }
+  const labeled = trimmed.match(/^(yes|no)\s*[:\-]\s*(.+)$/i);
+  if (labeled) {
+    return { condition: labeled[1].toLowerCase(), actions: splitActions(labeled[2]) };
+  }
   const patterns = [
     /^if we used (?:the )?([^,]+),\s+(.+)/i,
     /^if it (?:was|were)\s+([^,]+),\s+(.+)/i,
@@ -202,7 +245,9 @@ function parseIf(sentence: string): { condition: string; actions: string[] } | n
 
 function sideForCondition(decision: ParsedDecision, condition: string): "yes" | "no" | null {
   const key = shortKey(condition);
-  const hay = condition.toLowerCase();
+  const hay = condition.toLowerCase().trim();
+  if (/^(yes|y)$/i.test(key) || /^(yes|y)$/i.test(hay)) return "yes";
+  if (/^(no|n|not)$/i.test(key) || /^(no|n|not)$/i.test(hay)) return "no";
   if (decision.yesKey && decision.yesKey !== "yes") {
     if (key === decision.yesKey || hay.includes(decision.yesKey) || key.includes(decision.yesKey)) {
       return "yes";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BURRITO_PROMPT, TEA_PROMPT, parseProcess } from "@/lib/parse-process";
+import { BURRITO_PROMPT, CASH_REGISTER_PROMPT, TEA_PROMPT, parseProcess } from "@/lib/parse-process";
 import { generateTemplateGraph } from "@/lib/template-graph";
 
 describe("prose process parser", () => {
@@ -107,5 +107,43 @@ describe("prose process parser", () => {
     expect(merge).toBeTruthy();
     const intoMerge = graph.edges.filter((edge) => edge.target === merge?.id);
     expect(intoMerge.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("maps cash-register interrogative plus bare If yes / If no", () => {
+    const parsed = parseProcess(CASH_REGISTER_PROMPT);
+    expect(parsed.prelude).toHaveLength(1);
+    expect(parsed.prelude[0].toLowerCase()).toMatch(/open the cash register/);
+    expect(parsed.decision).toBeTruthy();
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/cash register loaded/);
+    expect(parsed.decision?.question.toLowerCase()).not.toMatch(/^second/);
+    expect(parsed.decision?.yesSteps.join(" ").toLowerCase()).toMatch(/pull money out/);
+    expect(parsed.decision?.noSteps.join(" ").toLowerCase()).toMatch(/don'?t pull money out|do not pull money out/);
+    expect(parsed.prelude.some((step) => /\?|if yes|if no/i.test(step))).toBe(false);
+  });
+
+  it("builds a cash-register diamond instead of a vertical line", () => {
+    const graph = generateTemplateGraph(CASH_REGISTER_PROMPT);
+    const decisions = graph.nodes.filter((node) => node.kind === "decision");
+    expect(decisions).toHaveLength(1);
+    expect(decisions[0].label.toLowerCase()).toMatch(/cash register loaded/);
+    expect(graph.nodes.some((node) => node.kind === "step" && /if yes/i.test(node.label))).toBe(false);
+    expect(graph.nodes.some((node) => /handle the no/i.test(node.label))).toBe(false);
+
+    const decision = decisions[0];
+    const yes = graph.edges.find((edge) => edge.source === decision.id && edge.label === "yes");
+    const no = graph.edges.find((edge) => edge.source === decision.id && edge.label === "no");
+    expect(yes).toBeTruthy();
+    expect(no).toBeTruthy();
+    expect(graph.nodes.find((node) => node.id === yes?.target)?.label.toLowerCase()).toMatch(/pull money out/);
+    expect(graph.nodes.find((node) => node.id === no?.target)?.label.toLowerCase()).toMatch(/don'?t pull|do not pull/);
+  });
+
+  it("treats Yes: / No: labels as branch arms after a question", () => {
+    const parsed = parseProcess(
+      "Is the drawer open?\nYes: count the bills.\nNo: unlock the drawer.",
+    );
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/drawer open/);
+    expect(parsed.decision?.yesSteps.join(" ").toLowerCase()).toMatch(/count the bills/);
+    expect(parsed.decision?.noSteps.join(" ").toLowerCase()).toMatch(/unlock the drawer/);
   });
 });
