@@ -114,7 +114,7 @@ Scope: Production and Preview (and Development if you pull env locally).
 - Any URL whose host is `*.neon.tech` or `*.neon.build`.
 - Builder’s Supabase URL or keys. If they appear on this Vercel project, delete them.
 
-Redeploy Production after saving. `npm run build` runs `prisma generate` (provider flips to `postgresql` when `DATABASE_URL` is Postgres). A Neon URL will fail the build on purpose.
+Redeploy Production after saving. `npm run build` runs `prisma generate` (provider flips to `postgresql` when `DATABASE_URL` is Postgres). A Neon URL **fails production builds** on purpose; preview can still generate against the temporary Neon URL until you switch.
 
 ## 6. Verify
 

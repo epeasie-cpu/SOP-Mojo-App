@@ -109,7 +109,7 @@ Production database is a **dedicated Supabase** project. Ryan’s clicks, SQL, a
 3. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` from that project (not Builder).
 4. Keep existing `AUTH_SECRET`. Optional: `CRON_SECRET`, `WORKSPACE_SLACK_WEBHOOK`, `NEXT_PUBLIC_KIT_CHECKOUT_URL`.
 5. Remove any Neon `DATABASE_URL` / `NEON_*` leftovers.
-6. Build command: `npm run build` (runs `prisma generate` then `next build`). The build script switches the Prisma `provider` to `postgresql` when `DATABASE_URL` starts with `postgres`, and refuses Neon hosts.
+6. Build command: `npm run build` (runs `prisma generate` then `next build`). The build script switches the Prisma `provider` to `postgresql` when `DATABASE_URL` starts with `postgres`, and refuses Neon hosts on **production**.
 7. Apply schema with the SQL in `supabase/` (or `npm run db:push` against `DIRECT_URL`), then `supabase/0002_rls_and_prisma_role.sql`.
 
 ### Domain (same pattern as Writer)

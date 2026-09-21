@@ -32,23 +32,36 @@ describe("prisma-env", () => {
       ),
     ).toBe(true);
     expect(() =>
-      assertProductionDatabaseUrl("postgresql://u:p@ep-x.neon.tech/db", {}),
+      assertProductionDatabaseUrl("postgresql://u:p@ep-x.neon.tech/db", {
+        VERCEL: "1",
+        VERCEL_ENV: "production",
+      }),
     ).toThrow(/Neon is not used/);
+    expect(() =>
+      assertProductionDatabaseUrl("postgresql://u:p@ep-x.neon.tech/db", {
+        VERCEL: "1",
+        VERCEL_ENV: "preview",
+      }),
+    ).not.toThrow();
   });
 
-  it("requires a Supabase Postgres URL on Vercel", () => {
+  it("requires a Supabase Postgres URL on Vercel production", () => {
     expect(() =>
-      assertProductionDatabaseUrl("file:./dev.db", { VERCEL: "1" }),
+      assertProductionDatabaseUrl("file:./dev.db", {
+        VERCEL: "1",
+        VERCEL_ENV: "preview",
+      }),
     ).toThrow(/dedicated Client Systems Supabase/);
     expect(() =>
       assertProductionDatabaseUrl("postgresql://u:p@db.example.com/db", {
         VERCEL: "1",
+        VERCEL_ENV: "production",
       }),
     ).toThrow(/not another host/);
     expect(() =>
       assertProductionDatabaseUrl(
         "postgresql://prisma.ref:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true",
-        { VERCEL: "1" },
+        { VERCEL: "1", VERCEL_ENV: "production" },
       ),
     ).not.toThrow();
   });

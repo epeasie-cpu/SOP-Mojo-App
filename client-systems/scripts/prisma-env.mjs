@@ -37,18 +37,25 @@ export function rewriteSchemaForProvider(schema, { provider, withDirectUrl }) {
 }
 
 /**
- * Neon is rejected for this app. Vercel must use the dedicated
- * Client Systems Supabase project (not Builder).
+ * Neon is rejected for this app. Production Vercel must use the dedicated
+ * Client Systems Supabase project (not Builder). Preview may still have the
+ * temporary Neon URL until Ryan creates that project.
  */
 /**
  * @param {string} url
  * @param {Record<string, string | undefined>} [env]
  */
 export function assertProductionDatabaseUrl(url, env = process.env) {
+  const vercelEnv = env.VERCEL_ENV || "";
+  const isVercelProd = env.VERCEL === "1" && vercelEnv === "production";
+
   if (isNeonUrl(url)) {
-    throw new Error(
-      "Neon is not used for Client Systems. Set DATABASE_URL to the dedicated Supabase project (not Builder).",
-    );
+    if (isVercelProd) {
+      throw new Error(
+        "Neon is not used for Client Systems. Set DATABASE_URL to the dedicated Supabase project (not Builder).",
+      );
+    }
+    return;
   }
   if (!env.VERCEL) return;
   if (!isPostgresUrl(url)) {
@@ -56,9 +63,9 @@ export function assertProductionDatabaseUrl(url, env = process.env) {
       "On Vercel, DATABASE_URL must be the dedicated Client Systems Supabase Postgres URL.",
     );
   }
-  if (!isSupabaseUrl(url)) {
+  if (isVercelProd && !isSupabaseUrl(url)) {
     throw new Error(
-      "On Vercel, DATABASE_URL must point at the dedicated Client Systems Supabase project, not another host.",
+      "On Vercel production, DATABASE_URL must point at the dedicated Client Systems Supabase project, not another host.",
     );
   }
 }
