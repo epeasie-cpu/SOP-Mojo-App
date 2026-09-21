@@ -251,8 +251,13 @@ export function layoutGraphPrint(graph: FlowGraph): FlowGraph {
   return layoutGraph(graph, { rankdir: "LR", compact: true });
 }
 
-export function graphBounds(graph: FlowGraph): { width: number; height: number } {
-  if (graph.nodes.length === 0) return { width: 0, height: 0 };
+export function graphBounds(graph: FlowGraph): {
+  minX: number;
+  minY: number;
+  width: number;
+  height: number;
+} {
+  if (graph.nodes.length === 0) return { minX: 0, minY: 0, width: 0, height: 0 };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -264,5 +269,43 @@ export function graphBounds(graph: FlowGraph): { width: number; height: number }
     maxX = Math.max(maxX, node.position.x + dim.width);
     maxY = Math.max(maxY, node.position.y + dim.height);
   }
-  return { width: maxX - minX, height: maxY - minY };
+  return { minX, minY, width: maxX - minX, height: maxY - minY };
+}
+
+/** Shift print nodes to the origin so the map does not paginate empty space. */
+export function shiftGraphToOrigin(graph: FlowGraph): FlowGraph {
+  const { minX, minY } = graphBounds(graph);
+  if (minX === 0 && minY === 0) return graph;
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      position: { x: node.position.x - minX, y: node.position.y - minY },
+    })),
+  };
+}
+
+/** Letter landscape minus margins / title / steps. */
+export const PRINT_MAP_MAX_WIDTH = 960;
+export const PRINT_MAP_MAX_HEIGHT = 500;
+
+export function printMapBox(graph: FlowGraph): {
+  graph: FlowGraph;
+  width: number;
+  height: number;
+  scale: number;
+} {
+  const shifted = shiftGraphToOrigin(layoutGraphPrint(graph));
+  const bounds = graphBounds(shifted);
+  const scale = Math.min(
+    PRINT_MAP_MAX_WIDTH / Math.max(bounds.width, 1),
+    PRINT_MAP_MAX_HEIGHT / Math.max(bounds.height, 1),
+    1,
+  );
+  return {
+    graph: shifted,
+    width: Math.max(1, Math.round(bounds.width * scale)),
+    height: Math.max(1, Math.round(bounds.height * scale)),
+    scale,
+  };
 }
