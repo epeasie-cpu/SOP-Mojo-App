@@ -20,7 +20,7 @@ npx prisma db push
 npm run dev
 ```
 
-`prisma db push` uses `DATABASE_URL` (default SQLite `file:./dev.db`, created next to `prisma/schema.prisma`).
+`prisma db push` uses `DATABASE_URL` (default SQLite `file:./dev.db`, created next to `prisma/schema.prisma`). Production is a **dedicated Supabase** project — see [MIGRATION.md](MIGRATION.md). Do not use Neon. Do not reuse Builder’s Supabase project.
 
 ```bash
 npm test
@@ -34,7 +34,11 @@ Open http://localhost:3000. Create a workspace at `/signup`, add a project from 
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `DATABASE_URL` | Yes | SQLite `file:./dev.db` locally. Postgres URL (Supabase/Neon) in production. |
+| `DATABASE_URL` | Yes | SQLite `file:./dev.db` locally. Dedicated Client Systems Supabase **transaction** pooler (`:6543?pgbouncer=true`) in production. |
+| `DIRECT_URL` | Production | Dedicated Supabase **session** pooler (`:5432`) for `prisma db push` / migrate. |
+| `NEXT_PUBLIC_SUPABASE_URL` | Production | Dedicated project URL. Not Builder. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Production | Dedicated project `anon` key. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Production | Dedicated project `service_role`. Server-only. |
 | `AUTH_SECRET` | Yes in production | HMAC secret for the session cookie. Generate with `openssl rand -base64 32`. |
 | `CRON_SECRET` | No | Bearer token for `GET /api/cron/escalate`. |
 | `WORKSPACE_SLACK_WEBHOOK` | No | Fallback Slack incoming-webhook URL if the workspace setting is empty. |
@@ -98,11 +102,15 @@ The Client Systems Kit is **$39**; the workspace is where you run it after yes. 
 
 Create a Vercel project with **root directory** `client-systems`.
 
-1. Set `DATABASE_URL` to a Postgres connection string (Supabase or Neon).
-2. Set `AUTH_SECRET`.
-3. Optional: `CRON_SECRET`, `WORKSPACE_SLACK_WEBHOOK`, `NEXT_PUBLIC_KIT_CHECKOUT_URL`.
-4. Build command: `npm run build` (runs `prisma generate` then `next build`).
-5. After first deploy, run `npx prisma db push` against production (or `prisma migrate deploy` once you add migrations). The build script switches the Prisma `provider` to `postgresql` when `DATABASE_URL` starts with `postgres`.
+Production database is a **dedicated Supabase** project. Ryan’s clicks, SQL, and env list: [MIGRATION.md](MIGRATION.md).
+
+1. Set `DATABASE_URL` to that project’s transaction pooler URL (`prisma` user, port `6543`, `?pgbouncer=true`).
+2. Set `DIRECT_URL` to the session pooler URL (port `5432`).
+3. Set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` from that project (not Builder).
+4. Keep existing `AUTH_SECRET`. Optional: `CRON_SECRET`, `WORKSPACE_SLACK_WEBHOOK`, `NEXT_PUBLIC_KIT_CHECKOUT_URL`.
+5. Remove any Neon `DATABASE_URL` / `NEON_*` leftovers.
+6. Build command: `npm run build` (runs `prisma generate` then `next build`). The build script switches the Prisma `provider` to `postgresql` when `DATABASE_URL` starts with `postgres`, and refuses Neon hosts.
+7. Apply schema with the SQL in `supabase/` (or `npm run db:push` against `DIRECT_URL`), then `supabase/0002_rls_and_prisma_role.sql`.
 
 ### Domain (same pattern as Writer)
 
@@ -114,4 +122,4 @@ Cron: `vercel.json` calls `/api/cron/escalate` daily at 14:00 UTC. Send `Authori
 
 ## Stack
 
-Next.js App Router, TypeScript, Tailwind CSS, Prisma (SQLite locally, Postgres in production).
+Next.js App Router, TypeScript, Tailwind CSS, Prisma (SQLite locally, dedicated Supabase Postgres in production).
