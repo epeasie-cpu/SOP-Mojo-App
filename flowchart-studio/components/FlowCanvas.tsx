@@ -115,18 +115,30 @@ function FlowInner({
 
   useEffect(() => {
     let saved: { x: number; y: number; zoom: number } | null = null;
+    const refit = () => {
+      fitView({ padding: 0.16 });
+    };
     const beforePrint = () => {
       saved = getViewport();
-      fitView({ padding: 0.18 });
+      refit();
+      requestAnimationFrame(refit);
     };
     const afterPrint = () => {
       if (saved) setViewport(saved);
+      saved = null;
     };
+    const onPrintMq = (event: MediaQueryListEvent) => {
+      if (event.matches) beforePrint();
+      else afterPrint();
+    };
+    const mq = window.matchMedia("print");
     window.addEventListener("beforeprint", beforePrint);
     window.addEventListener("afterprint", afterPrint);
+    mq.addEventListener("change", onPrintMq);
     return () => {
       window.removeEventListener("beforeprint", beforePrint);
       window.removeEventListener("afterprint", afterPrint);
+      mq.removeEventListener("change", onPrintMq);
     };
   }, [fitView, getViewport, setViewport]);
 

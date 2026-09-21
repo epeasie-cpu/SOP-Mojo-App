@@ -252,7 +252,7 @@ export function StudioApp() {
         ))}
       </div>
 
-      <section className="print-only hidden print:block">
+      <section className="print-only print-title hidden print:block">
         <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
       </section>
 
@@ -288,7 +288,7 @@ export function StudioApp() {
         </aside>
       </div>
 
-      <section className="print-only hidden print:block">
+      <section className="print-only print-steps hidden print:block">
         <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">
           {graph.nodes
             .filter((node) => node.kind === "step" || node.kind === "decision")

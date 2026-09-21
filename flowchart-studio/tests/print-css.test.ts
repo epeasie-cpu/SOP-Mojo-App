@@ -19,7 +19,8 @@ describe("print stylesheet", () => {
     expect(css).toContain(".react-flow__background");
     expect(css).toContain("[role=\"dialog\"]");
     expect(css).toContain("background: white");
-    expect(css).toContain(".studio-workspace");
+    expect(css).toContain(".print-steps");
+    expect(css).toContain("8.5in");
     expect(css).toContain(".print-label");
   });
 
@@ -29,9 +30,9 @@ describe("print stylesheet", () => {
     expect(app).toContain("print-only");
     expect(app).toContain("{graph.title}");
     expect(app).toContain("window.print()");
-    expect(app.indexOf('className="print-only hidden print:block"')).toBeLessThan(
-      app.indexOf("<FlowCanvas"),
-    );
+    expect(app).toContain("print-title");
+    expect(app).toContain("print-steps");
+    expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<FlowCanvas"));
 
     const canvas = readStudio("components/FlowCanvas.tsx");
     expect(canvas).toContain("<Controls className=\"no-print\"");
