@@ -38,10 +38,21 @@ body {
   display: none;
 }
 
+/* Hard constraint: L→R wall maps print landscape. Top-level @page so Chrome honors it. */
+@page {
+  size: letter landscape;
+  margin: 0.4in;
+}
+
+@page :first {
+  size: letter landscape;
+  margin: 0.4in;
+}
+
 /* Print: canvas + numbered steps only. Screen chrome stays in the GUI. */
 @media print {
   @page {
-    size: landscape;
+    size: letter landscape;
     margin: 0.4in;
   }
 
