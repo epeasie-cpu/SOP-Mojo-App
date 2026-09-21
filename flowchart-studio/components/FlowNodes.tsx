@@ -122,6 +122,7 @@ function StartEndNode({
       } ${selected ? "ring-2 ring-lime/70" : ""}`}
     >
       {kind === "end" ? <Handle type="target" position={Position.Top} /> : null}
+      {kind === "end" ? <Handle id="left" type="target" position={Position.Left} /> : null}
       <input
         className="nodrag nopan w-full bg-transparent text-center text-sm font-semibold outline-none"
         value={data.label}
@@ -129,6 +130,7 @@ function StartEndNode({
         onChange={(event) => data.onRename?.(id, event.target.value)}
       />
       {kind === "start" ? <Handle type="source" position={Position.Bottom} /> : null}
+      {kind === "start" ? <Handle id="right" type="source" position={Position.Right} /> : null}
     </div>
   );
 }
@@ -141,9 +143,11 @@ function StepNode({ id, data, selected }: NodeProps<StudioNode>) {
       }`}
     >
       <Handle id="top" type="target" position={Position.Top} />
+      <Handle id="left" type="target" position={Position.Left} />
       <p className="mb-1 text-[10px] tracking-[0.16em] text-zinc-500 uppercase">Step</p>
       <WrappedEditor id={id} label={data.label} onRename={data.onRename} />
       <Handle id="bottom" type="source" position={Position.Bottom} />
+      <Handle id="right" type="source" position={Position.Right} />
     </div>
   );
 }
@@ -161,6 +165,7 @@ function DecisionNode({ id, data, selected }: NodeProps<StudioNode>) {
         <WrappedEditor id={id} label={data.label} onRename={data.onRename} compact />
       </div>
       <Handle id="in" type="target" position={Position.Top} />
+      <Handle id="in-left" type="target" position={Position.Left} />
       <Handle
         id="yes"
         type="source"
@@ -174,6 +179,12 @@ function DecisionNode({ id, data, selected }: NodeProps<StudioNode>) {
         className="!h-2.5 !w-2.5 !border-zinc-400 !bg-zinc-400"
       />
       <Handle
+        id="no-down"
+        type="source"
+        position={Position.Bottom}
+        className="!h-2.5 !w-2.5 !border-zinc-400 !bg-zinc-400"
+      />
+      <Handle
         id="back"
         type="target"
         position={Position.Bottom}
@@ -182,7 +193,10 @@ function DecisionNode({ id, data, selected }: NodeProps<StudioNode>) {
       <span className="pointer-events-none absolute top-1/2 right-1 -translate-y-5 text-[10px] font-semibold text-lime">
         Yes
       </span>
-      <span className="pointer-events-none absolute top-1/2 left-1 -translate-y-5 text-[10px] font-semibold text-zinc-400">
+      <span className="decision-no-label pointer-events-none absolute top-1/2 left-1 -translate-y-5 text-[10px] font-semibold text-zinc-400 print:hidden">
+        No
+      </span>
+      <span className="decision-no-label-print pointer-events-none absolute bottom-1 left-1/2 hidden -translate-x-1/2 text-[10px] font-semibold text-zinc-400 print:block">
         No
       </span>
     </div>

@@ -18,8 +18,9 @@ import {
   type NodeChange,
 } from "@xyflow/react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { newId, type FlowGraph } from "@/lib/graph";
-import { layoutGraph, NODE_DIMS } from "@/lib/layout";
+import { graphBounds, layoutGraph, layoutGraphPrint, NODE_DIMS } from "@/lib/layout";
 import { nodeTypes, type FlowNodeData, type StudioNode } from "./FlowNodes";
 
 import "@xyflow/react/dist/style.css";
@@ -101,7 +102,9 @@ function FlowInner({
 
   const [nodes, setNodes] = useState<StudioNode[]>(() => toNodes(graph, onRename));
   const [edges, setEdges] = useState<Edge[]>(() => toEdges(graph));
+  const [printContinue, setPrintContinue] = useState(false);
   const skipSync = useRef(false);
+  const printing = useRef(false);
   const { fitView, getViewport, setViewport } = useReactFlow();
 
   useEffect(() => {
@@ -109,38 +112,61 @@ function FlowInner({
       skipSync.current = false;
       return;
     }
+    if (printing.current) return;
     setNodes(toNodes(graph, onRename));
     setEdges(toEdges(graph));
   }, [graph, onRename]);
 
   useEffect(() => {
     let saved: { x: number; y: number; zoom: number } | null = null;
-    const refit = () => {
-      fitView({ padding: 0.16 });
-    };
-    const beforePrint = () => {
+    const PRINT_MIN_ZOOM = 0.38;
+    const applyPrintLayout = () => {
+      if (printing.current) {
+        fitView({ padding: 0.06, minZoom: PRINT_MIN_ZOOM, maxZoom: 1.05 });
+        return;
+      }
       saved = getViewport();
-      refit();
-      requestAnimationFrame(refit);
+      printing.current = true;
+      const laid = layoutGraphPrint(graph);
+      flushSync(() => {
+        skipSync.current = true;
+        setNodes(toNodes(laid, onRename));
+        setEdges(toEdges(laid));
+      });
+      fitView({ padding: 0.06, minZoom: PRINT_MIN_ZOOM, maxZoom: 1.05 });
+      requestAnimationFrame(() => {
+        fitView({ padding: 0.06, minZoom: PRINT_MIN_ZOOM, maxZoom: 1.05 });
+        const zoom = getViewport().zoom;
+        const bounds = graphBounds(laid);
+        setPrintContinue(zoom <= PRINT_MIN_ZOOM + 0.01 && bounds.width / bounds.height > 2.8);
+      });
     };
-    const afterPrint = () => {
+    const restoreScreenLayout = () => {
+      if (!printing.current) return;
+      printing.current = false;
+      flushSync(() => {
+        skipSync.current = true;
+        setNodes(toNodes(graph, onRename));
+        setEdges(toEdges(graph));
+        setPrintContinue(false);
+      });
       if (saved) setViewport(saved);
       saved = null;
     };
     const onPrintMq = (event: MediaQueryListEvent) => {
-      if (event.matches) beforePrint();
-      else afterPrint();
+      if (event.matches) applyPrintLayout();
+      else restoreScreenLayout();
     };
     const mq = window.matchMedia("print");
-    window.addEventListener("beforeprint", beforePrint);
-    window.addEventListener("afterprint", afterPrint);
+    window.addEventListener("beforeprint", applyPrintLayout);
+    window.addEventListener("afterprint", restoreScreenLayout);
     mq.addEventListener("change", onPrintMq);
     return () => {
-      window.removeEventListener("beforeprint", beforePrint);
-      window.removeEventListener("afterprint", afterPrint);
+      window.removeEventListener("beforeprint", applyPrintLayout);
+      window.removeEventListener("afterprint", restoreScreenLayout);
       mq.removeEventListener("change", onPrintMq);
     };
-  }, [fitView, getViewport, setViewport]);
+  }, [fitView, getViewport, graph, onRename, setViewport]);
 
   const push = useCallback(
     (nextNodes: StudioNode[], nextEdges: Edge[]) => {
@@ -240,13 +266,19 @@ function FlowInner({
           node.type === "start" || node.type === "decision" ? "#B0FF56" : "#3f3f46"
         }
       />
+      {printContinue ? (
+        <>
+          <div className="print-cont print-cont-start print-only hidden print:flex">← cont</div>
+          <div className="print-cont print-cont-end print-only hidden print:flex">cont →</div>
+        </>
+      ) : null}
     </ReactFlow>
   );
 }
 
 export function FlowCanvas(props: { graph: FlowGraph; onChange: (graph: FlowGraph) => void }) {
   return (
-    <div className="flowchart-canvas h-full min-h-[420px] w-full">
+    <div className="flowchart-canvas print-flow h-full min-h-[420px] w-full">
       <ReactFlowProvider>
         <FlowInner {...props} />
       </ReactFlowProvider>
