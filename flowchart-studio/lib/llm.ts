@@ -27,6 +27,8 @@ Rules:
 - "If we used X" / "If it was Y" / "If you plan to X" / "If you prefer Y" continues that branch — do not attach those sentences to the spine.
 - "decide how you prefer…" with following If-you alternatives is a diamond (e.g. "Milk or black?"), not a linear step.
 - Shared "Finally / Lastly" after both branches is a merge (same steps on both paths), not only one side.
+- Interrogative steps (“is/are/does/do/can/should …?”) are decisions, not steps — e.g. “Cash register loaded?”.
+- Bare “If yes” / “If no” / “Yes:” / “No:” are the two arms of the preceding question.
 - Every other node is kind "step" with a short imperative label.
 - Every node except end must have at least one outgoing edge.
 - Every node except start must have at least one incoming edge.
@@ -156,7 +158,7 @@ async function completeJson(system: string, user: string): Promise<unknown> {
 export async function generateGraphFromText(text: string): Promise<FlowGraph> {
   const payload = await completeJson(
     GRAPH_RULES,
-    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then/While/Once action and both sides of any decide/if/or branch (including “If we used X”, “If you plan to…”, “If you prefer…”, and a shared Finally join).\n\n${text}`,
+    `Turn this process description into a flowchart graph. Keep every First/Next/After/Then/While/Once action and both sides of any decide/if/or branch (including “If we used X”, “If you plan to…”, “If you prefer…”, interrogatives like “is it loaded?”, bare If yes/If no, and a shared Finally join).\n\n${text}`,
   );
   return graphFromModel(payload, "Untitled process");
 }
