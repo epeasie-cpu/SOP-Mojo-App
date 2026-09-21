@@ -67,10 +67,11 @@ function WrappedEditor({
           setEditing(true);
         }}
       >
-        <span className="block break-words whitespace-normal">
+        <span className="block break-words whitespace-normal print:hidden">
           {shown.preview}
           {shown.truncated ? "…" : ""}
         </span>
+        <span className="print-label hidden break-words whitespace-normal print:block">{label}</span>
       </button>
     );
   }
@@ -86,17 +87,22 @@ function WrappedEditor({
         setEditing(true);
       }}
     >
-      <span className="block text-sm font-medium leading-snug break-words whitespace-normal text-zinc-100">
-        {card.title}
-      </span>
-      {card.body ? (
-        <span className="mt-1 block text-xs leading-snug break-words whitespace-normal text-zinc-400">
-          {card.body}
-          {card.truncated ? "…" : ""}
+      <span className="print:hidden">
+        <span className="block text-sm font-medium leading-snug break-words whitespace-normal text-zinc-100">
+          {card.title}
         </span>
-      ) : card.truncated ? (
-        <span className="text-zinc-400">…</span>
-      ) : null}
+        {card.body ? (
+          <span className="mt-1 block text-xs leading-snug break-words whitespace-normal text-zinc-400">
+            {card.body}
+            {card.truncated ? "…" : ""}
+          </span>
+        ) : card.truncated ? (
+          <span className="text-zinc-400">…</span>
+        ) : null}
+      </span>
+      <span className="print-label hidden text-sm font-medium leading-snug break-words whitespace-normal print:block">
+        {label}
+      </span>
     </button>
   );
 }
@@ -109,7 +115,7 @@ function StartEndNode({
 }: NodeProps<StudioNode> & { kind: "start" | "end" }) {
   return (
     <div
-      className={`min-w-[140px] max-w-[200px] rounded-full border px-4 py-2 text-sm font-semibold shadow-lg ${
+      className={`flowchart-node min-w-[140px] max-w-[200px] rounded-full border px-4 py-2 text-sm font-semibold shadow-lg ${
         kind === "start"
           ? "border-lime bg-lime text-lime-ink"
           : "border-zinc-500 bg-zinc-800 text-zinc-100"
@@ -130,7 +136,7 @@ function StartEndNode({
 function StepNode({ id, data, selected }: NodeProps<StudioNode>) {
   return (
     <div
-      className={`w-[248px] rounded-md border border-zinc-600 bg-zinc-900 px-3 py-3 shadow-xl ${
+      className={`flowchart-node w-[248px] rounded-md border border-zinc-600 bg-zinc-900 px-3 py-3 shadow-xl ${
         selected ? "ring-2 ring-lime/70" : ""
       }`}
     >
@@ -146,7 +152,7 @@ function DecisionNode({ id, data, selected }: NodeProps<StudioNode>) {
   return (
     <div className={`relative h-[172px] w-[172px] ${selected ? "z-10" : ""}`}>
       <div
-        className={`absolute inset-4 rotate-45 rounded-sm border border-lime bg-zinc-900 shadow-xl ${
+        className={`flowchart-diamond absolute inset-4 rotate-45 rounded-sm border border-lime bg-zinc-900 shadow-xl ${
           selected ? "ring-2 ring-lime/70" : ""
         }`}
       />

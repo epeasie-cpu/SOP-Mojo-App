@@ -38,24 +38,131 @@ body {
   display: none;
 }
 
+/* Print: canvas + numbered steps only. Screen chrome stays in the GUI. */
 @media print {
-  .no-print,
-  header {
-    display: none !important;
+  @page {
+    size: portrait;
+    margin: 0.55in;
+  }
+
+  html,
+  body,
+  main,
+  #main,
+  .studio-shell {
+    background: white !important;
+    color: #18181b !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
   }
 
   body {
-    background: white;
-    color: #18181b;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .no-print,
+  header,
+  [role="dialog"],
+  .react-flow__controls,
+  .react-flow__minimap,
+  .react-flow__panel,
+  .react-flow__handle,
+  .react-flow__background,
+  .react-flow__attribution,
+  .react-flow__nodesselection,
+  .react-flow__selection,
+  .react-flow__resize-control {
+    display: none !important;
   }
 
   .print-only {
     display: block !important;
-    padding: 2rem;
+    padding: 0 0 0.75rem;
+    color: #18181b;
+  }
+
+  .print-only h1 {
+    color: #18181b;
+    margin: 0 0 0.75rem;
+  }
+
+  .studio-shell {
+    display: block !important;
+    background: white !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  .studio-workspace {
+    display: block !important;
+    background: white !important;
+    min-height: 0 !important;
+    height: auto !important;
+    overflow: visible !important;
   }
 
   .flowchart-canvas {
     break-inside: avoid;
-    height: 70vh !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: 58vh !important;
+    min-height: 0 !important;
+    background: white !important;
+    overflow: hidden !important;
+  }
+
+  .flowchart-canvas .react-flow,
+  .react-flow__renderer,
+  .react-flow__container,
+  .react-flow__pane,
+  .react-flow__viewport {
+    background: white !important;
+  }
+
+  .react-flow__node {
+    overflow: visible !important;
+  }
+
+  .flowchart-node,
+  .flowchart-diamond {
+    background: white !important;
+    color: #18181b !important;
+    box-shadow: none !important;
+    border-color: #3f3f46 !important;
+  }
+
+  .react-flow__node-start .flowchart-node {
+    background: #f4ffe6 !important;
+    color: #10140c !important;
+    border-color: #3f6b10 !important;
+  }
+
+  .flowchart-node *,
+  .react-flow__node-decision .text-lime,
+  .react-flow__node-decision .text-zinc-400 {
+    color: #18181b !important;
+  }
+
+  .react-flow__edge-path,
+  .react-flow__connection-path {
+    stroke: #18181b !important;
+  }
+
+  .react-flow__edge-text {
+    fill: #18181b !important;
+  }
+
+  .react-flow__edge-textbg {
+    fill: #fff !important;
+  }
+
+  .print-label {
+    overflow: visible !important;
+    white-space: normal !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
   }
 }
