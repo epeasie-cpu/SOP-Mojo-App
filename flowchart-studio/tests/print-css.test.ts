@@ -10,7 +10,7 @@ describe("print stylesheet", () => {
   it("hides studio chrome and React Flow widgets only in @media print", () => {
     const css = readStudio("app/globals.css");
     expect(css).toContain("@media print");
-    expect(css).toMatch(/@page\s*\{[^}]*size:\s*portrait/);
+    expect(css).toMatch(/@page\s*\{[^}]*size:\s*landscape/);
     expect(css).toContain(".no-print");
     expect(css).toContain(".react-flow__controls");
     expect(css).toContain(".react-flow__minimap");
@@ -20,7 +20,9 @@ describe("print stylesheet", () => {
     expect(css).toContain("[role=\"dialog\"]");
     expect(css).toContain("background: white");
     expect(css).toContain(".print-steps");
-    expect(css).toContain("8.5in");
+    expect(css).toContain("6.15in");
+    expect(css).toContain("page-break-inside: avoid");
+    expect(css).toContain(".print-cont");
     expect(css).toContain(".print-label");
   });
 
@@ -41,6 +43,8 @@ describe("print stylesheet", () => {
     expect(canvas).toContain("Tidy layout");
     expect(canvas).toContain("beforeprint");
     expect(canvas).toContain("fitView");
+    expect(canvas).toContain("layoutGraphPrint");
+    expect(canvas).toContain("cont →");
 
     const unlock = readStudio("components/UnlockModal.tsx");
     expect(unlock).toMatch(/UnlockHint[\s\S]*no-print|no-print[\s\S]*UnlockHint/);
