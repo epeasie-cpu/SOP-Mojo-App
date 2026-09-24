@@ -2,7 +2,7 @@
 
 import { toPng } from "html-to-image";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { canUsePremium, gateLabel, type PremiumAction } from "@/lib/entitlements";
 import { graphFilename } from "@/lib/export-to-builder";
 import { newId, type FlowGraph } from "@/lib/graph";
@@ -17,7 +17,8 @@ import {
   subscribePersist,
 } from "@/lib/persist";
 import { printInstructions } from "@/lib/print-instructions";
-import { ensurePrintPageStyle } from "@/lib/print-page";
+import { ensurePrintPageStyle, presentPrintPdf, printPdfFilename } from "@/lib/print-page";
+import { renderPrintPdf } from "@/lib/print-pdf";
 import { paginatePrintMap } from "@/lib/print-pages";
 import {
   readLibraryIdSnapshot,
@@ -94,6 +95,7 @@ export function StudioApp() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authPurpose, setAuthPurpose] = useState<"export" | "library">("library");
   const [resumeExport, setResumeExport] = useState(false);
+  const printing = useRef(false);
 
   useEffect(() => {
     ensurePrintPageStyle();
@@ -237,8 +239,28 @@ export function StudioApp() {
       return;
     }
     if (action === "print") {
-      ensurePrintPageStyle();
-      window.print();
+      if (printing.current) return;
+      printing.current = true;
+      // Open before the await so the tab is part of this click, not a blocked popup.
+      const preview = window.open("", "_blank");
+      setBusy(true);
+      setStatus("Preparing letter-landscape PDF…");
+      try {
+        const bytes = await renderPrintPdf(graph);
+        const filename = printPdfFilename(graph.title);
+        const mode = presentPrintPdf(bytes, filename, preview);
+        setStatus(
+          mode === "opened"
+            ? "Opened a letter-landscape PDF. Print or save that file — its pages are already landscape."
+            : "Downloaded a letter-landscape PDF.",
+        );
+      } catch (error) {
+        preview?.close();
+        setStatus(error instanceof Error ? error.message : "Could not build the PDF.");
+      } finally {
+        printing.current = false;
+        setBusy(false);
+      }
       return;
     }
     if (action === "export") {

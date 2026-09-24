@@ -51,8 +51,11 @@ describe("print stylesheet", () => {
     expect(app).toContain('className={`no-print ${');
     expect(app).toContain("print-only");
     expect(app).toContain("{graph.title}");
-    expect(app).toContain("window.print()");
-    expect(app.indexOf("ensurePrintPageStyle()")).toBeLessThan(app.indexOf("window.print()"));
+    expect(app).not.toContain("window.print()");
+    const printAction = app.slice(app.indexOf('action === "print"'), app.indexOf('action === "export"'));
+    expect(printAction.indexOf("window.open")).toBeLessThan(printAction.indexOf("await renderPrintPdf"));
+    expect(printAction).toContain("presentPrintPdf");
+    expect(printAction).not.toContain("window.print");
     expect(app).toContain("print-title");
     expect(app).toContain("print-steps");
     expect(app).toContain("print-instructions");
