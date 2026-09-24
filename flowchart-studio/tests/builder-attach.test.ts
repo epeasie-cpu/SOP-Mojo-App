@@ -65,8 +65,9 @@ describe("builder studio attach contract", () => {
   });
 
   it("calls Builder's /api/studio routes with the user bearer token", async () => {
-    const fetchMock = vi.fn(async (url: string) => {
-      if (String(url).endsWith("/attach")) {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.endsWith("/attach")) {
         return Response.json({
           stepId: "step_1",
           placement: "step",
@@ -74,7 +75,7 @@ describe("builder studio attach contract", () => {
           printable: { pages: 1 },
         });
       }
-      if (String(url).includes("/steps")) {
+      if (url.includes("/steps")) {
         return Response.json({ steps: [{ id: "step_1", title: "Inspect", number: 1 }] });
       }
       return Response.json({ sops: [{ id: "sop_1", title: "Shipping" }] });
