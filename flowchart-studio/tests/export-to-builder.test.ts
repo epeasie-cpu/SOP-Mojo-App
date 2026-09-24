@@ -3,6 +3,7 @@ import {
   BUILDER_IMPORT_FORMAT,
   builderPackageFilename,
   exportToBuilder,
+  exportToBuilderV1,
 } from "@/lib/export-to-builder";
 import { demoGraph } from "@/lib/template-graph";
 
@@ -32,6 +33,14 @@ describe("export to builder", () => {
     expect(builderPackageFilename(exportToBuilder(demoGraph()))).toBe(
       "client-onboarding-builder-import.json",
     );
+  });
+
+  it("publishes a v1 drop package for Builder URL fetch", () => {
+    const pkg = exportToBuilderV1(demoGraph(), "2026-09-19T00:00:00.000Z");
+    expect(pkg.version).toBe(1);
+    expect(pkg.format).toBe(BUILDER_IMPORT_FORMAT);
+    expect(pkg.steps.some((step) => step.kind === "decision")).toBe(true);
+    expect(pkg).not.toHaveProperty("attachments");
   });
 
   it("embeds an optional PNG for the Builder step image", () => {

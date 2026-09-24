@@ -21,9 +21,9 @@ export type BuilderStep = {
   next?: string;
 };
 
-export type BuilderImportPackage = {
+export type BuilderImportPackageV1 = {
   format: typeof BUILDER_IMPORT_FORMAT;
-  version: typeof BUILDER_IMPORT_VERSION;
+  version: 1;
   source: "flowchart-studio";
   host: string;
   generatedAt: string;
@@ -31,6 +31,10 @@ export type BuilderImportPackage = {
   purpose: string;
   steps: BuilderStep[];
   flowchart: FlowGraph;
+};
+
+export type BuilderImportPackage = Omit<BuilderImportPackageV1, "version"> & {
+  version: typeof BUILDER_IMPORT_VERSION;
   print: typeof BUILDER_BRIDGE_CONTRACT.print;
   attach: {
     target: "builder-step";
@@ -64,15 +68,10 @@ function instructionFor(node: FlowNode, outgoing: FlowEdge[], byId: Map<string, 
   return node.label;
 }
 
-/** Map a flowchart graph onto Builder-friendly SOP steps JSON. */
-export function exportToBuilder(
-  graph: FlowGraph,
-  generatedAt = new Date().toISOString(),
-  flowchartPng?: string,
-): BuilderImportPackage {
+function mappedSteps(graph: FlowGraph): BuilderStep[] {
   const byId = nodeById(graph);
   const ordered = orderedNodes(graph);
-  const steps: BuilderStep[] = ordered.map((node, index) => {
+  return ordered.map((node, index) => {
     const outgoing = edgesFrom(graph, node.id);
     const decision =
       node.kind === "decision"
@@ -97,24 +96,43 @@ export function exportToBuilder(
       next: primary ? (byId.get(primary.target)?.label ?? primary.target) : undefined,
     };
   });
+}
 
+function purposeFor(graph: FlowGraph): string {
   const listed = listableNodes(graph);
-  const purpose =
-    listed.length === 0
-      ? `Imported from ${SITE.name}`
-      : `Process with ${listed.length} mapped step${listed.length === 1 ? "" : "s"} from ${SITE.name}.`;
+  return listed.length === 0
+    ? `Imported from ${SITE.name}`
+    : `Process with ${listed.length} mapped step${listed.length === 1 ? "" : "s"} from ${SITE.name}.`;
+}
 
-  const imageFilename = `${slugify(graph.title)}-flowchart.png`;
+/** v1 package Builder Pro already receives on file-drop. */
+export function exportToBuilderV1(
+  graph: FlowGraph,
+  generatedAt = new Date().toISOString(),
+): BuilderImportPackageV1 {
   return {
     format: BUILDER_IMPORT_FORMAT,
-    version: BUILDER_IMPORT_VERSION,
+    version: 1,
     source: "flowchart-studio",
     host: SITE.host,
     generatedAt,
     title: graph.title,
-    purpose,
-    steps,
+    purpose: purposeFor(graph),
+    steps: mappedSteps(graph),
     flowchart: graph,
+  };
+}
+
+/** Map a flowchart graph onto Builder-friendly SOP steps JSON. */
+export function exportToBuilder(
+  graph: FlowGraph,
+  generatedAt = new Date().toISOString(),
+  flowchartPng?: string,
+): BuilderImportPackage {
+  const imageFilename = `${slugify(graph.title)}-flowchart.png`;
+  return {
+    ...exportToBuilderV1(graph, generatedAt),
+    version: BUILDER_IMPORT_VERSION,
     print: BUILDER_BRIDGE_CONTRACT.print,
     attach: {
       target: "builder-step",

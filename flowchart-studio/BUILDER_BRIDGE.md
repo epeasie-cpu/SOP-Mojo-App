@@ -1,31 +1,43 @@
 # Flowchart Studio → Builder Pro contract
 
-This repo owns the **export payload**, **PNG**, **send URL**, and **print CSS**. Builder (`mojo-sop-builder` / builder.sopmojo.com) owns ingest UI.
+This repo owns the **export payload**, **PNG**, **handoff URLs**, **send query**, and **print CSS**. Builder (`mojo-sop-builder` / builder.sopmojo.com) owns ingest UI (PR #3: drop JSON onto a step; landscape L→R print for attached maps).
 
 Canonical constants live in `lib/builder-bridge.ts`.
 
-## Send URL
+## Seamless Send URL
 
-`https://builder.sopmojo.com/?utm_source=flowchart-studio&utm_medium=product&utm_campaign=send_to_builder&import=flowchart&attach=step`
+`https://builder.sopmojo.com/?import=flowchart&attach=step&flowchartJson={url}&flowchartImage={url}&flowchartTitle={title}&step={n}`
 
-| Query | Value | Meaning |
+| Query | Required | Meaning |
 | --- | --- | --- |
-| `import` | `flowchart` | Incoming package is a Flowchart Studio export |
-| `attach` | `step` | Attach the flowchart image onto the **current / selected Builder SOP step** |
+| `import` | yes | `flowchart` |
+| `flowchartJson` | yes (Send) | URL of the **v1** `sop-builder-pro-import` package. CORS: `GET` from `https://builder.sopmojo.com` |
+| `flowchartImage` | when PNG exists | Preview / step-embed PNG URL. Same CORS |
+| `flowchartTitle` | recommended | Map title |
+| `step` | no | 1-based Builder SOP step to attach onto |
+| `attach` | no | `step` — attach onto a Builder step |
 
-## Files
+Handoff URLs are minted by `POST /api/handoff` and live ~30 minutes:
 
-| File | Pattern | Role |
-| --- | --- | --- |
-| JSON | `*-builder-import.json` | Full import package (download + optional drop) |
-| PNG | `*-flowchart.png` | Step embed image (`attach.imageRole = builder-step-embed`) |
+- `GET /api/handoff/{id}` → v1 JSON
+- `GET /api/handoff/{id}/image` → PNG
 
-## JSON package (`sop-builder-pro-import` v2)
+CORS headers:
+
+```
+Access-Control-Allow-Origin: https://builder.sopmojo.com
+Access-Control-Allow-Methods: GET, OPTIONS
+Access-Control-Allow-Headers: Content-Type
+```
+
+If the handoff POST fails, Send still downloads `*-builder-import.json` (+ PNG) so the user can drop the file onto a step.
+
+## v1 JSON package (`sop-builder-pro-import`)
 
 ```json
 {
   "format": "sop-builder-pro-import",
-  "version": 2,
+  "version": 1,
   "source": "flowchart-studio",
   "host": "https://flowchart.sopmojo.com",
   "generatedAt": "ISO-8601",
@@ -41,33 +53,11 @@ Canonical constants live in `lib/builder-bridge.ts`.
       "next": "Next step label"
     }
   ],
-  "flowchart": { "title": "…", "nodes": [], "edges": [] },
-  "print": {
-    "orientation": "landscape",
-    "page": "letter",
-    "flow": "LR",
-    "css": "@page { size: letter landscape; margin: 0.4in; }"
-  },
-  "attach": {
-    "target": "builder-step",
-    "imageRole": "builder-step-embed",
-    "imageFilename": "process-title-flowchart.png"
-  },
-  "attachments": {
-    "flowchartPng": "data:image/png;base64,…"
-  }
+  "flowchart": { "title": "…", "nodes": [], "edges": [] }
 }
 ```
 
-`attachments.flowchartPng` is present when the canvas PNG export succeeds. Always honor `attach.imageFilename` if the user also downloads a sidecar PNG.
-
-## Builder follow-up (other repo)
-
-1. On load, if `import=flowchart` and `attach=step`, open the step-attachment ingest.
-2. Accept a dropped / uploaded `*-builder-import.json`.
-3. Set the target SOP step image from `attachments.flowchartPng` or the sidecar PNG.
-4. Keep a copy of the JSON as a step attachment.
-5. When printing from Builder, reuse the same print contract: letter **landscape**, L→R, `@page { size: letter landscape; margin: 0.4in; }`. Do not re-paginate with portrait CSS.
+The optional v2 download adds `print`, `attach`, and `attachments.flowchartPng`. Builder should ignore unknown fields.
 
 ## Shared print parameters
 
@@ -77,3 +67,4 @@ Canonical constants live in `lib/builder-bridge.ts`.
 - Do not split a shape across pages; break mid-connector only
 - Continuation chips: `cont →` / `← cont`; rare reverse edge: `← backtrack`
 - Numbered write-up of steps on the first or last page
+- CSS: `@page { size: letter landscape; margin: 0.4in; }`

@@ -217,12 +217,49 @@ export function StudioApp() {
     try {
       flowchartPng = await capturePng();
     } catch {
-      setStatus("Builder JSON downloaded. PNG needs a larger canvas — try desktop.");
+      setStatus("Sending the map without a PNG preview — try desktop for the image.");
     }
-    const pkg = exportToBuilder(graph, new Date().toISOString(), flowchartPng);
-    downloadText(builderPackageFilename(pkg), JSON.stringify(pkg, null, 2));
-    if (flowchartPng) downloadDataUrl(pkg.attach.imageFilename, flowchartPng);
-    window.open(builderSendUrl(), "_blank", "noopener,noreferrer");
+    const stepParam =
+      typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("step")) : NaN;
+    const step = Number.isFinite(stepParam) && stepParam >= 1 ? Math.floor(stepParam) : undefined;
+    try {
+      const response = await fetch("/api/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          graph,
+          title: graph.title,
+          image: flowchartPng,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      const data = (await response.json()) as {
+        jsonUrl?: string;
+        imageUrl?: string;
+        title?: string;
+        error?: string;
+      };
+      if (!response.ok || !data.jsonUrl) {
+        throw new Error(data.error || "Could not publish the Builder handoff.");
+      }
+      window.open(
+        builderSendUrl({
+          flowchartJson: data.jsonUrl,
+          flowchartImage: data.imageUrl,
+          flowchartTitle: data.title || graph.title,
+          step,
+        }),
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return;
+    } catch {
+      const pkg = exportToBuilder(graph, new Date().toISOString(), flowchartPng);
+      downloadText(builderPackageFilename(pkg), JSON.stringify(pkg, null, 2));
+      if (flowchartPng) downloadDataUrl(pkg.attach.imageFilename, flowchartPng);
+      window.open(builderSendUrl({ flowchartTitle: graph.title, step }), "_blank", "noopener,noreferrer");
+      setStatus("Opened Builder. Drop the downloaded JSON onto a step if it does not attach automatically.");
+    }
   }
 
   return (

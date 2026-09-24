@@ -55,7 +55,7 @@ Create a Vercel project with **Root Directory** = `flowchart-studio`. Framework 
 
 ## Builder bridge
 
-`lib/export-to-builder.ts` maps the graph to Builder-friendly SOP steps JSON (`sop-builder-pro-import` v2) plus an optional PNG (`attachments.flowchartPng`). **Send to Builder Pro** (gated) downloads that import package, a sidecar `*-flowchart.png`, and opens Builder with `?import=flowchart&attach=step`.
+`lib/export-to-builder.ts` maps the graph to Builder-friendly SOP steps JSON. **Send to Builder Pro** (gated) publishes a short-lived CORS handoff (`/api/handoff/{id}`) and opens Builder with `?import=flowchart&flowchartJson=…&flowchartImage=…&flowchartTitle=…`. Optional `step` is a 1-based Builder SOP step. File-drop remains the fallback.
 
 Builder ingest lives in `mojo-sop-builder`. The exact contract is in [`BUILDER_BRIDGE.md`](./BUILDER_BRIDGE.md). Shared print: letter landscape, L→R, `@page { size: letter landscape; margin: 0.4in; }`.
 
