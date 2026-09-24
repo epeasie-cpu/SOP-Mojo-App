@@ -1,8 +1,26 @@
-import { NODE_DIMS, PRINT_MAP_MAX_WIDTH, graphBounds, layoutGraphPrint, shiftGraphToOrigin } from "./layout";
+import {
+  PRINT_EDGE_GUTTER,
+  PRINT_MAP_MAX_WIDTH,
+  graphBounds,
+  layoutGraphPrint,
+  measurePrintNode,
+  shiftGraphToOrigin,
+} from "./layout";
 import type { FlowEdge, FlowGraph, FlowNode } from "./graph";
 
-/** Graph-space width that fits one landscape sheet. Typical maps stay on one page. */
-export const PRINT_PAGE_GRAPH_WIDTH = PRINT_MAP_MAX_WIDTH;
+/**
+ * Graph-space width for one landscape sheet, leaving a gutter so an inbound
+ * line from the paper edge does not sit under the first shape.
+ */
+export const PRINT_PAGE_GRAPH_WIDTH = PRINT_MAP_MAX_WIDTH - PRINT_EDGE_GUTTER;
+
+export type PrintContinuationStub = {
+  nodeId: string;
+  /** Paper edge the line runs to (exit) or from (enter). */
+  side: "left" | "right";
+  /** exit: arrow ends on the paper edge. enter: arrow ends on the shape. */
+  role: "exit" | "enter";
+};
 
 export type PrintPageSlice = {
   index: number;
@@ -11,10 +29,11 @@ export type PrintPageSlice = {
   continueNext: boolean;
   continuePrev: boolean;
   backtrack: boolean;
+  continuations: PrintContinuationStub[];
 };
 
 function nodeRight(node: FlowNode): number {
-  return node.position.x + NODE_DIMS[node.kind].width;
+  return node.position.x + measurePrintNode(node).width;
 }
 
 function pageIndexFor(pages: FlowNode[][], id: string): number {
@@ -33,11 +52,12 @@ export function paginatePrintMap(graph: FlowGraph): PrintPageSlice[] {
         continueNext: false,
         continuePrev: false,
         backtrack: false,
+        continuations: [],
       },
     ];
   }
 
-  const bounds = graphBounds(laid);
+  const bounds = graphBounds(laid, measurePrintNode);
   if (bounds.width <= PRINT_PAGE_GRAPH_WIDTH) {
     return [
       {
@@ -47,6 +67,7 @@ export function paginatePrintMap(graph: FlowGraph): PrintPageSlice[] {
         continueNext: false,
         continuePrev: false,
         backtrack: false,
+        continuations: [],
       },
     ];
   }
@@ -69,7 +90,7 @@ export function paginatePrintMap(graph: FlowGraph): PrintPageSlice[] {
   }
   if (current.length) buckets.push(current);
 
-  const globalY = graphBounds(laid).minY;
+  const globalY = graphBounds(laid, measurePrintNode).minY;
 
   return buckets.map((pageNodes, index) => {
     const ids = new Set(pageNodes.map((node) => node.id));
@@ -83,24 +104,36 @@ export function paginatePrintMap(graph: FlowGraph): PrintPageSlice[] {
       edges: laid.edges.filter((edge) => ids.has(edge.source) && ids.has(edge.target)),
     };
 
-    let continueNext = false;
-    let continuePrev = false;
-    let backtrack = false;
+    const continuations: PrintContinuationStub[] = [];
+    const seen = new Set<string>();
+    const add = (stub: PrintContinuationStub) => {
+      const key = `${stub.role}:${stub.side}:${stub.nodeId}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      continuations.push(stub);
+    };
+
     for (const edge of laid.edges) {
       const from = pageIndexFor(buckets, edge.source);
       const to = pageIndexFor(buckets, edge.target);
-      if (from === index && to > index) continueNext = true;
-      if (to === index && from < index) continuePrev = true;
-      if (from === index && to >= 0 && to < index) backtrack = true;
+      if (from < 0 || to < 0 || from === to) continue;
+      if (to > from) {
+        if (from === index) add({ nodeId: edge.source, side: "right", role: "exit" });
+        if (to === index) add({ nodeId: edge.target, side: "left", role: "enter" });
+      } else {
+        if (from === index) add({ nodeId: edge.source, side: "left", role: "exit" });
+        if (to === index) add({ nodeId: edge.target, side: "right", role: "enter" });
+      }
     }
 
     return {
       index,
       total: buckets.length,
       graph: shifted,
-      continueNext,
-      continuePrev,
-      backtrack,
+      continueNext: continuations.some((stub) => stub.role === "exit" && stub.side === "right"),
+      continuePrev: continuations.some((stub) => stub.role === "enter" && stub.side === "left"),
+      backtrack: continuations.some((stub) => stub.role === "exit" && stub.side === "left"),
+      continuations,
     };
   });
 }

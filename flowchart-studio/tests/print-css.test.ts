@@ -29,7 +29,13 @@ describe("print stylesheet", () => {
     expect(css).toContain("justify-content: center");
     expect(css).toContain("overflow: hidden");
     expect(css).toContain("page-break-inside: avoid");
-    expect(css).toContain(".print-cont");
+    expect(css).toContain(".print-continue-line");
+    expect(css).toContain(".print-continue-arrow-right");
+    expect(css).toContain(".print-continue-arrow-left");
+    expect(css).not.toMatch(/\.print-cont(?:\s|\{|-)/);
+    expect(css).not.toContain("cont →");
+    expect(css).toMatch(/\.print-map-node\s*\{[^}]*padding:\s*2px/);
+    expect(css).toMatch(/\.print-map-label\s*\{[^}]*font-size:\s*9px/);
     expect(css).toMatch(/\.flowchart-canvas[\s\S]*display:\s*none/);
   });
 
@@ -44,9 +50,12 @@ describe("print stylesheet", () => {
     expect(app).toContain("print-sheet");
     expect(app).toContain("paginatePrintMap");
     expect(app).toContain("listableNodes");
-    expect(app).toContain("← backtrack");
+    expect(app).not.toContain("← backtrack");
+    expect(app).not.toContain("cont →");
+    expect(app).not.toContain("← cont");
+    expect(app).not.toContain("print-cont");
     expect(app).toContain("data-continue-next");
-    expect(app).toContain('data-print-cont="next"');
+    expect(app).toContain("continuations={page.continuations}");
     expect(app).toContain("<PrintMap");
     expect(app).toContain("studio-workspace no-print");
     expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<PrintMap"));
@@ -60,7 +69,8 @@ describe("print stylesheet", () => {
     expect(canvas).toContain("beforeprint");
     expect(canvas).toContain("fitView");
     expect(canvas).toContain("layoutGraphPrint");
-    expect(canvas).toContain("cont →");
+    expect(canvas).not.toContain("cont →");
+    expect(canvas).not.toContain("print-cont");
 
     const unlock = readStudio("components/UnlockModal.tsx");
     expect(unlock).toMatch(/UnlockHint[\s\S]*no-print|no-print[\s\S]*UnlockHint/);

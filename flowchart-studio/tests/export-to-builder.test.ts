@@ -15,6 +15,7 @@ describe("export to builder", () => {
     expect(pkg.version).toBe(2);
     expect(pkg.print.orientation).toBe("landscape");
     expect(pkg.print.flow).toBe("LR");
+    expect(pkg.print.continuation).toBe("edge-arrow");
     expect(pkg.attach.target).toBe("builder-step");
     expect(pkg.attach.imageRole).toBe("builder-step-embed");
     expect(pkg.attach.imageFilename).toBe("client-onboarding-flowchart.png");

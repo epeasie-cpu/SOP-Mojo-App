@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { coerceGraph } from "@/lib/graph";
-import { PRINT_MAP_MAX_HEIGHT, PRINT_MAP_MAX_WIDTH, printMapBox, shiftGraphToOrigin } from "@/lib/layout";
-import { printEdgePath } from "@/lib/print-map";
+import {
+  measurePrintNode,
+  NODE_DIMS,
+  PRINT_EDGE_GUTTER,
+  PRINT_MAP_MAX_HEIGHT,
+  PRINT_MAP_MAX_WIDTH,
+  printMapBox,
+  shiftGraphToOrigin,
+} from "@/lib/layout";
+import { continuationDraw, printEdgePath } from "@/lib/print-map";
 import { demoGraph } from "@/lib/template-graph";
 
 describe("print map pagination box", () => {
@@ -37,5 +45,36 @@ describe("print map pagination box", () => {
     const path = printEdgePath(box.graph, no!.id);
     expect(path).toBeTruthy();
     expect(path).toMatch(/^M /);
+  });
+
+  it("sizes a short step far below the on-screen card", () => {
+    const box = measurePrintNode({ kind: "step", label: "Complete initial build" });
+    expect(box.width).toBeLessThan(180);
+    expect(box.height).toBeLessThan(50);
+    expect(box.width * box.height).toBeLessThan(NODE_DIMS.step.width * NODE_DIMS.step.height * 0.35);
+  });
+
+  it("runs a forward continuation to the right edge and in from the left", () => {
+    const node = {
+      id: "s1",
+      kind: "step" as const,
+      label: "Sign routing ticket",
+      position: { x: 0, y: 0 },
+    };
+    const dim = measurePrintNode(node);
+    const exit = continuationDraw(node, { nodeId: "s1", role: "exit", side: "right" }, 0, 1);
+    expect(exit.nodeX).toBe(dim.width);
+    expect(exit.y).toBe(dim.height / 2);
+    expect(exit.side).toBe("right");
+
+    const enter = continuationDraw(
+      node,
+      { nodeId: "s1", role: "enter", side: "left" },
+      PRINT_EDGE_GUTTER,
+      1,
+    );
+    expect(enter.nodeX).toBe(PRINT_EDGE_GUTTER);
+    expect(enter.side).toBe("left");
+    expect(enter.y).toBe(exit.y);
   });
 });

@@ -323,21 +323,12 @@ export function StudioApp() {
             </div>
           ) : null}
           <div className="print-map-wrap">
-            {page.backtrack ? (
-              <div className="print-cont print-cont-start" data-print-cont="backtrack">
-                ← backtrack
-              </div>
-            ) : page.continuePrev ? (
-              <div className="print-cont print-cont-start" data-print-cont="prev">
-                ← cont
-              </div>
-            ) : null}
-            <PrintMap graph={page.graph} alreadyLaid />
-            {page.continueNext ? (
-              <div className="print-cont print-cont-end" data-print-cont="next">
-                cont →
-              </div>
-            ) : null}
+            <PrintMap
+              graph={page.graph}
+              alreadyLaid
+              continuations={page.continuations}
+              pageKey={String(page.index)}
+            />
             {page.total > 1 ? (
               <p className="print-page-num">
                 Page {page.index + 1} of {page.total}
