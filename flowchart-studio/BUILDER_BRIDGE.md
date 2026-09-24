@@ -65,6 +65,7 @@ The optional v2 download adds `print`, `attach`, and `attachments.flowchartPng`.
 - Margin: 0.4in
 - Flow: left → right happy path; No branches drop down
 - Do not split a shape across pages; break mid-connector only
-- Continuation chips: `cont →` / `← cont`; rare reverse edge: `← backtrack`
+- Continuation: a flow line leaves the last shape and runs to the right paper edge, ending in an arrowhead. The next page brings a line in from the left edge into the first shape. A rare backtrack uses the opposite edge the same way. No Cont / backtrack pills.
+- Print boxes hug their labels (smaller padding, type, and minimum size than the on-screen cards).
 - Numbered write-up of steps on the first or last page
 - CSS: `@page { size: letter landscape; margin: 0.4in; }`

@@ -35,6 +35,7 @@ export const BUILDER_BRIDGE_CONTRACT = {
     orientation: "landscape" as const,
     page: "letter",
     flow: "LR",
+    continuation: "edge-arrow" as const,
     css: "@page { size: letter landscape; margin: 0.4in; }",
   },
 } as const;

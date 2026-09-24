@@ -143,33 +143,35 @@ body {
     margin: 0;
   }
 
-  .print-cont {
+  /* Page break is a line to the paper edge, not a Cont pill. */
+  .print-continue-line {
     position: absolute;
-    top: 50%;
-    z-index: 5;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #3f3f46;
-    border-radius: 999px;
-    background: #fff;
-    color: #18181b;
-    font-size: 9pt;
-    font-weight: 600;
-    padding: 0.12rem 0.45rem;
+    z-index: 4;
+    height: 0;
+    border-top: 1.75px solid #18181b;
     transform: translateY(-50%);
+    pointer-events: none;
   }
 
-  .print-sheet .print-cont {
-    display: flex !important;
+  .print-continue-arrow {
+    position: absolute;
+    z-index: 4;
+    width: 0;
+    height: 0;
+    transform: translateY(-50%);
+    pointer-events: none;
   }
 
-  .print-cont-start {
-    left: 0.15in;
+  .print-continue-arrow-right {
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-left: 9px solid #18181b;
   }
 
-  .print-cont-end {
-    right: 0.15in;
+  .print-continue-arrow-left {
+    border-top: 4px solid transparent;
+    border-bottom: 4px solid transparent;
+    border-right: 9px solid #18181b;
   }
 
   .studio-shell,
@@ -185,6 +187,7 @@ body {
   /* Live React Flow canvas is no-print; this map is normal-flow so it starts on page 1. */
   .print-map-wrap {
     position: relative;
+    width: 100%;
     break-inside: avoid;
     page-break-inside: avoid;
     break-before: avoid;
@@ -193,6 +196,7 @@ body {
 
   .print-map {
     position: relative;
+    width: 100%;
     overflow: hidden;
     max-width: 100%;
     break-inside: avoid;
@@ -216,7 +220,7 @@ body {
     overflow: hidden;
     break-inside: avoid;
     page-break-inside: avoid;
-    padding: 0.35rem 0.45rem;
+    padding: 2px 7px;
     border: 1px solid #3f3f46;
     background: #fff;
     color: #18181b;
@@ -248,7 +252,7 @@ body {
     align-items: center;
     justify-content: center;
     text-align: center;
-    padding: 1.4rem 1.1rem;
+    padding: 8px 6px;
   }
 
   .print-map-diamond {
@@ -259,21 +263,12 @@ body {
     transform: rotate(45deg);
   }
 
-  .print-map-kind {
-    position: relative;
-    margin: 0;
-    font-size: 8px;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #52525b;
-  }
-
   .print-map-label {
     position: relative;
-    margin: 0.15rem 0 0;
-    font-size: 11px;
+    margin: 0;
+    font-size: 9px;
     font-weight: 600;
-    line-height: 1.25;
+    line-height: 1.2;
     overflow-wrap: break-word;
     word-break: normal;
   }
@@ -281,7 +276,7 @@ body {
   .print-map-yes,
   .print-map-no {
     position: absolute;
-    font-size: 9px;
+    font-size: 7px;
     font-weight: 700;
   }
 

@@ -1,10 +1,11 @@
 import type { FlowGraph, FlowNode } from "./graph";
-import { NODE_DIMS } from "./layout";
+import { measurePrintNode } from "./layout";
+import type { PrintContinuationStub } from "./print-pages";
 
 type Point = { x: number; y: number };
 
 function box(node: FlowNode) {
-  const dim = NODE_DIMS[node.kind];
+  const dim = measurePrintNode(node);
   return { x: node.position.x, y: node.position.y, w: dim.width, h: dim.height };
 }
 
@@ -41,4 +42,33 @@ export function printEdgePath(graph: FlowGraph, edgeId: string): string | null {
   }
   const midX = from.x + Math.max(radius, (to.x - from.x) / 2);
   return `M ${from.x} ${from.y} L ${midX} ${from.y} L ${midX} ${to.y} L ${to.x} ${to.y}`;
+}
+
+export type ContinuationDraw = {
+  nodeId: string;
+  role: PrintContinuationStub["role"];
+  side: PrintContinuationStub["side"];
+  /** Vertical center of the shape, in CSS pixels. */
+  y: number;
+  /** Shape edge the line touches, in CSS pixels. */
+  nodeX: number;
+};
+
+/** Where a page-break line meets its shape. The other end is the paper edge. */
+export function continuationDraw(
+  node: FlowNode,
+  stub: PrintContinuationStub,
+  gutterPx: number,
+  scale: number,
+): ContinuationDraw {
+  const dim = measurePrintNode(node);
+  const left = gutterPx + node.position.x * scale;
+  const right = left + dim.width * scale;
+  return {
+    nodeId: node.id,
+    role: stub.role,
+    side: stub.side,
+    y: (node.position.y + dim.height / 2) * scale,
+    nodeX: stub.side === "left" ? left : right,
+  };
 }

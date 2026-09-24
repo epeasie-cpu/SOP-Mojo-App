@@ -20,7 +20,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { newId, type FlowGraph } from "@/lib/graph";
-import { graphBounds, layoutGraph, layoutGraphPrint, NODE_DIMS } from "@/lib/layout";
+import { layoutGraph, layoutGraphPrint, NODE_DIMS } from "@/lib/layout";
 import { nodeTypes, type FlowNodeData, type StudioNode } from "./FlowNodes";
 
 import "@xyflow/react/dist/style.css";
@@ -102,7 +102,6 @@ function FlowInner({
 
   const [nodes, setNodes] = useState<StudioNode[]>(() => toNodes(graph, onRename));
   const [edges, setEdges] = useState<Edge[]>(() => toEdges(graph));
-  const [printContinue, setPrintContinue] = useState(false);
   const skipSync = useRef(false);
   const printing = useRef(false);
   const { fitView, getViewport, setViewport } = useReactFlow();
@@ -136,9 +135,6 @@ function FlowInner({
       fitView({ padding: 0.06, minZoom: PRINT_MIN_ZOOM, maxZoom: 1.05 });
       requestAnimationFrame(() => {
         fitView({ padding: 0.06, minZoom: PRINT_MIN_ZOOM, maxZoom: 1.05 });
-        const zoom = getViewport().zoom;
-        const bounds = graphBounds(laid);
-        setPrintContinue(zoom <= PRINT_MIN_ZOOM + 0.01 && bounds.width / bounds.height > 2.8);
       });
     };
     const restoreScreenLayout = () => {
@@ -148,7 +144,6 @@ function FlowInner({
         skipSync.current = true;
         setNodes(toNodes(graph, onRename));
         setEdges(toEdges(graph));
-        setPrintContinue(false);
       });
       if (saved) setViewport(saved);
       saved = null;
@@ -266,12 +261,6 @@ function FlowInner({
           node.type === "start" || node.type === "decision" ? "#B0FF56" : "#3f3f46"
         }
       />
-      {printContinue ? (
-        <>
-          <div className="print-cont print-cont-start print-only hidden print:flex">← cont</div>
-          <div className="print-cont print-cont-end print-only hidden print:flex">cont →</div>
-        </>
-      ) : null}
     </ReactFlow>
   );
 }
