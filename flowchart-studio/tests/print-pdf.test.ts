@@ -13,6 +13,7 @@ import {
   renderPrintPdf,
 } from "@/lib/print-pdf";
 import { paginatePrintMap } from "@/lib/print-pages";
+import { printPdfFilename } from "@/lib/print-page";
 import { demoGraph } from "@/lib/template-graph";
 
 function wideChain(steps: number) {
@@ -44,6 +45,7 @@ describe("print pdf", () => {
     expect(PDF_PAGE_WIDTH).toBe(792);
     expect(PDF_PAGE_HEIGHT).toBe(612);
     expect(PDF_PAGE_WIDTH).toBeGreaterThan(PDF_PAGE_HEIGHT);
+    expect(printPdfFilename("Client onboarding")).toBe("client-onboarding-flowchart.pdf");
     expect(PDF_MARGIN).toBeCloseTo(0.4 * 72);
     expect(plan.every((page) => page.stepsHeight === 0)).toBe(true);
     expect(plan[0].blockOffset).toBeGreaterThan(12);
