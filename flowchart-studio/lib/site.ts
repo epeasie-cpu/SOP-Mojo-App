@@ -65,6 +65,10 @@ export type BuilderSendParams = {
   step?: number;
 };
 
+/**
+ * @deprecated Auto-spawn Send URL. Export uses the wizard and attach API.
+ * Kept so older docs and tests can still describe the query shape.
+ */
 export function builderSendUrl(opts: BuilderSendParams = {}): string {
   const params = new URLSearchParams({
     utm_source: "flowchart-studio",

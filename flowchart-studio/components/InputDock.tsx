@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { foldSpeechResults, speechResultsFromEvent } from "@/lib/voice";
 
 type SpeechRecognitionResultLike = { isFinal?: boolean } & ArrayLike<{ transcript?: string }>;
@@ -64,8 +64,11 @@ export function InputDock({
   const wantListenRef = useRef(false);
   const baselineRef = useRef("");
   const committedRef = useRef("");
-  const snapRef = useRef<HTMLInputElement>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const cameraFallbackRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
 
   function talk() {
     const Ctor = getSpeechRecognition();
@@ -116,10 +119,63 @@ export function InputDock({
     setListening(true);
   }
 
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || !cameraStream) return;
+    video.srcObject = cameraStream;
+    void video.play().catch(() => undefined);
+    return () => {
+      cameraStream.getTracks().forEach((track) => track.stop());
+    };
+  }, [cameraStream]);
+
+  useEffect(() => {
+    if (!sheetOpen) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setSheetOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [sheetOpen]);
+
   async function onFile(file: File | undefined) {
     if (!file) return;
     const dataUrl = await fileToDataUrl(file);
     onPhoto(dataUrl);
+  }
+
+  async function takePhoto() {
+    setSheetOpen(false);
+    if (!navigator.mediaDevices?.getUserMedia) {
+      cameraFallbackRef.current?.click();
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: { facingMode: { ideal: "environment" } },
+      });
+      setCameraStream(stream);
+    } catch {
+      cameraFallbackRef.current?.click();
+    }
+  }
+
+  function shutter() {
+    const video = videoRef.current;
+    if (!video) return;
+    const max = 1600;
+    const width = video.videoWidth || 1280;
+    const height = video.videoHeight || 720;
+    const scale = Math.min(1, max / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(width * scale));
+    canvas.height = Math.max(1, Math.round(height * scale));
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    setCameraStream(null);
+    onPhoto(canvas.toDataURL("image/jpeg", 0.82));
   }
 
   return (
@@ -148,7 +204,7 @@ export function InputDock({
       >
         Map it
       </button>
-      <div className="mt-2 grid grid-cols-3 gap-2">
+      <div className="relative mt-2 grid grid-cols-2 gap-2">
         <button
           type="button"
           disabled={busy}
@@ -164,22 +220,41 @@ export function InputDock({
         <button
           type="button"
           disabled={busy}
-          onClick={() => snapRef.current?.click()}
+          aria-expanded={sheetOpen}
+          aria-haspopup="dialog"
+          onClick={() => setSheetOpen((open) => !open)}
           className="rounded-sm border border-zinc-700 px-2 py-2 text-xs font-semibold text-zinc-200 hover:border-lime"
         >
-          Snap photo
+          Photo
         </button>
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => uploadRef.current?.click()}
-          className="rounded-sm border border-zinc-700 px-2 py-2 text-xs font-semibold text-zinc-200 hover:border-lime"
-        >
-          Upload photo
-        </button>
+        {sheetOpen ? (
+          <div
+            role="dialog"
+            aria-label="Photo"
+            className="no-print absolute top-full right-0 z-20 mt-1 w-44 rounded-md border border-zinc-700 bg-zinc-900 p-1.5 shadow-xl"
+          >
+            <button
+              type="button"
+              className="block w-full rounded-sm px-2 py-2 text-left text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
+              onClick={() => void takePhoto()}
+            >
+              Take Photo
+            </button>
+            <button
+              type="button"
+              className="mt-1 block w-full rounded-sm px-2 py-2 text-left text-xs font-semibold text-zinc-100 hover:bg-zinc-800"
+              onClick={() => {
+                setSheetOpen(false);
+                uploadRef.current?.click();
+              }}
+            >
+              Add Photo
+            </button>
+          </div>
+        ) : null}
       </div>
       <input
-        ref={snapRef}
+        ref={cameraFallbackRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -200,9 +275,38 @@ export function InputDock({
         }}
       />
       <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
-        Snap opens the camera. Upload picks a photo from files. Voice uses the browser Web Speech
+        Photo can take a picture or add one from your library. Voice uses the browser Web Speech
         API and keeps one live transcript.
       </p>
+      {cameraStream ? (
+        <div
+          className="no-print fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Take Photo"
+        >
+          <div className="w-full max-w-lg rounded-lg border border-zinc-700 bg-zinc-950 p-4">
+            <h3 className="text-sm font-semibold text-zinc-100">Take Photo</h3>
+            <video ref={videoRef} playsInline muted className="mt-3 aspect-video w-full rounded-md bg-black" />
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                onClick={shutter}
+                className="rounded-sm bg-lime px-3 py-2 text-xs font-semibold text-lime-ink"
+              >
+                Use photo
+              </button>
+              <button
+                type="button"
+                onClick={() => setCameraStream(null)}
+                className="rounded-sm border border-zinc-700 px-3 py-2 text-xs text-zinc-300"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

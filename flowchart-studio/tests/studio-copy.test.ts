@@ -41,7 +41,8 @@ describe("studio copy", () => {
     const source = readStudio("components/Toolbar.tsx");
     expect(source).toContain("Print");
     expect(source).toContain("Export");
-    expect(source).toContain("Send to Builder Pro");
+    expect(source).toContain("Export to Builder Pro");
+    expect(source).toContain("Sign in");
     expect(source).toContain("UNLOCK_COPY.headline");
   });
 

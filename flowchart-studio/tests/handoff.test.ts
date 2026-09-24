@@ -42,14 +42,12 @@ describe("builder handoff", () => {
     expect(headers["Access-Control-Allow-Methods"]).toContain("GET");
   });
 
-  it("wires Send to publish handoff URLs instead of relying on drop", () => {
+  it("exports through the wizard instead of the auto-spawn handoff link", () => {
     const app = readFileSync(path.join(process.cwd(), "components/StudioApp.tsx"), "utf8");
-    expect(app).toContain('fetch("/api/handoff"');
-    expect(app).toContain("flowchartJson");
-    expect(app).toContain("flowchartImage");
-    expect(app).toContain("flowchartTitle");
-    const jsonRoute = readFileSync(path.join(process.cwd(), "app/api/handoff/[id]/route.ts"), "utf8");
-    expect(jsonRoute).toContain("corsHeaders");
-    expect(jsonRoute).toContain("OPTIONS");
+    expect(app).toContain("<ExportWizard");
+    expect(app).toContain("saveLibraryMap");
+    expect(app).not.toContain('fetch("/api/handoff"');
+    expect(app).not.toContain("builderSendUrl");
+    expect(app).not.toContain("flowchartJson");
   });
 });
