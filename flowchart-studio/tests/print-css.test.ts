@@ -27,6 +27,7 @@ describe("print stylesheet", () => {
     expect(css).toContain(".print-sheet-last");
     expect(css).toContain("min-height: 7.4in");
     expect(css).toContain("justify-content: center");
+    expect(css).toContain("overflow: hidden");
     expect(css).toContain("page-break-inside: avoid");
     expect(css).toContain(".print-cont");
     expect(css).toMatch(/\.flowchart-canvas[\s\S]*display:\s*none/);

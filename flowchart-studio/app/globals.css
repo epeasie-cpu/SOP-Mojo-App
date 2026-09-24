@@ -108,6 +108,8 @@ body {
     break-after: page;
     break-inside: avoid;
     page-break-inside: avoid;
+    position: relative;
+    overflow: hidden;
   }
 
   .print-sheet-last {
