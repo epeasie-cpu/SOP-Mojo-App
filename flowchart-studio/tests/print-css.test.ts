@@ -44,6 +44,8 @@ describe("print stylesheet", () => {
     expect(app).toContain("paginatePrintMap");
     expect(app).toContain("listableNodes");
     expect(app).toContain("← backtrack");
+    expect(app).toContain("data-continue-next");
+    expect(app).toContain('data-print-cont="next"');
     expect(app).toContain("<PrintMap");
     expect(app).toContain("studio-workspace no-print");
     expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<PrintMap"));

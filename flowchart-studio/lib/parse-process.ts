@@ -152,6 +152,18 @@ function parseInterrogative(sentence: string): ParsedDecision | null {
 }
 
 function parseDecision(sentence: string): ParsedDecision | null {
+  const askOr = sentence.match(
+    /\bask(?:ing)?\s+if\s+(?:they |you |we )?(?:want |would like |prefer )?(.+?)\s+or\s+(.+?)(?:[.?!]|$)/i,
+  );
+  if (askOr) {
+    return {
+      question: toQuestion(askOr[1], askOr[2]),
+      yesKey: shortKey(askOr[1]),
+      noKey: shortKey(askOr[2]),
+      yesSteps: [],
+      noSteps: [],
+    };
+  }
   const match = sentence.match(
     /decid(?:e|ing)(?:\s+if|\s+whether)?(?:\s+we(?:'ll| will)?|\s+to)?\s+(.+?)\s+or\s+(.+?)(?:[.?!]|$)/i,
   );
@@ -233,6 +245,7 @@ function parseIf(sentence: string): { condition: string; actions: string[] } | n
     /^if you (?:want to |would like to |choose to )?([^,]+),\s+(.+)/i,
     /^if we ([^,]+),\s+(.+)/i,
     /^if (?:the |it )([^,]+),\s+(.+)/i,
+    /^if\s+([^,]+?),\s+(.+)/i,
   ];
   for (const pattern of patterns) {
     const match = trimmed.match(pattern);

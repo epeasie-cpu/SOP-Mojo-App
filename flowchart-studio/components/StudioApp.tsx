@@ -274,6 +274,11 @@ export function StudioApp() {
         <section
           key={`print-sheet-${page.index}`}
           className={`print-only print-sheet${page.index === page.total - 1 ? " print-sheet-last" : ""} hidden print:flex`}
+          data-print-page={page.index + 1}
+          data-print-total={page.total}
+          data-continue-next={page.continueNext ? "1" : "0"}
+          data-continue-prev={page.continuePrev ? "1" : "0"}
+          data-backtrack={page.backtrack ? "1" : "0"}
         >
           {page.index === 0 ? (
             <div className="print-title">
@@ -282,12 +287,20 @@ export function StudioApp() {
           ) : null}
           <div className="print-map-wrap">
             {page.backtrack ? (
-              <div className="print-cont print-cont-start">← backtrack</div>
+              <div className="print-cont print-cont-start" data-print-cont="backtrack">
+                ← backtrack
+              </div>
             ) : page.continuePrev ? (
-              <div className="print-cont print-cont-start">← cont</div>
+              <div className="print-cont print-cont-start" data-print-cont="prev">
+                ← cont
+              </div>
             ) : null}
             <PrintMap graph={page.graph} alreadyLaid />
-            {page.continueNext ? <div className="print-cont print-cont-end">cont →</div> : null}
+            {page.continueNext ? (
+              <div className="print-cont print-cont-end" data-print-cont="next">
+                cont →
+              </div>
+            ) : null}
             {page.total > 1 ? (
               <p className="print-page-num">
                 Page {page.index + 1} of {page.total}
