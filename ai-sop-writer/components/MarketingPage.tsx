@@ -30,7 +30,7 @@ export function MarketingPage({
       {entry.path === "/use-cases" ? (
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {useCases.map((item) => (
-            <li key={item.path} className="rounded-lg border border-line bg-white p-5">
+            <li key={item.path} className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
               <h2 className="font-display text-xl font-semibold">
                 <Link href={item.path} className="hover:underline">
                   {item.heading}
@@ -44,11 +44,11 @@ export function MarketingPage({
       {entry.path === "/vs/sop-builder-pro" ? <ComparisonTable /> : null}
       {entry.howTo ? (
         <section className="mt-12">
-          <h2 className="font-display text-2xl font-semibold">Step-by-step</h2>
+          <h2 className="font-display text-2xl font-semibold text-zinc-50">Step-by-step</h2>
           <ol className="mt-4 space-y-4">
             {entry.howTo.steps.map((step, index) => (
-              <li key={step.name} className="rounded-lg border border-line bg-white p-4">
-                <p className="text-xs font-semibold tracking-wide text-forest uppercase">
+              <li key={step.name} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
+                <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">
                   Step {index + 1}
                 </p>
                 <p className="mt-1 font-semibold">{step.name}</p>
@@ -60,7 +60,7 @@ export function MarketingPage({
       ) : null}
       {entry.faqs?.length ? (
         <section className="mt-12">
-          <h2 className="font-display text-2xl font-semibold">FAQ</h2>
+          <h2 className="font-display text-2xl font-semibold text-zinc-50">FAQ</h2>
           <div className="mt-4">
             <FaqList faqs={entry.faqs} />
           </div>
@@ -85,7 +85,7 @@ function ComparisonTable() {
     <section className="mt-12 overflow-x-auto">
       <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
         <thead>
-          <tr className="border-b border-line bg-white">
+          <tr className="border-b border-zinc-800 bg-zinc-900 text-zinc-100">
             <th className="p-3"> </th>
             <th className="p-3">AI SOP Writer</th>
             <th className="p-3">SOP Builder Pro</th>
@@ -93,9 +93,9 @@ function ComparisonTable() {
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={row[0]} className="border-b border-line align-top">
-              {row.map((cell) => (
-                <td key={cell} className="p-3">
+            <tr key={row[0]} className="border-b border-zinc-800 align-top text-zinc-300">
+              {row.map((cell, index) => (
+                <td key={cell} className={index === 0 ? "p-3 font-medium text-zinc-100" : "p-3"}>
                   {cell}
                 </td>
               ))}

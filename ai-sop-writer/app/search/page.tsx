@@ -26,19 +26,19 @@ export default async function SearchPage({ searchParams }: PageProps<"/search">)
             name="q"
             defaultValue={q}
             placeholder="onboarding, housekeeping, template…"
-            className="mt-1 w-full rounded-md border border-line bg-white px-3 py-2"
+            className="mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-lime"
           />
         </label>
         <button
           type="submit"
-          className="mt-3 rounded-sm bg-forest px-4 py-2 text-sm text-white"
+          className="mt-3 rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
         >
           Search
         </button>
       </form>
-      <ul className="mt-8 space-y-4">
+      <ul className="mt-8 space-y-3">
         {results.map((item) => (
-          <li key={item.path} className="rounded-lg border border-line bg-white p-4">
+          <li key={item.path} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
             <Link href={item.path} className="font-semibold hover:underline">
               {item.heading}
             </Link>

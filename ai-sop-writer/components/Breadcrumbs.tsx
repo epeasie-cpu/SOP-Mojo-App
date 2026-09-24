@@ -15,7 +15,7 @@ export function Breadcrumbs({ path }: { path: string }) {
             <li key={crumb.path} className="flex items-center gap-1">
               {index > 0 ? <span aria-hidden="true">/</span> : null}
               {last ? (
-                <span className="text-ink">{label}</span>
+                <span className="text-zinc-100">{label}</span>
               ) : (
                 <Link href={crumb.path} className="underline-offset-2 hover:underline">
                   {label}

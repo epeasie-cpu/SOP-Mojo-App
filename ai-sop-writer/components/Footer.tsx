@@ -1,17 +1,18 @@
 import Link from "next/link";
 import { indexedContent } from "@/lib/content";
 import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
+import { Logo } from "./Logo";
 
 export function Footer() {
   const pages = indexedContent().filter((entry) => entry.type !== "use-case");
   const useCases = indexedContent().filter((entry) => entry.type === "use-case");
   return (
-    <footer className="no-print mt-auto border-t border-line bg-forest text-white">
-      <div className="mx-auto grid max-w-6xl gap-10 px-4 py-12 sm:px-6 md:grid-cols-4">
+    <footer className="no-print mt-auto border-t border-zinc-800 bg-zinc-950 text-zinc-300">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
         <div className="md:col-span-1">
-          <p className="font-display text-xl font-semibold">AI SOP Writer</p>
-          <p className="mt-2 text-sm text-white/70">{SITE.tagline}</p>
-          <p className="mt-4 text-sm text-white/70">
+          <Logo />
+          <p className="mt-3 text-sm text-zinc-400">{SITE.tagline}</p>
+          <p className="mt-3 text-sm text-zinc-500">
             A {SITE.parentName} product. SOP means standard operating procedure.
           </p>
           <p className="mt-4 text-sm">
@@ -22,7 +23,7 @@ export function Footer() {
         </div>
         <div>
           <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Product</p>
-          <ul className="mt-3 space-y-2 text-sm text-white/80">
+          <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             {pages.map((entry) => (
               <li key={entry.path}>
                 <Link href={entry.path} className="hover:text-lime">
@@ -34,7 +35,7 @@ export function Footer() {
         </div>
         <div>
           <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Use cases</p>
-          <ul className="mt-3 space-y-2 text-sm text-white/80">
+          <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             {useCases.map((entry) => (
               <li key={entry.path}>
                 <Link href={entry.path} className="hover:text-lime">
@@ -46,7 +47,7 @@ export function Footer() {
         </div>
         <div>
           <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">SOP Mojo</p>
-          <ul className="mt-3 space-y-2 text-sm text-white/80">
+          <ul className="mt-3 space-y-2 text-sm text-zinc-400">
             <li>
               <a href={SITE.parent} className="hover:text-lime">
                 {hostLabel(SITE.parent)}
@@ -80,8 +81,8 @@ export function Footer() {
           </ul>
         </div>
       </div>
-      <div className="border-t border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-white/50 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+      <div className="border-t border-zinc-800">
+        <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-4 text-xs text-zinc-500 sm:flex-row sm:items-center sm:justify-between sm:px-6">
           <p>
             © 2026 SOP Mojo. AI SOP Writer on {hostLabel(SITE.host)}.
           </p>

@@ -21,10 +21,10 @@ export function PageHeader({ entry }: { entry: ContentEntry }) {
   return (
     <header className="mb-10">
       <Breadcrumbs path={entry.path} />
-      <p className="mt-6 text-xs font-semibold tracking-[0.16em] text-forest uppercase">
+      <p className="mt-6 text-xs font-semibold tracking-[0.18em] text-lime uppercase">
         AI SOP Writer
       </p>
-      <h1 className="font-display mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-ink sm:text-5xl">
+      <h1 className="font-display mt-2 max-w-3xl text-4xl font-semibold tracking-tight text-zinc-50 sm:text-5xl">
         {entry.heading}
       </h1>
     </header>

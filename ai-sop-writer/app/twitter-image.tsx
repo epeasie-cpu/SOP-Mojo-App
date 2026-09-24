@@ -14,17 +14,17 @@ export default function TwitterImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#10140c",
-          color: "#f6f4ec",
+          background: "#09090b",
+          color: "#f4f4f5",
           padding: "64px",
         }}
       >
-        <div style={{ display: "flex", color: "#c6ff4a", fontSize: 28, fontWeight: 800 }}>
+        <div style={{ display: "flex", color: "#B0FF56", fontSize: 28, fontWeight: 800 }}>
           SOP MOJO
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
           <div style={{ fontSize: 72, fontWeight: 700 }}>AI SOP Writer</div>
-          <div style={{ marginTop: 16, fontSize: 28, color: "#c6ff4a" }}>
+          <div style={{ marginTop: 16, fontSize: 28, color: "#B0FF56" }}>
             First-draft standard operating procedures
           </div>
         </div>
