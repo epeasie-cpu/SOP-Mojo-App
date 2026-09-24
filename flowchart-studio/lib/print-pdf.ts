@@ -1,6 +1,19 @@
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
-import { listableNodes, type FlowGraph, type FlowNode } from "./graph";
+import type { FlowGraph, FlowNode } from "./graph";
 import { measurePrintNode, PRINT_EDGE_GUTTER, scalePrintGraph } from "./layout";
+import {
+  INSTRUCTION_FIRST_HEADER_PT,
+  INSTRUCTION_FONT_PT,
+  INSTRUCTION_GAP_PT,
+  INSTRUCTION_INDENT_PT,
+  INSTRUCTION_LEADING_PT,
+  INSTRUCTION_MEASURE_PT,
+  INSTRUCTION_NEXT_HEADER_PT,
+  paginateInstructionSheets,
+  printInstructions,
+  wrapInstructionText,
+  type InstructionSheet,
+} from "./print-instructions";
 import { continuationDraw, printEdgePath } from "./print-map";
 import { paginatePrintMap, type PrintContinuationStub } from "./print-pages";
 
@@ -31,6 +44,7 @@ export type PrintPdfPagePlan = {
   blockOffset: number;
   mapHeight: number;
   titleHeight: number;
+  /** Diagram sheets no longer reserve space for the written-step appendix. */
   stepsHeight: number;
   pageNumberHeight: number;
   continuations: PrintContinuationStub[];
@@ -38,12 +52,6 @@ export type PrintPdfPagePlan = {
 
 function pdfSafe(text: string): string {
   return text.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-function stepsHeight(graph: FlowGraph): number {
-  const items = listableNodes(graph);
-  if (!items.length) return 0;
-  return 0.12 * PT_PER_IN + Math.ceil(items.length / 2) * 14;
 }
 
 /** Page plan shared with the on-screen print sheets (paginate + scale). */
@@ -54,15 +62,14 @@ export function planPrintPdf(graph: FlowGraph): PrintPdfPagePlan[] {
     const titleHeight = slice.index === 0 ? 16 * 1.2 + 0.12 * PT_PER_IN : 0;
     const mapHeight = px(scaled.height);
     const pageNumberHeight = slice.total > 1 ? 8 + 0.08 * PT_PER_IN : 0;
-    const stepBlock = slice.index === slice.total - 1 ? stepsHeight(graph) : 0;
-    const block = titleHeight + mapHeight + pageNumberHeight + stepBlock;
+    const block = titleHeight + mapHeight + pageNumberHeight;
     return {
       index: slice.index,
       total: slice.total,
       blockOffset: Math.max(0, (PDF_SHEET_HEIGHT - block) / 2),
       mapHeight,
       titleHeight,
-      stepsHeight: stepBlock,
+      stepsHeight: 0,
       pageNumberHeight,
       continuations: slice.continuations,
     };
@@ -184,9 +191,103 @@ function drawShape(
   });
 }
 
+/** Written steps on their own letter-landscape pages after the diagram. */
+export function buildInstructionSheets(graph: FlowGraph, font: PDFFont): InstructionSheet[] {
+  const items = printInstructions(graph).flatMap((item) => {
+    const text = pdfSafe(item.text);
+    return text ? [{ ...item, text }] : [];
+  });
+  const maxWidth = INSTRUCTION_MEASURE_PT - INSTRUCTION_INDENT_PT;
+  return paginateInstructionSheets(
+    items,
+    (text) =>
+      wrapInstructionText(text, maxWidth, (line) => font.widthOfTextAtSize(line, INSTRUCTION_FONT_PT)),
+    PDF_PAGE_HEIGHT - PDF_MARGIN * 2,
+  );
+}
+
+function drawInstructionSheet(
+  page: PDFPage,
+  font: PDFFont,
+  bold: PDFFont,
+  title: string,
+  sheet: InstructionSheet,
+  yAt: (fromSheetTop: number) => number,
+) {
+  const contentRight = PDF_PAGE_WIDTH - PDF_MARGIN;
+  const contentHeight = PDF_PAGE_HEIGHT - PDF_MARGIN * 2;
+  let cursor = sheet.index === 0 ? INSTRUCTION_FIRST_HEADER_PT : INSTRUCTION_NEXT_HEADER_PT;
+
+  if (sheet.index === 0) {
+    page.drawText("Instructions", {
+      x: PDF_MARGIN,
+      y: yAt(18),
+      size: 16,
+      font: bold,
+      color: INK,
+    });
+    const sub = pdfSafe(title);
+    if (sub) {
+      page.drawText(sub, {
+        x: PDF_MARGIN,
+        y: yAt(40),
+        size: 10,
+        font,
+        color: MUTED,
+      });
+    }
+  } else {
+    page.drawText("Instructions", {
+      x: PDF_MARGIN,
+      y: yAt(14),
+      size: 11,
+      font: bold,
+      color: INK,
+    });
+  }
+
+  const textX = PDF_MARGIN + INSTRUCTION_INDENT_PT;
+  for (const fragment of sheet.fragments) {
+    fragment.lines.forEach((line, lineIndex) => {
+      const baseline = cursor + INSTRUCTION_FONT_PT;
+      if (lineIndex === 0 && !fragment.continued) {
+        page.drawText(`${fragment.number}.`, {
+          x: PDF_MARGIN,
+          y: yAt(baseline),
+          size: INSTRUCTION_FONT_PT,
+          font,
+          color: INK,
+        });
+      }
+      page.drawText(line, {
+        x: textX,
+        y: yAt(baseline),
+        size: INSTRUCTION_FONT_PT,
+        font,
+        color: INK,
+      });
+      cursor += INSTRUCTION_LEADING_PT;
+    });
+    cursor += INSTRUCTION_GAP_PT;
+  }
+
+  if (sheet.total > 1) {
+    const label = `Instructions ${sheet.index + 1} of ${sheet.total}`;
+    const width = font.widthOfTextAtSize(label, 8);
+    page.drawText(label, {
+      x: contentRight - width,
+      y: yAt(contentHeight - 2),
+      size: 8,
+      font,
+      color: MUTED,
+    });
+  }
+}
+
 /**
  * Letter-landscape PDF of the same pages the studio prints:
- * dense boxes, edge-arrow continuation, content centered on the sheet.
+ * dense boxes, edge-arrow continuation, diagram centered on its sheets,
+ * then written steps on their own pages when the map has step text.
  */
 export async function renderPrintPdf(graph: FlowGraph): Promise<Uint8Array> {
   const pdf = await PDFDocument.create();
@@ -337,33 +438,19 @@ export async function renderPrintPdf(graph: FlowGraph): Promise<Uint8Array> {
       });
     }
 
-    if (slice.index === slice.total - 1) {
-      const items = listableNodes(graph);
-      const colWidth = (PDF_PAGE_WIDTH - PDF_MARGIN * 2 - 16) / 2;
-      const stepsTop = mapTop + plan.mapHeight + plan.pageNumberHeight + 0.12 * PT_PER_IN;
-      items.forEach((node, itemIndex) => {
-        const branches = graph.edges
-          .filter((edge) => edge.source === node.id && edge.label)
-          .map((edge) => String(edge.label));
-        let text = node.label;
-        if (node.kind === "decision") {
-          text = `Decision: ${node.label}`;
-          if (branches.length) text += ` (${branches.join(" / ")})`;
-        }
-        const line = pdfSafe(text).slice(0, 110);
-        if (!line) return;
-        const col = itemIndex % 2;
-        const row = Math.floor(itemIndex / 2);
-        page.drawText(line, {
-          x: PDF_MARGIN + col * (colWidth + 16),
-          y: yAt(stepsTop + row * 14 + 10),
-          size: 10,
-          font,
-          color: INK,
-        });
-      });
-    }
   });
+
+  for (const sheet of buildInstructionSheets(graph, font)) {
+    const page = pdf.addPage([PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT]);
+    page.drawRectangle({
+      x: 0,
+      y: 0,
+      width: PDF_PAGE_WIDTH,
+      height: PDF_PAGE_HEIGHT,
+      color: WHITE,
+    });
+    drawInstructionSheet(page, font, bold, graph.title, sheet, yAt);
+  }
 
   return pdf.save();
 }

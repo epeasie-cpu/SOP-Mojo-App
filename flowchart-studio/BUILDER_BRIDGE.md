@@ -42,7 +42,7 @@ Upsert with the user JWT:
 
 List and delete use the same user JWT (`GET` / `DELETE` on that table). RLS returns only the caller's rows.
 
-The PDF is not stored in the row. Studio builds it with `lib/print-pdf.ts` (same pagination as print: letter landscape, 0.4in margin, dense boxes, edge-arrow continuation, vertically centered) and sends it on attach.
+The PDF is not stored in the row. Studio builds it with `lib/print-pdf.ts` (same pagination as print: letter landscape 11×8.5in, 0.4in margin, dense boxes, edge-arrow continuation, diagram sheets vertically centered, then written steps on their own pages when the map has step text) and sends it on attach.
 
 ## Export wizard
 
@@ -111,7 +111,8 @@ That query used a short-lived handoff and auto-created a step. Export no longer 
 - Flow: left → right; No branches drop down
 - Continuation: edge arrow to the paper edge. No Cont / backtrack pills.
 - Dense print boxes
-- Sheet content centered vertically
-- Numbered steps on the last page
-- CSS: `@page { size: letter landscape; margin: 0.4in; }`
-- PDF generator: `lib/print-pdf.ts`
+- Diagram sheet content centered vertically
+- Written steps, when the map has step text, follow on their own letter-landscape pages (not on the diagram)
+- Studio print CSS and PDF page box: `@page { size: 11in 8.5in; margin: 0.4in; }`
+- PDF generator: `lib/print-pdf.ts` (Flowchart Studio only)
+- Builder Pro’s `/flowchart/print` screen lives in `mojo-sop-builder` and is a separate copy. This PR does not change it. The export package `print.css` token in `lib/builder-bridge.ts` is unchanged.

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Fraunces, Geist } from "next/font/google";
 import Script from "next/script";
 import { Header } from "@/components/Header";
+import { PRINT_PAGE_RULE } from "@/lib/print-page";
 import { SAMCART_SLIDE_SCRIPT, SITE } from "@/lib/site";
 import "./globals.css";
 
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           {children}
         </main>
         <Script src={SAMCART_SLIDE_SCRIPT} strategy="afterInteractive" />
+        <style>{PRINT_PAGE_RULE}</style>
       </body>
     </html>
   );

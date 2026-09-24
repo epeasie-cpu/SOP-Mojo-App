@@ -2,10 +2,10 @@
 
 import { toPng } from "html-to-image";
 import dynamic from "next/dynamic";
-import { useCallback, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { canUsePremium, gateLabel, type PremiumAction } from "@/lib/entitlements";
 import { graphFilename } from "@/lib/export-to-builder";
-import { listableNodes, newId, type FlowGraph } from "@/lib/graph";
+import { newId, type FlowGraph } from "@/lib/graph";
 import { saveLibraryMap } from "@/lib/library-client";
 import {
   persistGraph,
@@ -16,6 +16,8 @@ import {
   serverUnlockSnapshot,
   subscribePersist,
 } from "@/lib/persist";
+import { printInstructions } from "@/lib/print-instructions";
+import { ensurePrintPageStyle } from "@/lib/print-page";
 import { paginatePrintMap } from "@/lib/print-pages";
 import {
   readLibraryIdSnapshot,
@@ -92,6 +94,12 @@ export function StudioApp() {
   const [authOpen, setAuthOpen] = useState(false);
   const [authPurpose, setAuthPurpose] = useState<"export" | "library">("library");
   const [resumeExport, setResumeExport] = useState(false);
+
+  useEffect(() => {
+    ensurePrintPageStyle();
+    window.addEventListener("beforeprint", ensurePrintPageStyle);
+    return () => window.removeEventListener("beforeprint", ensurePrintPageStyle);
+  }, []);
 
   const rememberMap = useCallback((id: string | null) => {
     writeLibraryId(id);
@@ -229,7 +237,7 @@ export function StudioApp() {
       return;
     }
     if (action === "print") {
-      // Orientation comes from top-level @page { size: letter landscape } in globals.css.
+      ensurePrintPageStyle();
       window.print();
       return;
     }
@@ -266,6 +274,8 @@ export function StudioApp() {
       setBusy(false);
     }
   }
+
+  const instructions = printInstructions(graph);
 
   return (
     <div className="studio-shell flex min-h-0 flex-1 flex-col bg-zinc-950">
@@ -350,28 +360,22 @@ export function StudioApp() {
               </p>
             ) : null}
           </div>
-          {page.index === page.total - 1 ? (
-            <section className="print-steps">
-              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">
-                {listableNodes(graph).map((node) => {
-                  const branches = graph.edges
-                    .filter((edge) => edge.source === node.id && edge.label)
-                    .map((edge) => String(edge.label));
-                  return (
-                    <li key={node.id}>
-                      <strong>{node.kind === "decision" ? "Decision: " : ""}</strong>
-                      {node.label}
-                      {node.kind === "decision" && branches.length ? (
-                        <span>{` (${branches.join(" / ")})`}</span>
-                      ) : null}
-                    </li>
-                  );
-                })}
-              </ol>
-            </section>
-          ) : null}
         </section>
       ))}
+      {instructions.length > 0 ? (
+        <section
+          className="print-only print-instructions hidden print:block"
+          data-print-instructions="1"
+        >
+          <h2 className="print-instructions-heading font-display">Instructions</h2>
+          {graph.title.trim() ? <p className="print-instructions-sub">{graph.title}</p> : null}
+          <ol className="print-steps">
+            {instructions.map((item) => (
+              <li key={item.id}>{item.text}</li>
+            ))}
+          </ol>
+        </section>
+      ) : null}
 
       <div className="studio-workspace no-print flex min-h-0 flex-1">
         <aside
