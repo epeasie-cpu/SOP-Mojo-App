@@ -64,10 +64,13 @@ export function clearSession(): void {
   emit();
 }
 
+const FLOWCHART_MAP_ID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function readLibraryId(): string | null {
   if (typeof window === "undefined") return null;
   const id = window.localStorage.getItem(LIBRARY_ID_KEY);
-  return id && /^map_[A-Za-z0-9_-]{4,80}$/.test(id) ? id : null;
+  return id && FLOWCHART_MAP_ID.test(id) ? id : null;
 }
 
 export function readLibraryIdSnapshot(): string | null {
@@ -76,7 +79,7 @@ export function readLibraryIdSnapshot(): string | null {
 
 export function writeLibraryId(id: string | null): void {
   if (typeof window === "undefined") return;
-  if (id && /^map_[A-Za-z0-9_-]{4,80}$/.test(id)) {
+  if (id && FLOWCHART_MAP_ID.test(id)) {
     window.localStorage.setItem(LIBRARY_ID_KEY, id);
   } else {
     window.localStorage.removeItem(LIBRARY_ID_KEY);

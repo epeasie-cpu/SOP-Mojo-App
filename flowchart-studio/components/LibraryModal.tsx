@@ -8,7 +8,7 @@ import {
   loadLibraryMap,
   saveLibraryMap,
 } from "@/lib/library-client";
-import type { LibrarySummary } from "@/lib/library-types";
+import type { FlowchartMapSummary } from "@/lib/flowchart-maps";
 import { clearSession, type ClientSession } from "@/lib/session";
 
 export function LibraryModal({
@@ -62,7 +62,7 @@ function LibraryModalBody({
   onSaved: (id: string | null) => void;
   onSignOut: () => void;
 }) {
-  const [maps, setMaps] = useState<LibrarySummary[]>([]);
+  const [maps, setMaps] = useState<FlowchartMapSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -152,9 +152,7 @@ function LibraryModalBody({
                 className="min-w-0 flex-1 text-left"
               >
                 <span className="block truncate text-sm text-zinc-100">{map.title}</span>
-                <span className="block text-[11px] text-zinc-500">
-                  {map.nodeCount} nodes · {map.updatedAt.slice(0, 10)}
-                </span>
+                <span className="block text-[11px] text-zinc-500">{map.nodeCount} nodes</span>
               </button>
               <button
                 type="button"

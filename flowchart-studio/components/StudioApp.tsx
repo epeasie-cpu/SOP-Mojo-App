@@ -451,7 +451,7 @@ export function StudioApp() {
         open={wizardOpen}
         session={session}
         flowchartId={libraryId}
-        title={graph.title}
+        graph={graph}
         onClose={() => setWizardOpen(false)}
       />
     </div>

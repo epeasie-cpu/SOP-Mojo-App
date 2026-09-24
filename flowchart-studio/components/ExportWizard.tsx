@@ -9,23 +9,26 @@ import {
   listBuilderSteps,
   OWN_STEP_ID,
   uint8ToBase64,
+  type BuilderAttachResult,
   type BuilderSopSummary,
   type BuilderStepSummary,
 } from "@/lib/builder-client";
-import { fetchLibraryPdf } from "@/lib/library-client";
+import { flowchartPurpose } from "@/lib/flowchart-maps";
+import type { FlowGraph } from "@/lib/graph";
+import { renderPrintPdf } from "@/lib/print-pdf";
 import type { ClientSession } from "@/lib/session";
 
 export function ExportWizard({
   open,
   session,
   flowchartId,
-  title,
+  graph,
   onClose,
 }: {
   open: boolean;
   session: ClientSession | null;
   flowchartId: string | null;
-  title: string;
+  graph: FlowGraph;
   onClose: () => void;
 }) {
   if (!open || !session) return null;
@@ -33,7 +36,7 @@ export function ExportWizard({
     <ExportWizardBody
       session={session}
       flowchartId={flowchartId}
-      title={title}
+      graph={graph}
       onClose={onClose}
     />
   );
@@ -42,12 +45,12 @@ export function ExportWizard({
 function ExportWizardBody({
   session,
   flowchartId,
-  title,
+  graph,
   onClose,
 }: {
   session: ClientSession;
   flowchartId: string | null;
-  title: string;
+  graph: FlowGraph;
   onClose: () => void;
 }) {
   const [sops, setSops] = useState<BuilderSopSummary[]>([]);
@@ -56,7 +59,7 @@ function ExportWizardBody({
   const [loading, setLoading] = useState(true);
   const [attaching, setAttaching] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [done, setDone] = useState(false);
+  const [done, setDone] = useState<BuilderAttachResult | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -99,18 +102,20 @@ function ExportWizardBody({
     setAttaching(true);
     setError(null);
     try {
-      const pdf = await fetchLibraryPdf(session, flowchartId);
-      await attachFlowchart(
+      const pdf = await renderPrintPdf(graph);
+      const result = await attachFlowchart(
         session.accessToken,
         attachPayload({
           sopId,
           stepId,
           flowchartId,
-          title,
+          title: graph.title,
+          purpose: flowchartPurpose(graph),
+          graph,
           pdfBase64: uint8ToBase64(pdf),
         }),
       );
-      setDone(true);
+      setDone(result);
     } catch (reason) {
       setError(messageFrom(reason));
     } finally {
@@ -141,7 +146,12 @@ function ExportWizardBody({
               ? "Which step would you like to add it to?"
               : "Which SOP would you like to export this to?"}
         </p>
-        <p className="mt-1 text-xs text-zinc-500">{title}</p>
+        <p className="mt-1 text-xs text-zinc-500">{graph.title}</p>
+        {done ? (
+          <p className="mt-2 text-xs text-zinc-400">
+            {done.placement === "own" ? "Its Own Step" : "Existing step"} · {done.pdfUrl}
+          </p>
+        ) : null}
         {error ? <p className="mt-3 text-sm text-amber-200">{error}</p> : null}
         <div className="mt-4 min-h-0 flex-1 space-y-2 overflow-y-auto">
           {loading ? <p className="text-sm text-zinc-500">Loading…</p> : null}

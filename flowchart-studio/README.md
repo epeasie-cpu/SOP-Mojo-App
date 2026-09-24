@@ -44,28 +44,23 @@ npm run lint
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` (vision: `claude-sonnet-4-5`) |
 | `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Flowchart+ / optional $19 SamCart Slide Checkout. Defaults to `https://rpease1.mysamcart.com/checkout/flowchart-studio` |
 | `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Primary CTA. Defaults to `https://rpease1.mysamcart.com/checkout/sop-builder-pro` |
-| `NEXT_PUBLIC_SUPABASE_URL` | For sign-in | Builder Pro Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For sign-in | Builder Pro anon key (browser sign-in) |
-| `SUPABASE_URL` | For library | Same project URL if you prefer a server-only name |
-| `SUPABASE_ANON_KEY` | For library | Same anon key, used to verify access tokens |
-| `SUPABASE_SERVICE_ROLE_KEY` | Production library | Writes `flowchart_maps`. Required in production |
-| `BUILDER_ORIGIN` | No | Attach proxy target. Defaults to `https://builder.sopmojo.com` |
+| `NEXT_PUBLIC_SUPABASE_URL` | For sign-in and map save | Builder Pro Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For sign-in and map save | Anon key. Writes use the user access token, not the service role |
+| `NEXT_PUBLIC_BUILDER_ORIGIN` | No | Builder origin for `/api/studio/*`. Defaults to `https://builder.sopmojo.com` |
 
-Never hardcode API keys. Unlock state is a `localStorage` flag (`flowchart-studio-unlocked`). Append `?unlock=1` or `?unlock=builder-pro` to mark this browser unlocked. Export and library save also require the shared Builder account.
+Never hardcode API keys. Unlock state is a `localStorage` flag (`flowchart-studio-unlocked`). Append `?unlock=1` or `?unlock=builder-pro` to mark this browser unlocked. Export and library save also require the shared Builder account. Apply Builder's `database/migrations/20260924_flowchart_library_and_placement.sql` on that Supabase project before saves.
 
 Copy: **Unlock with Builder Pro · $39/mo** (optional $19 unlock is secondary)
 
 ## Vercel
 
-Create a Vercel project with **Root Directory** = `flowchart-studio`. Framework preset: Next.js. Attach the env vars above. Intended production host: `flowchart.sopmojo.com`. Apply `supabase/0001_flowchart_maps.sql` on the Builder Supabase project before production library saves.
+Create a Vercel project with **Root Directory** = `flowchart-studio`. Framework preset: Next.js. Attach the env vars above. Intended production host: `flowchart.sopmojo.com`.
 
 ## Builder bridge
 
-**Export to Builder Pro** (gated) asks you to sign in, saves the canvas on that user (`/api/library`), then opens a wizard: pick an SOP, then a step or **Its Own Step**. Studio posts `sopId`, `placement` (`own-step` or `existing-step`), `flowchartId`, and the print PDF to Builder's attach API. The PDF uses the same letter-landscape, edge-arrow, dense-box pipeline as Print.
+**Export to Builder Pro** (gated) asks you to sign in, upserts the canvas into `public.flowchart_maps` with that user's Supabase token, then opens a wizard: pick an SOP, then a step or **Its Own Step**. Studio posts to `https://builder.sopmojo.com/api/studio/attach` with `placement` `own` or `step`, the flowchart id, and a PDF from the print pipeline. Builder returns `stepId`, `placement`, `pdfUrl`, and a printable payload.
 
-Builder lists this user's maps with `GET /api/library` and the same bearer token. The exact contract is in [`BUILDER_BRIDGE.md`](./BUILDER_BRIDGE.md).
-
-The old `?import=flowchart&flowchartJson=…` auto-spawn link is deprecated and is not the export button.
+The old `?import=flowchart&flowchartJson=…` auto-spawn link is deprecated and is not the export button. The contract is in [`BUILDER_BRIDGE.md`](./BUILDER_BRIDGE.md).
 
 ## Stack
 

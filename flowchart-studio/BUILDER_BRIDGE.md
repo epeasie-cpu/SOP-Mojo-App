@@ -1,91 +1,96 @@
 # Flowchart Studio → Builder Pro contract
 
-Studio owns the map library, the printable PDF, and the export wizard. Builder (`mojo-sop-builder` / builder.sopmojo.com) owns SOP and step records. Both sides use the **same Supabase user**.
+This matches Builder PR #5 (`cursor/flowchart-attach-pdf-f782`). Studio could not read that private repo from this environment, so the shapes below follow the contract named on that PR: table `public.flowchart_maps`, and `/api/studio/*`.
 
 Canonical constants live in `lib/builder-bridge.ts`.
 
 ## Auth
 
-Every library and Builder call sends:
+Sign in against Builder's Supabase project (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`).
+
+Every Builder call and every map write sends:
 
 ```
 Authorization: Bearer <Supabase access token>
 ```
 
-Studio signs in against Builder's project (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`). The server checks that token with `GET {SUPABASE_URL}/auth/v1/user`.
+PostgREST also sends `apikey: <anon key>`. Studio does **not** use the service role. RLS is `user_id = auth.uid()`, so the write sets `user_id` to that user.
 
-Maps are stored in `public.flowchart_maps` (see `supabase/0001_flowchart_maps.sql`) when `SUPABASE_SERVICE_ROLE_KEY` is set. Row level security matches `auth.uid()::text = user_id`, so Builder can also read the table with the user JWT. The HTTP API below is the supported contract.
+Unauthenticated export or save opens the sign-in prompt.
 
-Unauthenticated export or save opens the sign-in prompt. It does not publish a map.
+## Persistence
 
-## Library API (Builder reads this)
+Table: `public.flowchart_maps`
 
-Base: `https://flowchart.sopmojo.com`
+Builder migration: `database/migrations/20260924_flowchart_library_and_placement.sql`
 
-CORS allows `https://builder.sopmojo.com` with `Authorization` and `Content-Type`.
+Upsert with the user JWT:
 
-| Method | Path | Body | Response |
-| --- | --- | --- | --- |
-| `GET` | `/api/library` | — | `{ maps: LibrarySummary[] }` newest first |
-| `POST` | `/api/library` | `{ graph, id? }` | `{ map: LibraryMap }` |
-| `GET` | `/api/library/{id}` | — | `{ map: LibraryMap }` |
-| `PUT` | `/api/library/{id}` | `{ graph }` | `{ map: LibraryMap }` |
-| `DELETE` | `/api/library/{id}` | — | `204` |
-| `GET` | `/api/library/{id}/pdf` | — | `application/pdf` |
+`POST {SUPABASE_URL}/rest/v1/flowchart_maps?on_conflict=id`
 
-`LibrarySummary`: `id`, `title`, `createdAt`, `updatedAt`, `nodeCount`, `pdfUrl`, `url`.
+`Prefer: resolution=merge-duplicates,return=representation`
 
-`LibraryMap` adds `graph` (`title`, `nodes`, `edges`).
+| Column | Value |
+| --- | --- |
+| `id` | UUID |
+| `user_id` | `auth.uid()` |
+| `title` | Map title |
+| `purpose` | Short purpose line |
+| `graph` | `{ "title", "nodes", "edges" }` |
+| `image_url` | Optional. Studio sends `null` until a hosted preview exists |
+| `document` | Optional jsonb. Studio sends `{ "source": "flowchart-studio", "print": { ... } }` |
 
-`graph` is the canvas: nodes (`id`, `kind`, `label`, `position`), edges (`id`, `source`, `target`, optional `label`). `updatedAt` changes on every save.
+List and delete use the same user JWT (`GET` / `DELETE` on that table). RLS returns only the caller's rows.
 
-The PDF is regenerated from that graph with the same pagination as studio print (`lib/print-pages.ts` + `lib/print-map.ts`): letter landscape, 0.4in margin, dense boxes, edge-arrow continuation, content centered on the sheet. No Cont pills.
+The PDF is not stored in the row. Studio builds it with `lib/print-pdf.ts` (same pagination as print: letter landscape, 0.4in margin, dense boxes, edge-arrow continuation, vertically centered) and sends it on attach.
 
-## Export wizard → Builder attach API
+## Export wizard
 
-Studio UI:
+1. Upsert the current map.
+2. “Which SOP would you like to export this to?” — `GET {BUILDER}/api/studio/sops`
+3. “Which step would you like to add it to?” — includes **Its Own Step**, then `GET {BUILDER}/api/studio/sops/{sopId}/steps`
 
-1. Save the current map for the signed-in user.
-2. “Which SOP would you like to export this to?” — `GET` the SOP list.
-3. “Which step would you like to add it to?” — includes **Its Own Step**, then `GET` steps.
+`{BUILDER}` defaults to `https://builder.sopmojo.com`.
 
-Builder must expose these routes and accept the same Bearer token. Until they exist, Studio's proxy returns `502` with `code: "builder_contract_missing"` and the expected URL. The map stays in the library.
-
-| Method | Builder path | Meaning |
+| Method | Path | Notes |
 | --- | --- | --- |
-| `GET` | `/api/flowchart-studio/sops` | `{ sops: [{ id, title, updatedAt? }] }` |
-| `GET` | `/api/flowchart-studio/sops/{sopId}/steps` | `{ steps: [{ id, title, number? }] }` |
-| `POST` | `/api/flowchart-studio/attach` | Attach the printable PDF |
-
-Studio calls those through same-origin `/api/builder/sops`, `/api/builder/sops/{sopId}/steps`, and `/api/builder/attach`, which forward the bearer token to `https://builder.sopmojo.com`.
+| `GET` | `/api/studio/sops` | `{ sops: [{ id, title }] }` |
+| `GET` | `/api/studio/sops/{sopId}/steps` | `{ steps: [{ id, title, number? }] }` |
+| `POST` | `/api/studio/attach` | Attach this map |
 
 ### Attach body
 
 ```json
 {
   "sopId": "sop-id",
-  "placement": "own-step",
+  "placement": "own",
   "stepId": null,
-  "flowchartId": "map_…",
+  "flowchartId": "uuid",
   "title": "Process title",
-  "view": "flowchart-click-to-open",
+  "purpose": "Process with N mapped steps from Flowchart Studio.",
+  "graph": { "title": "Process title", "nodes": [], "edges": [] },
   "pdfBase64": "…",
-  "pdfFilename": "process-title-flowchart.pdf",
-  "pdfUrl": "https://flowchart.sopmojo.com/api/library/map_…/pdf",
-  "libraryUrl": "https://flowchart.sopmojo.com/api/library/map_…"
+  "pdfFilename": "process-title-flowchart.pdf"
 }
 ```
 
-`placement` is `own-step` or `existing-step`. For an existing step, `stepId` is that step's id. For its own step, `stepId` is `null`.
+`placement` is `own` (Its Own Step, `stepId` null) or `step` (existing step, `stepId` set).
 
-`view` is always `flowchart-click-to-open`.
+### Attach response
 
-### What Builder should render
+```json
+{
+  "stepId": "step-id",
+  "placement": "own",
+  "pdfUrl": "https://builder.sopmojo.com/…",
+  "printable": {}
+}
+```
 
-- **Its Own Step** (`placement: "own-step"`): a step whose view is “Flowchart, click to open”. It is not an instruction timeline node and the map is not drawn inline. Click opens the printable PDF (`pdfBase64`, or refetch `pdfUrl` with the bearer token).
-- **Existing step** (`placement: "existing-step"`): keep the step. Add a flowchart attachment icon. Click opens the same printable PDF.
+`placement` is `own` or `step`. `printable` is the printable payload. `pdfUrl` is what a click should open.
 
-Do not embed the flowchart as a timeline image and do not draw Cont / backtrack pills.
+- **own**: a step whose view is “Flowchart, click to open”, not an inline timeline map.
+- **step**: the existing step gains a flowchart attachment. Click opens the same PDF.
 
 ## Deprecated auto-spawn link
 
@@ -93,19 +98,16 @@ Do not open this as the export path:
 
 `https://builder.sopmojo.com/?import=flowchart&attach=step&flowchartJson={url}&flowchartImage={url}&flowchartTitle={title}&step={n}`
 
-That query used a short-lived `POST /api/handoff` payload and auto-created a step from the live Send body. Export no longer does that. The handoff routes remain only so old links can expire. New work uses the library id plus the attach body above.
-
-File-drop of `*-builder-import.json` is unchanged for the older ingest UI.
+That query used a short-lived handoff and auto-created a step. Export no longer does that.
 
 ## Shared print parameters
 
 - Page: US Letter landscape
 - Margin: 0.4in
-- Flow: left → right happy path; No branches drop down
-- Do not split a shape across pages; break mid-connector only
-- Continuation: a flow line leaves the last shape and runs to the right paper edge, ending in an arrowhead. The next page brings a line in from the left edge into the first shape. A rare backtrack uses the opposite edge the same way. No Cont / backtrack pills.
-- Print boxes hug their labels (smaller padding, type, and minimum size than the on-screen cards).
-- The sheet content is centered vertically (`min-height: 7.4in`, `justify-content: center`).
-- Numbered write-up of steps on the last page
+- Flow: left → right; No branches drop down
+- Continuation: edge arrow to the paper edge. No Cont / backtrack pills.
+- Dense print boxes
+- Sheet content centered vertically
+- Numbered steps on the last page
 - CSS: `@page { size: letter landscape; margin: 0.4in; }`
-- PDF generator: `lib/print-pdf.ts` (`renderPrintPdf`)
+- PDF generator: `lib/print-pdf.ts`

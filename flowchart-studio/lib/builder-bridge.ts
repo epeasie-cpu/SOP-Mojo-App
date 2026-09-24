@@ -1,29 +1,23 @@
 /**
- * Flowchart Studio → Builder Pro contract.
+ * Flowchart Studio → Builder Pro contract (mojo-sop-builder PR #5).
  *
- * Primary path: save the map on the signed-in user, then attach a print PDF.
- * Builder (mojo-sop-builder) lists SOPs/steps and stores the PDF. Studio does
- * not open `?import=flowchart&flowchartJson=` to auto-create a step.
+ * Maps are rows in the shared Supabase table `public.flowchart_maps`, written
+ * with the signed-in user's access token so RLS keeps `user_id = auth.uid()`.
+ * Export calls Builder directly. Studio does not open
+ * `?import=flowchart&flowchartJson=` to auto-create a step.
  *
- * Auth on every library and Builder call:
- *   Authorization: Bearer <Supabase access token from the shared Builder project>
+ * Builder migration: database/migrations/20260924_flowchart_library_and_placement.sql
  */
-export const ATTACH_VIEW = "flowchart-click-to-open" as const;
-export const OWN_STEP_PLACEMENT = "own-step" as const;
-export const EXISTING_STEP_PLACEMENT = "existing-step" as const;
+export const ATTACH_PLACEMENT_OWN = "own" as const;
+export const ATTACH_PLACEMENT_STEP = "step" as const;
 
-export const BUILDER_FLOWCHART_PATHS = {
-  sops: "/api/flowchart-studio/sops",
-  steps: (sopId: string) =>
-    `/api/flowchart-studio/sops/${encodeURIComponent(sopId)}/steps`,
-  attach: "/api/flowchart-studio/attach",
+export const BUILDER_STUDIO_PATHS = {
+  sops: "/api/studio/sops",
+  steps: (sopId: string) => `/api/studio/sops/${encodeURIComponent(sopId)}/steps`,
+  attach: "/api/studio/attach",
 } as const;
 
-export const LIBRARY_PATHS = {
-  collection: "/api/library",
-  map: (id: string) => `/api/library/${encodeURIComponent(id)}`,
-  pdf: (id: string) => `/api/library/${encodeURIComponent(id)}/pdf`,
-} as const;
+export const FLOWCHART_MAPS_TABLE = "flowchart_maps";
 
 export const BUILDER_BRIDGE_CONTRACT = {
   format: "sop-builder-pro-import",
@@ -34,24 +28,24 @@ export const BUILDER_BRIDGE_CONTRACT = {
     image: "*-flowchart.png",
     pdf: "*-flowchart.pdf",
   },
-  auth: "Authorization: Bearer <shared Supabase access token>",
-  library: {
-    list: "GET /api/library",
-    read: "GET /api/library/{id}",
-    create: "POST /api/library",
-    update: "PUT /api/library/{id}",
-    delete: "DELETE /api/library/{id}",
-    pdf: "GET /api/library/{id}/pdf",
+  auth: "Authorization: Bearer <Supabase access token>; apikey: <anon key> on PostgREST",
+  table: {
+    name: FLOWCHART_MAPS_TABLE,
+    schema: "public",
+    rls: "user_id = auth.uid()",
+    columns: ["title", "purpose", "graph", "image_url", "document", "user_id"],
+    graph: "{ title, nodes, edges }",
+    migration: "database/migrations/20260924_flowchart_library_and_placement.sql",
   },
   builderApi: {
-    sops: "GET /api/flowchart-studio/sops",
-    steps: "GET /api/flowchart-studio/sops/{sopId}/steps",
-    attach: "POST /api/flowchart-studio/attach",
+    sops: "GET /api/studio/sops",
+    steps: "GET /api/studio/sops/{sopId}/steps",
+    attach: "POST /api/studio/attach",
   },
   attach: {
-    placementOwnStep: OWN_STEP_PLACEMENT,
-    placementExistingStep: EXISTING_STEP_PLACEMENT,
-    view: ATTACH_VIEW,
+    placementOwn: ATTACH_PLACEMENT_OWN,
+    placementStep: ATTACH_PLACEMENT_STEP,
+    response: ["stepId", "placement", "pdfUrl", "printable"],
   },
   /**
    * Deprecated. Older Send opened Builder with this query and a live handoff
@@ -64,11 +58,6 @@ export const BUILDER_BRIDGE_CONTRACT = {
     flowchartImage: "https://flowchart.sopmojo.com/api/handoff/{id}/image",
     flowchartTitle: "map title",
     step: "1-based Builder SOP step (optional)",
-  },
-  cors: {
-    allowOrigin: "https://builder.sopmojo.com",
-    methods: "GET, POST, PUT, DELETE, OPTIONS",
-    headers: "Content-Type, Authorization",
   },
   print: {
     orientation: "landscape" as const,

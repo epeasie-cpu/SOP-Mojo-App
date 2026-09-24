@@ -1,45 +1,61 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { POST as attachRoute } from "@/app/api/builder/attach/route";
-import { GET as sopsRoute } from "@/app/api/builder/sops/route";
-import { GET as stepsRoute } from "@/app/api/builder/sops/[sopId]/steps/route";
+import { describe, expect, it, vi } from "vitest";
 import {
+  attachFlowchart,
   attachPayload,
+  listBuilderSops,
+  listBuilderSteps,
   OWN_STEP_ID,
+  parseAttachResult,
   parseSopList,
   parseStepList,
 } from "@/lib/builder-client";
+import { demoGraph } from "@/lib/template-graph";
 
-afterEach(() => {
-  vi.unstubAllGlobals();
-});
-
-describe("builder attach contract", () => {
-  it("describes own-step and existing-step placements", () => {
+describe("builder studio attach contract", () => {
+  it("uses placement own or step and does not send a studio library URL", () => {
     const own = attachPayload({
       sopId: "sop_1",
       stepId: OWN_STEP_ID,
-      flowchartId: "map_abcd",
+      flowchartId: "11111111-1111-4111-8111-111111111111",
       title: "Client onboarding",
+      purpose: "Process with 4 mapped steps from Flowchart Studio.",
+      graph: demoGraph(),
       pdfBase64: "abc",
     });
-    expect(own.placement).toBe("own-step");
+    expect(own.placement).toBe("own");
     expect(own.stepId).toBeNull();
-    expect(own.view).toBe("flowchart-click-to-open");
     expect(own.pdfFilename).toBe("client-onboarding-flowchart.pdf");
-    expect(own.pdfUrl).toBe("https://flowchart.sopmojo.com/api/library/map_abcd/pdf");
+    expect(own.graph.title).toBe("Client onboarding");
+    expect(own).not.toHaveProperty("pdfUrl");
+    expect(JSON.stringify(own)).not.toContain("/api/library");
 
     const existing = attachPayload({
       sopId: "sop_1",
       stepId: "step_9",
-      flowchartId: "map_abcd",
+      flowchartId: "11111111-1111-4111-8111-111111111111",
       title: "Client onboarding",
+      purpose: "purpose",
+      graph: demoGraph(),
       pdfBase64: "abc",
     });
-    expect(existing.placement).toBe("existing-step");
+    expect(existing.placement).toBe("step");
     expect(existing.stepId).toBe("step_9");
   });
 
-  it("accepts the documented SOP and step lists", () => {
+  it("reads stepId, placement, pdfUrl, and the printable payload", () => {
+    expect(
+      parseAttachResult({
+        stepId: "step_new",
+        placement: "own",
+        pdfUrl: "https://builder.sopmojo.com/files/map.pdf",
+        printable: { view: "flowchart-click-to-open" },
+      }),
+    ).toEqual({
+      stepId: "step_new",
+      placement: "own",
+      pdfUrl: "https://builder.sopmojo.com/files/map.pdf",
+      printable: { view: "flowchart-click-to-open" },
+    });
     expect(parseSopList({ sops: [{ id: "s", title: "Packaging" }] })).toEqual([
       { id: "s", title: "Packaging", updatedAt: undefined },
     ]);
@@ -48,60 +64,56 @@ describe("builder attach contract", () => {
     ]);
   });
 
-  it("tells Studio when Builder has not published the SOP list", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn(async () => new Response("missing", { status: 404 })),
-    );
-    const response = await sopsRoute(
-      new Request("https://flowchart.sopmojo.com/api/builder/sops", {
-        headers: { Authorization: "Bearer token" },
-      }),
-    );
-    expect(response.status).toBe(502);
-    const body = (await response.json()) as { code: string; expected: string };
-    expect(body.code).toBe("builder_contract_missing");
-    expect(body.expected).toBe("GET https://builder.sopmojo.com/api/flowchart-studio/sops");
-  });
-
-  it("forwards a published step list and the attach body", async () => {
-    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
-      if (init?.method === "POST") {
-        return new Response(JSON.stringify({ ok: true }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
+  it("calls Builder's /api/studio routes with the user bearer token", async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).endsWith("/attach")) {
+        return Response.json({
+          stepId: "step_1",
+          placement: "step",
+          pdfUrl: "https://builder.sopmojo.com/files/map.pdf",
+          printable: { pages: 1 },
         });
       }
-      return new Response(JSON.stringify({ steps: [{ id: "step_1", title: "Inspect", number: 1 }] }), {
-        status: 200,
-        headers: { "Content-Type": "application/json" },
-      });
+      if (String(url).includes("/steps")) {
+        return Response.json({ steps: [{ id: "step_1", title: "Inspect", number: 1 }] });
+      }
+      return Response.json({ sops: [{ id: "sop_1", title: "Shipping" }] });
     });
-    vi.stubGlobal("fetch", fetchMock);
 
-    const steps = await stepsRoute(
-      new Request("https://flowchart.sopmojo.com/api/builder/sops/sop_1/steps", {
-        headers: { Authorization: "Bearer token" },
-      }),
-      { params: Promise.resolve({ sopId: "sop_1" }) },
-    );
-    expect(steps.status).toBe(200);
+    const sops = await listBuilderSops("user-token", fetchMock);
+    expect(sops[0].title).toBe("Shipping");
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://builder.sopmojo.com/api/flowchart-studio/sops/sop_1/steps",
-      expect.objectContaining({ method: "GET" }),
-    );
-
-    const attach = await attachRoute(
-      new Request("https://flowchart.sopmojo.com/api/builder/attach", {
-        method: "POST",
-        headers: { Authorization: "Bearer token", "Content-Type": "application/json" },
-        body: JSON.stringify({ placement: "own-step" }),
+      "https://builder.sopmojo.com/api/studio/sops",
+      expect.objectContaining({
+        headers: expect.objectContaining({ Authorization: "Bearer user-token" }),
       }),
     );
-    expect(attach.status).toBe(200);
+
+    const steps = await listBuilderSteps("user-token", "sop/1", fetchMock);
+    expect(steps[0].id).toBe("step_1");
     expect(fetchMock).toHaveBeenCalledWith(
-      "https://builder.sopmojo.com/api/flowchart-studio/attach",
-      expect.objectContaining({ method: "POST", body: JSON.stringify({ placement: "own-step" }) }),
+      "https://builder.sopmojo.com/api/studio/sops/sop%2F1/steps",
+      expect.anything(),
+    );
+
+    const attached = await attachFlowchart(
+      "user-token",
+      attachPayload({
+        sopId: "sop_1",
+        stepId: "step_1",
+        flowchartId: "11111111-1111-4111-8111-111111111111",
+        title: "Client onboarding",
+        purpose: "purpose",
+        graph: demoGraph(),
+        pdfBase64: "abc",
+      }),
+      fetchMock,
+    );
+    expect(attached.placement).toBe("step");
+    expect(attached.pdfUrl).toContain("map.pdf");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://builder.sopmojo.com/api/studio/attach",
+      expect.objectContaining({ method: "POST" }),
     );
   });
 });

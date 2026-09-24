@@ -1,65 +1,77 @@
 import type { FlowGraph } from "./graph";
-import type { LibraryMap, LibrarySummary } from "./library-types";
-import { authHeader, ensureFreshSession, type ClientSession } from "./session";
+import {
+  deleteFlowchartMap,
+  flowchartPurpose,
+  getFlowchartMap,
+  isFlowchartMapId,
+  listFlowchartMaps,
+  newFlowchartMapId,
+  upsertFlowchartMap,
+  type FlowchartMapRecord,
+  type FlowchartMapSummary,
+} from "./flowchart-maps";
+import { ensureFreshSession, supabasePublicConfig, type ClientSession } from "./session";
 
-async function asJson<T>(response: Response): Promise<T> {
-  const data = (await response.json().catch(() => ({}))) as { error?: string };
-  if (!response.ok) throw new Error(data.error || "Library request failed.");
-  return data as T;
+function requireConfig() {
+  const config = supabasePublicConfig();
+  if (!config) {
+    throw new Error(
+      "Map save uses the Builder Supabase project. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.",
+    );
+  }
+  return config;
 }
 
 export async function saveLibraryMap(
   session: ClientSession,
   graph: FlowGraph,
   id?: string | null,
-): Promise<LibraryMap> {
+): Promise<FlowchartMapRecord> {
   const fresh = await ensureFreshSession(session);
-  const path = id ? `/api/library/${encodeURIComponent(id)}` : "/api/library";
-  const response = await fetch(path, {
-    method: id ? "PUT" : "POST",
-    headers: authHeader(fresh),
-    body: JSON.stringify({ graph, id: id ?? undefined }),
+  const config = requireConfig();
+  const mapId = id && isFlowchartMapId(id) ? id : newFlowchartMapId();
+  return upsertFlowchartMap({
+    supabaseUrl: config.url,
+    anonKey: config.anonKey,
+    accessToken: fresh.accessToken,
+    userId: fresh.userId,
+    id: mapId,
+    graph,
   });
-  const data = await asJson<{ map: LibraryMap }>(response);
-  return data.map;
 }
 
-export async function listLibraryMaps(session: ClientSession): Promise<LibrarySummary[]> {
+export async function listLibraryMaps(session: ClientSession): Promise<FlowchartMapSummary[]> {
   const fresh = await ensureFreshSession(session);
-  const response = await fetch("/api/library", { headers: authHeader(fresh) });
-  const data = await asJson<{ maps: LibrarySummary[] }>(response);
-  return data.maps;
+  const config = requireConfig();
+  return listFlowchartMaps({
+    supabaseUrl: config.url,
+    anonKey: config.anonKey,
+    accessToken: fresh.accessToken,
+  });
 }
 
-export async function loadLibraryMap(session: ClientSession, id: string): Promise<LibraryMap> {
+export async function loadLibraryMap(session: ClientSession, id: string): Promise<FlowchartMapRecord> {
   const fresh = await ensureFreshSession(session);
-  const response = await fetch(`/api/library/${encodeURIComponent(id)}`, {
-    headers: authHeader(fresh),
+  const config = requireConfig();
+  const map = await getFlowchartMap({
+    supabaseUrl: config.url,
+    anonKey: config.anonKey,
+    accessToken: fresh.accessToken,
+    id,
   });
-  const data = await asJson<{ map: LibraryMap }>(response);
-  return data.map;
+  if (!map) throw new Error("That map was not found.");
+  return map;
 }
 
 export async function deleteRemoteMap(session: ClientSession, id: string): Promise<void> {
   const fresh = await ensureFreshSession(session);
-  const response = await fetch(`/api/library/${encodeURIComponent(id)}`, {
-    method: "DELETE",
-    headers: authHeader(fresh),
+  const config = requireConfig();
+  await deleteFlowchartMap({
+    supabaseUrl: config.url,
+    anonKey: config.anonKey,
+    accessToken: fresh.accessToken,
+    id,
   });
-  if (!response.ok && response.status !== 204) {
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || "Could not delete that map.");
-  }
 }
 
-export async function fetchLibraryPdf(session: ClientSession, id: string): Promise<Uint8Array> {
-  const fresh = await ensureFreshSession(session);
-  const response = await fetch(`/api/library/${encodeURIComponent(id)}/pdf`, {
-    headers: { Authorization: `Bearer ${fresh.accessToken}` },
-  });
-  if (!response.ok) {
-    const data = (await response.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error || "Could not build the printable PDF.");
-  }
-  return new Uint8Array(await response.arrayBuffer());
-}
+export { flowchartPurpose };

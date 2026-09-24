@@ -1,12 +1,14 @@
 import {
-  ATTACH_VIEW,
-  EXISTING_STEP_PLACEMENT,
-  OWN_STEP_PLACEMENT,
+  ATTACH_PLACEMENT_OWN,
+  ATTACH_PLACEMENT_STEP,
+  BUILDER_STUDIO_PATHS,
 } from "./builder-bridge";
+import type { FlowGraph } from "./graph";
 import { slugify } from "./graph";
 import { SITE } from "./site";
 
-export const OWN_STEP_ID = "own-step";
+/** UI sentinel for “Its Own Step”. The attach body uses placement `own` and stepId null. */
+export const OWN_STEP_ID = "own";
 
 export type BuilderSopSummary = {
   id: string;
@@ -22,15 +24,21 @@ export type BuilderStepSummary = {
 
 export type BuilderAttachBody = {
   sopId: string;
-  placement: typeof OWN_STEP_PLACEMENT | typeof EXISTING_STEP_PLACEMENT;
+  placement: typeof ATTACH_PLACEMENT_OWN | typeof ATTACH_PLACEMENT_STEP;
   stepId: string | null;
   flowchartId: string;
   title: string;
-  view: typeof ATTACH_VIEW;
+  purpose: string;
+  graph: FlowGraph;
   pdfBase64: string;
   pdfFilename: string;
+};
+
+export type BuilderAttachResult = {
+  stepId: string;
+  placement: typeof ATTACH_PLACEMENT_OWN | typeof ATTACH_PLACEMENT_STEP;
   pdfUrl: string;
-  libraryUrl: string;
+  printable: unknown;
 };
 
 export class BuilderRequestError extends Error {
@@ -45,8 +53,17 @@ export class BuilderRequestError extends Error {
   }
 }
 
+export function builderStudioBase(): string {
+  const override = process.env.NEXT_PUBLIC_BUILDER_ORIGIN?.trim();
+  return (override || SITE.builder).replace(/\/$/, "");
+}
+
+export function builderStudioUrl(path: string): string {
+  return `${builderStudioBase()}${path}`;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
-  if (!value || typeof value !== "object") return null;
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   return value as Record<string, unknown>;
 }
 
@@ -58,15 +75,23 @@ function rowsFrom(body: unknown, key: "sops" | "steps"): unknown[] {
   return Array.isArray(named) ? named : [];
 }
 
+function titleOf(rec: Record<string, unknown>): string | null {
+  if (typeof rec.title === "string" && rec.title.trim()) return rec.title;
+  if (typeof rec.name === "string" && rec.name.trim()) return rec.name;
+  return null;
+}
+
 export function parseSopList(body: unknown): BuilderSopSummary[] {
   return rowsFrom(body, "sops").flatMap((item) => {
     const rec = asRecord(item);
-    if (!rec || typeof rec.id !== "string" || typeof rec.title !== "string") return [];
+    const title = rec ? titleOf(rec) : null;
+    if (!rec || typeof rec.id !== "string" || !title) return [];
+    const updatedAt = rec.updatedAt ?? rec.updated_at;
     return [
       {
         id: rec.id,
-        title: rec.title,
-        updatedAt: typeof rec.updatedAt === "string" ? rec.updatedAt : undefined,
+        title,
+        updatedAt: typeof updatedAt === "string" ? updatedAt : undefined,
       },
     ];
   });
@@ -75,16 +100,36 @@ export function parseSopList(body: unknown): BuilderSopSummary[] {
 export function parseStepList(body: unknown): BuilderStepSummary[] {
   return rowsFrom(body, "steps").flatMap((item) => {
     const rec = asRecord(item);
-    if (!rec || typeof rec.id !== "string" || typeof rec.title !== "string") return [];
-    const number = Number(rec.number);
+    const title = rec ? titleOf(rec) : null;
+    if (!rec || typeof rec.id !== "string" || !title) return [];
+    const number = Number(rec.number ?? rec.position);
     return [
       {
         id: rec.id,
-        title: rec.title,
+        title,
         number: Number.isFinite(number) ? number : undefined,
       },
     ];
   });
+}
+
+export function parseAttachResult(body: unknown): BuilderAttachResult {
+  const rec = asRecord(body);
+  const placement = rec?.placement === "own" || rec?.placement === "step" ? rec.placement : null;
+  const stepId = typeof rec?.stepId === "string" ? rec.stepId : typeof rec?.step_id === "string" ? rec.step_id : null;
+  const pdfUrl = typeof rec?.pdfUrl === "string" ? rec.pdfUrl : typeof rec?.pdf_url === "string" ? rec.pdf_url : null;
+  if (!rec || !stepId || !placement || !pdfUrl) {
+    throw new BuilderRequestError(
+      "Builder attach response was missing stepId, placement, or pdfUrl.",
+      "attach_response",
+    );
+  }
+  return {
+    stepId,
+    placement,
+    pdfUrl,
+    printable: rec.printable ?? rec.printablePayload ?? rec.payload ?? rec.document ?? null,
+  };
 }
 
 export function attachPayload(input: {
@@ -92,20 +137,21 @@ export function attachPayload(input: {
   stepId: string;
   flowchartId: string;
   title: string;
+  purpose: string;
+  graph: FlowGraph;
   pdfBase64: string;
 }): BuilderAttachBody {
   const own = input.stepId === OWN_STEP_ID;
   return {
     sopId: input.sopId,
-    placement: own ? OWN_STEP_PLACEMENT : EXISTING_STEP_PLACEMENT,
+    placement: own ? ATTACH_PLACEMENT_OWN : ATTACH_PLACEMENT_STEP,
     stepId: own ? null : input.stepId,
     flowchartId: input.flowchartId,
     title: input.title,
-    view: ATTACH_VIEW,
+    purpose: input.purpose,
+    graph: input.graph,
     pdfBase64: input.pdfBase64,
     pdfFilename: `${slugify(input.title)}-flowchart.pdf`,
-    pdfUrl: `${SITE.host}/api/library/${encodeURIComponent(input.flowchartId)}/pdf`,
-    libraryUrl: `${SITE.host}/api/library/${encodeURIComponent(input.flowchartId)}`,
   };
 }
 
@@ -113,23 +159,25 @@ export function uint8ToBase64(bytes: Uint8Array): string {
   const chunk = 0x8000;
   let binary = "";
   for (let i = 0; i < bytes.length; i += chunk) {
-    const slice = bytes.subarray(i, i + chunk);
-    binary += String.fromCharCode(...slice);
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   return btoa(binary);
 }
 
-async function throwIfNotOk(response: Response): Promise<unknown> {
+async function throwIfNotOk(response: Response, expected: string): Promise<unknown> {
   const data = (await response.json().catch(() => ({}))) as {
     error?: string;
+    message?: string;
     code?: string;
-    expected?: string;
   };
   if (!response.ok) {
+    const missing = response.status === 404 || response.status === 501;
     throw new BuilderRequestError(
-      data.error || "Builder request failed.",
-      data.code,
-      data.expected,
+      data.error || data.message || (missing
+        ? "Builder has not published this Flowchart Studio endpoint yet."
+        : "Builder request failed."),
+      missing ? "builder_contract_missing" : data.code,
+      expected,
     );
   }
   return data;
@@ -147,8 +195,9 @@ export async function listBuilderSops(
   token: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<BuilderSopSummary[]> {
-  const response = await fetchImpl("/api/builder/sops", { headers: authHeaders(token) });
-  return parseSopList(await throwIfNotOk(response));
+  const url = builderStudioUrl(BUILDER_STUDIO_PATHS.sops);
+  const response = await fetchImpl(url, { headers: authHeaders(token) });
+  return parseSopList(await throwIfNotOk(response, `GET ${url}`));
 }
 
 export async function listBuilderSteps(
@@ -156,21 +205,21 @@ export async function listBuilderSteps(
   sopId: string,
   fetchImpl: typeof fetch = fetch,
 ): Promise<BuilderStepSummary[]> {
-  const response = await fetchImpl(`/api/builder/sops/${encodeURIComponent(sopId)}/steps`, {
-    headers: authHeaders(token),
-  });
-  return parseStepList(await throwIfNotOk(response));
+  const url = builderStudioUrl(BUILDER_STUDIO_PATHS.steps(sopId));
+  const response = await fetchImpl(url, { headers: authHeaders(token) });
+  return parseStepList(await throwIfNotOk(response, `GET ${url}`));
 }
 
 export async function attachFlowchart(
   token: string,
   body: BuilderAttachBody,
   fetchImpl: typeof fetch = fetch,
-): Promise<void> {
-  const response = await fetchImpl("/api/builder/attach", {
+): Promise<BuilderAttachResult> {
+  const url = builderStudioUrl(BUILDER_STUDIO_PATHS.attach);
+  const response = await fetchImpl(url, {
     method: "POST",
     headers: authHeaders(token, true),
     body: JSON.stringify(body),
   });
-  await throwIfNotOk(response);
+  return parseAttachResult(await throwIfNotOk(response, `POST ${url}`));
 }
