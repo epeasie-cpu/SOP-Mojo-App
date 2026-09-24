@@ -58,7 +58,7 @@ Create a Vercel project with **Root Directory** = `flowchart-studio`. Framework 
 
 ## Builder bridge
 
-**Export to Builder Pro** (gated) asks you to sign in, upserts the canvas into `public.flowchart_maps` with that user's Supabase token, then opens a wizard: pick an SOP, then a step or **Its Own Step**. Studio posts to `https://builder.sopmojo.com/api/studio/attach` with `placement` `own` or `step`, the flowchart id, and a PDF from the print pipeline. Builder returns `stepId`, `placement`, `pdfUrl`, and a printable payload.
+**Export to Builder Pro** (gated) asks you to sign in, upserts the canvas into `public.flowchart_maps` with that user's Supabase token, then opens a wizard: pick an SOP, then a step or **Its Own Step**. Studio posts to `https://builder.sopmojo.com/api/studio/attach` with `target` `"own"` or a step id, `placement` `own` or `step`, the flowchart id, and a PDF from the print pipeline. Builder returns `stepId`, `placement`, `pdfUrl`, and a printable payload.
 
 The old `?import=flowchart&flowchartJson=…` auto-spawn link is deprecated and is not the export button. The contract is in [`BUILDER_BRIDGE.md`](./BUILDER_BRIDGE.md).
 
