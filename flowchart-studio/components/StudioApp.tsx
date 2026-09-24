@@ -4,12 +4,9 @@ import { toPng } from "html-to-image";
 import dynamic from "next/dynamic";
 import { useCallback, useState, useSyncExternalStore } from "react";
 import { canUsePremium, gateLabel, type PremiumAction } from "@/lib/entitlements";
-import {
-  builderPackageFilename,
-  exportToBuilder,
-  graphFilename,
-} from "@/lib/export-to-builder";
+import { graphFilename } from "@/lib/export-to-builder";
 import { listableNodes, newId, type FlowGraph } from "@/lib/graph";
+import { saveLibraryMap } from "@/lib/library-client";
 import {
   persistGraph,
   persistUnlock,
@@ -20,11 +17,20 @@ import {
   subscribePersist,
 } from "@/lib/persist";
 import { paginatePrintMap } from "@/lib/print-pages";
-import { builderSendUrl } from "@/lib/site";
+import {
+  readLibraryIdSnapshot,
+  readSessionSnapshot,
+  serverSessionSnapshot,
+  subscribeSession,
+  writeLibraryId,
+} from "@/lib/session";
 import { demoGraph } from "@/lib/template-graph";
 import { ChatPanel, type ChatMessage } from "./ChatPanel";
+import { ExportWizard } from "./ExportWizard";
 import { InputDock } from "./InputDock";
+import { LibraryModal } from "./LibraryModal";
 import { PrintMap } from "./PrintMap";
+import { SignInModal } from "./SignInModal";
 import { StepList } from "./StepList";
 import { Toolbar } from "./Toolbar";
 import { UnlockHint, UnlockModal } from "./UnlockModal";
@@ -75,6 +81,29 @@ export function StudioApp() {
   const [gateOpen, setGateOpen] = useState(false);
   const [gateDetail, setGateDetail] = useState(gateLabel("export"));
   const [tab, setTab] = useState<MobileTab>("canvas");
+  const session = useSyncExternalStore(subscribeSession, readSessionSnapshot, serverSessionSnapshot);
+  const libraryId = useSyncExternalStore(
+    subscribeSession,
+    readLibraryIdSnapshot,
+    (): string | null => null,
+  );
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authPurpose, setAuthPurpose] = useState<"export" | "library">("library");
+  const [resumeExport, setResumeExport] = useState(false);
+
+  const rememberMap = useCallback((id: string | null) => {
+    writeLibraryId(id);
+  }, []);
+
+  const adoptGraph = useCallback(
+    (next: FlowGraph) => {
+      rememberMap(null);
+      setGraph(next);
+    },
+    [rememberMap, setGraph],
+  );
 
   const onChange = useCallback((next: FlowGraph) => setGraph(next), [setGraph]);
 
@@ -100,7 +129,7 @@ export function StudioApp() {
       if (!response.ok || !data.graph) {
         throw new Error(data.error || "Could not map that process.");
       }
-      setGraph(data.graph);
+      adoptGraph(data.graph);
       setModeLabel(
         data.mode === "template"
           ? "Template mode"
@@ -134,7 +163,7 @@ export function StudioApp() {
       if (!response.ok || !data.graph) {
         throw new Error(data.error || "Could not read that photo.");
       }
-      setGraph(data.graph);
+      adoptGraph(data.graph);
       setModeLabel("Photo vision");
       setStatus(null);
       setTab("canvas");
@@ -213,52 +242,28 @@ export function StudioApp() {
       }
       return;
     }
-    let flowchartPng: string | undefined;
-    try {
-      flowchartPng = await capturePng();
-    } catch {
-      setStatus("Sending the map without a PNG preview — try desktop for the image.");
-    }
-    const stepParam =
-      typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("step")) : NaN;
-    const step = Number.isFinite(stepParam) && stepParam >= 1 ? Math.floor(stepParam) : undefined;
-    try {
-      const response = await fetch("/api/handoff", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          graph,
-          title: graph.title,
-          image: flowchartPng,
-          generatedAt: new Date().toISOString(),
-        }),
-      });
-      const data = (await response.json()) as {
-        jsonUrl?: string;
-        imageUrl?: string;
-        title?: string;
-        error?: string;
-      };
-      if (!response.ok || !data.jsonUrl) {
-        throw new Error(data.error || "Could not publish the Builder handoff.");
-      }
-      window.open(
-        builderSendUrl({
-          flowchartJson: data.jsonUrl,
-          flowchartImage: data.imageUrl,
-          flowchartTitle: data.title || graph.title,
-          step,
-        }),
-        "_blank",
-        "noopener,noreferrer",
-      );
+    await beginExport();
+  }
+
+  async function beginExport() {
+    const current = readSessionSnapshot();
+    if (!current) {
+      setAuthPurpose("export");
+      setResumeExport(true);
+      setAuthOpen(true);
       return;
-    } catch {
-      const pkg = exportToBuilder(graph, new Date().toISOString(), flowchartPng);
-      downloadText(builderPackageFilename(pkg), JSON.stringify(pkg, null, 2));
-      if (flowchartPng) downloadDataUrl(pkg.attach.imageFilename, flowchartPng);
-      window.open(builderSendUrl({ flowchartTitle: graph.title, step }), "_blank", "noopener,noreferrer");
-      setStatus("Opened Builder. Drop the downloaded JSON onto a step if it does not attach automatically.");
+    }
+    setBusy(true);
+    setStatus("Saving map…");
+    try {
+      const saved = await saveLibraryMap(current, readGraphSnapshot(), readLibraryIdSnapshot());
+      rememberMap(saved.id);
+      setWizardOpen(true);
+      setStatus(null);
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Could not save the map.");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -274,8 +279,18 @@ export function StudioApp() {
         busy={busy}
         onTitle={(title) => setGraph((prev) => ({ ...prev, title }))}
         onPremium={(action) => void runPremium(action)}
+        onLibrary={() => {
+          if (!readSessionSnapshot()) {
+            setAuthPurpose("library");
+            setResumeExport(false);
+            setAuthOpen(true);
+            return;
+          }
+          setLibraryOpen(true);
+        }}
+        accountLabel={session?.email || (session ? "Signed in" : null)}
         onDemo={() => {
-          setGraph(demoGraph());
+          adoptGraph(demoGraph());
           setModeLabel("Demo");
           setTab("canvas");
         }}
@@ -398,6 +413,46 @@ export function StudioApp() {
           persistUnlock(source);
           setGateOpen(false);
         }}
+      />
+      <SignInModal
+        open={authOpen}
+        purpose={authPurpose}
+        onClose={() => {
+          setAuthOpen(false);
+          setResumeExport(false);
+        }}
+        onSignedIn={() => {
+          setAuthOpen(false);
+          if (resumeExport) {
+            setResumeExport(false);
+            void beginExport();
+          }
+        }}
+      />
+      <LibraryModal
+        open={libraryOpen}
+        session={session}
+        graph={graph}
+        libraryId={libraryId}
+        onClose={() => setLibraryOpen(false)}
+        onLoad={(next, id) => {
+          rememberMap(id);
+          setGraph(next);
+          setModeLabel("Library");
+          setTab("canvas");
+        }}
+        onSaved={rememberMap}
+        onSignOut={() => {
+          setLibraryOpen(false);
+          rememberMap(null);
+        }}
+      />
+      <ExportWizard
+        open={wizardOpen}
+        session={session}
+        flowchartId={libraryId}
+        graph={graph}
+        onClose={() => setWizardOpen(false)}
       />
     </div>
   );

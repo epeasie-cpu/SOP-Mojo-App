@@ -17,7 +17,7 @@ export const UNLOCK_COPY = {
   builder: "Builder Pro $39/mo includes flowchart print, export, and import",
   print: "Print is included with Builder Pro.",
   export: "Export (JSON / PNG) is included with Builder Pro.",
-  send: "Send to Builder Pro is included with Builder Pro.",
+  send: "Export to Builder Pro is included with Builder Pro.",
 } as const;
 
 export function parseUnlockFlag(value: string | null | undefined): UnlockState {

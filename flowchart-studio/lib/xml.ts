@@ -49,7 +49,7 @@ Living system: ${SITE.builder}
 
 ## Product
 - Free: create and iterate a process flowchart from text, voice, or a photo of handwriting.
-- Builder Pro $39/mo: includes print, PNG/JSON export, and Send to Builder import.
+- Builder Pro $39/mo: includes print, PNG/JSON export, and export to Builder Pro.
 - Optional $19 unlock: print/export/import without a Builder Pro subscription.
 
 ## Pages

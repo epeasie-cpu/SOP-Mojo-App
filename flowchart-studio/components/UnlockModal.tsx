@@ -35,7 +35,7 @@ export function UnlockModal({
         </h2>
         <p className="mt-3 text-sm text-zinc-400">{detail}</p>
         <p className="mt-3 text-sm text-zinc-400">
-          Free covers create and iterate. Print, export, and Send to Builder Pro
+          Free covers create and iterate. Print, export, and Export to Builder Pro
           come with a Builder Pro subscription.
         </p>
         <div className="mt-5 grid gap-2">

@@ -13,6 +13,8 @@ export function Toolbar({
   onTitle,
   onPremium,
   onDemo,
+  onLibrary,
+  accountLabel,
 }: {
   graph: FlowGraph;
   modeLabel: string;
@@ -21,6 +23,8 @@ export function Toolbar({
   onTitle: (title: string) => void;
   onPremium: (action: PremiumAction) => void;
   onDemo: () => void;
+  onLibrary: () => void;
+  accountLabel: string | null;
 }) {
   const onChangeTitle = useCallback(
     (event: ChangeEvent<HTMLInputElement>) => onTitle(event.target.value),
@@ -62,10 +66,17 @@ export function Toolbar({
       </button>
       <button
         type="button"
+        onClick={onLibrary}
+        className="rounded-sm border border-zinc-700 px-2.5 py-1.5 text-xs text-zinc-300 hover:border-lime"
+      >
+        {accountLabel ? "Library" : "Sign in"}
+      </button>
+      <button
+        type="button"
         onClick={() => onPremium("send")}
         className="rounded-sm bg-lime px-2.5 py-1.5 text-xs font-semibold text-lime-ink"
       >
-        Send to Builder Pro
+        Export to Builder Pro
       </button>
       {unlock.unlocked ? (
         <span className="text-[11px] text-lime">Unlocked</span>
