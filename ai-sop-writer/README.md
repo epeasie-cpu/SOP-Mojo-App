@@ -2,7 +2,7 @@
 
 Canonical host: **https://writer.sopmojo.com**
 
-**AI SOP Writer** is a SOP Mojo product that writes a first-draft **standard operating procedure** (SOP — not a statement of purpose). After you generate a draft, the primary upgrade CTA is the [SOP Builder Pro launch page](https://www.sopmojo.com/lp/ai-sop-writer?utm_source=ai-sop-writer&utm_medium=product&utm_campaign=writer_to_builder). [SOP Builder Pro](https://builder.sopmojo.com) remains the living-system product host.
+**AI SOP Writer** is a SOP Mojo product that writes a first-draft **standard operating procedure** (SOP — not a statement of purpose). After you generate a draft, the primary paid upgrade CTA is [Builder Pro checkout](https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left). [SOP Builder Pro](https://builder.sopmojo.com) remains the living-system product host. The launch page at https://www.sopmojo.com/lp/ai-sop-writer stays available for learn-more copy.
 
 This app lives in `/ai-sop-writer` so the existing Streamlit AUP Engine at the repository root is left untouched.
 

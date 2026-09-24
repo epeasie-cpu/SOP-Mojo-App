@@ -18,7 +18,7 @@ describe("canonical and upgrade URLs", () => {
     expect(absoluteUrl("/faq")).toBe("https://writer.sopmojo.com/faq");
   });
 
-  it("builds the Writer → Builder Pro LP URL with default UTMs", () => {
+  it("sends paid Builder Pro upgrades to the locked SamCart checkout", () => {
     expect(SITE.upgradeLp).toBe("https://www.sopmojo.com/lp/ai-sop-writer");
     expect(WRITER_TO_BUILDER_UTM).toEqual({
       utm_source: "ai-sop-writer",
@@ -26,8 +26,10 @@ describe("canonical and upgrade URLs", () => {
       utm_campaign: "writer_to_builder",
     });
     expect(WRITER_UPGRADE_URL).toBe(
-      "https://www.sopmojo.com/lp/ai-sop-writer?utm_source=ai-sop-writer&utm_medium=product&utm_campaign=writer_to_builder",
+      "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left",
     );
+    expect(WRITER_UPGRADE_URL).not.toContain("sop-builder-pro");
+    expect(WRITER_UPGRADE_URL).not.toContain(SITE.upgradeLp);
   });
 
   it("keeps builder.sopmojo.com as the living-system host", () => {
@@ -35,18 +37,21 @@ describe("canonical and upgrade URLs", () => {
     expect(hostLabel(SITE.builder)).toBe("builder.sopmojo.com");
   });
 
-  it("does not use the alpha Vercel host or SamCart as product URLs", () => {
+  it("does not use the alpha Vercel host as a product URL", () => {
     const urls = [SITE.host, SITE.parent, SITE.builder, SITE.library, SITE.upgradeLp, WRITER_UPGRADE_URL];
     for (const url of urls) {
       expect(url).not.toContain("ai-sop-writer-alpha.vercel.app");
-      expect(url).not.toContain("mysamcart.com");
       expect(url).not.toContain("get-started");
+    }
+    const productHosts = [SITE.host, SITE.parent, SITE.builder, SITE.library, SITE.upgradeLp];
+    for (const url of productHosts) {
+      expect(url).not.toContain("mysamcart.com");
     }
   });
 });
 
 describe("llms.txt upgrade path", () => {
-  it("lists the LP as the upgrade target and builder as the living system", async () => {
+  it("lists the SamCart checkout as the upgrade target and builder as the living system", async () => {
     const body = await (await llms()).text();
     expect(body).toContain(SITE.host);
     expect(body).toContain(WRITER_UPGRADE_URL);

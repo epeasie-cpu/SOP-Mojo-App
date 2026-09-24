@@ -18,7 +18,7 @@ export const SITE = {
 export type SiteConfig = typeof SITE;
 
 export const BUILDER_DEFAULT_CHECKOUT =
-  "https://rpease1.mysamcart.com/checkout/sop-builder-pro";
+  "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left";
 
 export const FLOWCHART_DEFAULT_CHECKOUT =
   "https://rpease1.mysamcart.com/checkout/flowchart-studio";

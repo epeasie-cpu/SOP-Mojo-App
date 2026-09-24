@@ -19,7 +19,11 @@ describe("site urls", () => {
   it("pins the intended host and Builder checkout default", () => {
     expect(SITE.host).toBe("https://flowchart.sopmojo.com");
     expect(SITE.builder).toBe("https://builder.sopmojo.com");
+    expect(BUILDER_DEFAULT_CHECKOUT).toBe(
+      "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left",
+    );
     expect(builderCheckoutUrl()).toBe(BUILDER_DEFAULT_CHECKOUT);
+    expect(builderCheckoutUrl()).not.toContain("sop-builder-pro");
   });
 
   it("resolves Flowchart+ checkout to the SamCart flowchart-studio product", () => {

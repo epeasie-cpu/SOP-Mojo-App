@@ -92,7 +92,7 @@ export function llmsTxt(): string {
 - Parent: ${SITE.parent}
 - AI SOP Writer: ${WRITER_CTA_URL}
 - SOP Builder Pro: ${SITE.builder}
-- Builder Pro launch LP: ${BUILDER_CTA_URL}
+- Builder Pro checkout: ${BUILDER_CTA_URL}
 - SOP Library: ${SITE.library}
 - Founder contact: ${SITE.founderEmail}
 

@@ -17,7 +17,7 @@ describe("SOP Mojo family branding", () => {
     expect(css).not.toContain("#f6f4ec");
   });
 
-  it("keeps the free Writer → Builder upgrade URL on the chrome CTAs", () => {
+  it("keeps the paid Builder Pro checkout constant on the chrome CTAs", () => {
     expect(header).toContain("WRITER_UPGRADE_URL");
     expect(header).toContain("Get Builder Pro");
     expect(cta).toContain("WRITER_UPGRADE_URL");
