@@ -225,7 +225,7 @@ function packDecisionBranches(graph: FlowGraph): FlowGraph {
 export function layoutGraph(graph: FlowGraph, options: LayoutOptions = {}): FlowGraph {
   const rankdir: RankDir = options.rankdir ?? "TB";
   const compact = options.compact ?? rankdir === "LR";
-  const sizeOf = options.sizeOf ?? ((node: FlowNode) => NODE_DIMS[node.kind]);
+  const sizeOf: NodeSizer = options.sizeOf ?? ((node) => NODE_DIMS[node.kind]);
   const normalized =
     rankdir === "LR" ? remapHandlesLr(normalizeEdgeHandles(graph)) : normalizeEdgeHandles(graph);
   if (normalized.nodes.length === 0) return normalized;
