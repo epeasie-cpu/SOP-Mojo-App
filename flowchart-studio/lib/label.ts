@@ -1,3 +1,5 @@
+import type { FlowGraph, NodeKind } from "./graph";
+
 /** Word-boundary label helpers so canvas cards never chop mid-word. */
 
 export const TITLE_MAX = 56;
@@ -41,4 +43,33 @@ export function visibleCardText(label: string): {
 
 export function visibleDecisionText(label: string): { preview: string; truncated: boolean } {
   return clipAtWord(label.replace(/\s+/g, " ").trim(), 72);
+}
+
+export const STEP_LABEL_MAX = 56;
+export const DECISION_LABEL_MAX = 52;
+
+const LEAD_IN = /^(then|next|after that|afterwards|afterward|finally|first|second|third|once)\s+/i;
+
+/** Bite-sized process-map labels: imperative steps, short questions. */
+export function briefLabel(label: string, kind: NodeKind): string {
+  let cleaned = label.replace(/\s+/g, " ").trim();
+  if (!cleaned) return kind === "decision" ? "Decision?" : kind === "end" ? "End" : "Step";
+  cleaned = cleaned.replace(LEAD_IN, "");
+  const max =
+    kind === "decision" ? DECISION_LABEL_MAX : kind === "start" || kind === "end" ? 22 : STEP_LABEL_MAX;
+  const clipped = clipAtWord(cleaned, max).preview || cleaned.slice(0, max);
+  if (kind === "decision" && !clipped.endsWith("?") && clipped.split(" ").length <= 8) {
+    return /^(is|are|do|does|can|should|will|did)\b/i.test(clipped) ? `${clipped}?` : clipped;
+  }
+  return clipped;
+}
+
+export function polishGraphLabels(graph: FlowGraph): FlowGraph {
+  return {
+    ...graph,
+    nodes: graph.nodes.map((node) => ({
+      ...node,
+      label: briefLabel(node.label, node.kind),
+    })),
+  };
 }

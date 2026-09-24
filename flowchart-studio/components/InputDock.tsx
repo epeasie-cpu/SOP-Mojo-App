@@ -1,14 +1,17 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { foldSpeechResults, speechResultsFromEvent } from "@/lib/voice";
+
+type SpeechRecognitionResultLike = { isFinal?: boolean } & ArrayLike<{ transcript?: string }>;
 
 type SpeechRecognitionLike = {
   lang: string;
   interimResults: boolean;
   maxAlternatives: number;
   continuous: boolean;
-  onresult: ((event: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null;
-  onerror: (() => void) | null;
+  onresult: ((event: { results: ArrayLike<SpeechRecognitionResultLike> }) => void) | null;
+  onerror: ((event?: { error?: string }) => void) | null;
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
@@ -58,7 +61,11 @@ export function InputDock({
   const [listening, setListening] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const recRef = useRef<SpeechRecognitionLike | null>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const wantListenRef = useRef(false);
+  const baselineRef = useRef("");
+  const committedRef = useRef("");
+  const snapRef = useRef<HTMLInputElement>(null);
+  const uploadRef = useRef<HTMLInputElement>(null);
 
   function talk() {
     const Ctor = getSpeechRecognition();
@@ -68,26 +75,43 @@ export function InputDock({
     }
     setVoiceError(null);
     if (listening && recRef.current) {
+      wantListenRef.current = false;
       recRef.current.stop();
       setListening(false);
       return;
     }
+    baselineRef.current = text;
+    committedRef.current = text;
     const rec = new Ctor();
     rec.lang = "en-US";
     rec.interimResults = true;
-    rec.continuous = false;
+    rec.continuous = true;
     rec.maxAlternatives = 1;
     rec.onresult = (event) => {
-      const last = event.results[event.results.length - 1];
-      const transcript = last?.[0]?.transcript ?? "";
-      if (transcript) setText((prev) => (prev ? `${prev.trim()} ${transcript}` : transcript));
+      const folded = foldSpeechResults(baselineRef.current, speechResultsFromEvent(event.results));
+      committedRef.current = folded.committed;
+      setText(folded.display);
     };
-    rec.onerror = () => {
+    rec.onerror = (event) => {
+      const fatal = event?.error === "not-allowed" || event?.error === "service-not-allowed";
+      if (!fatal) return;
+      wantListenRef.current = false;
       setVoiceError("Could not hear that. Try again or paste the process.");
       setListening(false);
     };
-    rec.onend = () => setListening(false);
+    rec.onend = () => {
+      if (wantListenRef.current) {
+        try {
+          rec.start();
+          return;
+        } catch {
+          wantListenRef.current = false;
+        }
+      }
+      setListening(false);
+    };
     recRef.current = rec;
+    wantListenRef.current = true;
     rec.start();
     setListening(true);
   }
@@ -116,15 +140,15 @@ export function InputDock({
         className="mt-3 w-full resize-none rounded-md border border-zinc-800 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none focus:border-lime"
       />
       {voiceError ? <p className="mt-2 text-xs text-amber-300">{voiceError}</p> : null}
-      <div className="mt-3 grid grid-cols-3 gap-2">
-        <button
-          type="button"
-          disabled={busy || !text.trim()}
-          onClick={() => onGenerate(text, "text")}
-          className="rounded-sm bg-lime px-2 py-2 text-xs font-semibold text-lime-ink disabled:opacity-40"
-        >
-          Map it
-        </button>
+      <button
+        type="button"
+        disabled={busy || !text.trim()}
+        onClick={() => onGenerate(text, listening ? "voice" : "text")}
+        className="mt-3 w-full rounded-sm bg-lime px-2 py-2 text-xs font-semibold text-lime-ink disabled:opacity-40"
+      >
+        Map it
+      </button>
+      <div className="mt-2 grid grid-cols-3 gap-2">
         <button
           type="button"
           disabled={busy}
@@ -140,14 +164,22 @@ export function InputDock({
         <button
           type="button"
           disabled={busy}
-          onClick={() => fileRef.current?.click()}
+          onClick={() => snapRef.current?.click()}
           className="rounded-sm border border-zinc-700 px-2 py-2 text-xs font-semibold text-zinc-200 hover:border-lime"
         >
-          Photo
+          Snap photo
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => uploadRef.current?.click()}
+          className="rounded-sm border border-zinc-700 px-2 py-2 text-xs font-semibold text-zinc-200 hover:border-lime"
+        >
+          Upload photo
         </button>
       </div>
       <input
-        ref={fileRef}
+        ref={snapRef}
         type="file"
         accept="image/*"
         capture="environment"
@@ -157,8 +189,19 @@ export function InputDock({
           event.target.value = "";
         }}
       />
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(event) => {
+          void onFile(event.target.files?.[0]);
+          event.target.value = "";
+        }}
+      />
       <p className="mt-3 text-[11px] leading-relaxed text-zinc-500">
-        Photo reads a handwritten scribble on the server. Voice uses the browser Web Speech API.
+        Snap opens the camera. Upload picks a photo from files. Voice uses the browser Web Speech
+        API and keeps one live transcript.
       </p>
     </section>
   );

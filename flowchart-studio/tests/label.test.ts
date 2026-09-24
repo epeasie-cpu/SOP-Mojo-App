@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { clipAtWord, splitLabel, visibleCardText, visibleDecisionText } from "@/lib/label";
+import {
+  briefLabel,
+  clipAtWord,
+  polishGraphLabels,
+  splitLabel,
+  visibleCardText,
+  visibleDecisionText,
+} from "@/lib/label";
 
 describe("label clipping", () => {
   it("never cuts in the middle of a word", () => {
@@ -32,5 +39,35 @@ describe("label clipping", () => {
     const shown = visibleDecisionText("Is intake complete for this new client?");
     expect(shown.preview.toLowerCase().includes("complet")).toBe(true);
     expect(shown.preview.endsWith("complet")).toBe(false);
+  });
+
+  it("briefs walls of text into process-map labels", () => {
+    expect(
+      briefLabel(
+        "Then walk to the front counter and politely greet the guest by name before asking what they would like to order today",
+        "step",
+      ),
+    ).toBe("walk to the front counter and politely greet the guest");
+    expect(briefLabel("Is the cash register loaded with a float?", "decision")).toBe(
+      "Is the cash register loaded with a float?",
+    );
+    expect(briefLabel("First brew the tea", "step")).toBe("brew the tea");
+  });
+
+  it("polishes every node on generate without inventing copy", () => {
+    const polished = polishGraphLabels({
+      title: "Tea",
+      nodes: [
+        { id: "s", kind: "start", label: "Start", position: { x: 0, y: 0 } },
+        {
+          id: "n1",
+          kind: "step",
+          label: "Finally pour the water over the leaves and wait",
+          position: { x: 0, y: 0 },
+        },
+      ],
+      edges: [],
+    });
+    expect(polished.nodes[1].label).toBe("pour the water over the leaves and wait");
   });
 });

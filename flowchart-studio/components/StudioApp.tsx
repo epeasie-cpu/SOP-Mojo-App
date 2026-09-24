@@ -9,7 +9,7 @@ import {
   exportToBuilder,
   graphFilename,
 } from "@/lib/export-to-builder";
-import { newId, type FlowGraph } from "@/lib/graph";
+import { listableNodes, newId, type FlowGraph } from "@/lib/graph";
 import {
   persistGraph,
   persistUnlock,
@@ -19,6 +19,7 @@ import {
   serverUnlockSnapshot,
   subscribePersist,
 } from "@/lib/persist";
+import { paginatePrintMap } from "@/lib/print-pages";
 import { builderSendUrl } from "@/lib/site";
 import { demoGraph } from "@/lib/template-graph";
 import { ChatPanel, type ChatMessage } from "./ChatPanel";
@@ -50,6 +51,13 @@ function downloadText(filename: string, contents: string, type = "application/js
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadDataUrl(filename: string, dataUrl: string) {
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = filename;
+  a.click();
 }
 
 export function StudioApp() {
@@ -168,21 +176,22 @@ export function StudioApp() {
     setGateOpen(true);
   }
 
-  async function exportPng() {
+  async function capturePng(): Promise<string> {
     const el = document.querySelector(".flowchart-canvas .react-flow") as HTMLElement | null;
     if (!el) {
-      setStatus("Canvas is not ready to export.");
-      return;
+      throw new Error("Canvas is not ready to export.");
     }
-    const dataUrl = await toPng(el, {
+    return toPng(el, {
       backgroundColor: "#09090b",
       cacheBust: true,
       pixelRatio: 2,
     });
-    const a = document.createElement("a");
-    a.href = dataUrl;
-    a.download = `${graphFilename(graph).replace(/\.json$/, "")}.png`;
-    a.click();
+  }
+
+  async function exportPng() {
+    const dataUrl = await capturePng();
+    downloadDataUrl(`${graphFilename(graph).replace(/\.json$/, "")}.png`, dataUrl);
+    return dataUrl;
   }
 
   async function runPremium(action: PremiumAction) {
@@ -204,9 +213,53 @@ export function StudioApp() {
       }
       return;
     }
-    const pkg = exportToBuilder(graph);
-    downloadText(builderPackageFilename(pkg), JSON.stringify(pkg, null, 2));
-    window.open(builderSendUrl(), "_blank", "noopener,noreferrer");
+    let flowchartPng: string | undefined;
+    try {
+      flowchartPng = await capturePng();
+    } catch {
+      setStatus("Sending the map without a PNG preview — try desktop for the image.");
+    }
+    const stepParam =
+      typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("step")) : NaN;
+    const step = Number.isFinite(stepParam) && stepParam >= 1 ? Math.floor(stepParam) : undefined;
+    try {
+      const response = await fetch("/api/handoff", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          graph,
+          title: graph.title,
+          image: flowchartPng,
+          generatedAt: new Date().toISOString(),
+        }),
+      });
+      const data = (await response.json()) as {
+        jsonUrl?: string;
+        imageUrl?: string;
+        title?: string;
+        error?: string;
+      };
+      if (!response.ok || !data.jsonUrl) {
+        throw new Error(data.error || "Could not publish the Builder handoff.");
+      }
+      window.open(
+        builderSendUrl({
+          flowchartJson: data.jsonUrl,
+          flowchartImage: data.imageUrl,
+          flowchartTitle: data.title || graph.title,
+          step,
+        }),
+        "_blank",
+        "noopener,noreferrer",
+      );
+      return;
+    } catch {
+      const pkg = exportToBuilder(graph, new Date().toISOString(), flowchartPng);
+      downloadText(builderPackageFilename(pkg), JSON.stringify(pkg, null, 2));
+      if (flowchartPng) downloadDataUrl(pkg.attach.imageFilename, flowchartPng);
+      window.open(builderSendUrl({ flowchartTitle: graph.title, step }), "_blank", "noopener,noreferrer");
+      setStatus("Opened Builder. Drop the downloaded JSON onto a step if it does not attach automatically.");
+    }
   }
 
   return (
@@ -254,13 +307,65 @@ export function StudioApp() {
         ))}
       </div>
 
-      <section className="print-only print-title hidden print:block">
-        <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
-      </section>
-
-      <section className="print-only print-map-wrap hidden print:block">
-        <PrintMap graph={graph} />
-      </section>
+      {paginatePrintMap(graph).map((page) => (
+        <section
+          key={`print-sheet-${page.index}`}
+          className={`print-only print-sheet${page.index === page.total - 1 ? " print-sheet-last" : ""} hidden print:flex`}
+          data-print-page={page.index + 1}
+          data-print-total={page.total}
+          data-continue-next={page.continueNext ? "1" : "0"}
+          data-continue-prev={page.continuePrev ? "1" : "0"}
+          data-backtrack={page.backtrack ? "1" : "0"}
+        >
+          {page.index === 0 ? (
+            <div className="print-title">
+              <h1 className="font-display text-2xl font-semibold">{graph.title}</h1>
+            </div>
+          ) : null}
+          <div className="print-map-wrap">
+            {page.backtrack ? (
+              <div className="print-cont print-cont-start" data-print-cont="backtrack">
+                ← backtrack
+              </div>
+            ) : page.continuePrev ? (
+              <div className="print-cont print-cont-start" data-print-cont="prev">
+                ← cont
+              </div>
+            ) : null}
+            <PrintMap graph={page.graph} alreadyLaid />
+            {page.continueNext ? (
+              <div className="print-cont print-cont-end" data-print-cont="next">
+                cont →
+              </div>
+            ) : null}
+            {page.total > 1 ? (
+              <p className="print-page-num">
+                Page {page.index + 1} of {page.total}
+              </p>
+            ) : null}
+          </div>
+          {page.index === page.total - 1 ? (
+            <section className="print-steps">
+              <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">
+                {listableNodes(graph).map((node) => {
+                  const branches = graph.edges
+                    .filter((edge) => edge.source === node.id && edge.label)
+                    .map((edge) => String(edge.label));
+                  return (
+                    <li key={node.id}>
+                      <strong>{node.kind === "decision" ? "Decision: " : ""}</strong>
+                      {node.label}
+                      {node.kind === "decision" && branches.length ? (
+                        <span>{` (${branches.join(" / ")})`}</span>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ol>
+            </section>
+          ) : null}
+        </section>
+      ))}
 
       <div className="studio-workspace no-print flex min-h-0 flex-1">
         <aside
@@ -293,27 +398,6 @@ export function StudioApp() {
           <ChatPanel messages={messages} busy={busy} onSend={(message) => void chat(message)} />
         </aside>
       </div>
-
-      <section className="print-only print-steps hidden print:block">
-        <ol className="mt-2 list-decimal space-y-2 pl-5 text-sm">
-          {graph.nodes
-            .filter((node) => node.kind === "step" || node.kind === "decision")
-            .map((node) => {
-              const branches = graph.edges
-                .filter((edge) => edge.source === node.id && edge.label)
-                .map((edge) => String(edge.label));
-              return (
-                <li key={node.id}>
-                  <strong>{node.kind === "decision" ? "Decision: " : ""}</strong>
-                  {node.label}
-                  {node.kind === "decision" && branches.length ? (
-                    <span>{` (${branches.join(" / ")})`}</span>
-                  ) : null}
-                </li>
-              );
-            })}
-        </ol>
-      </section>
 
       <UnlockModal
         open={gateOpen}

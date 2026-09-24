@@ -17,6 +17,7 @@ describe("llm graph rules", () => {
     expect(GRAPH_RULES).toMatch(/interrogative/i);
     expect(GRAPH_RULES).toMatch(/If yes/);
     expect(GRAPH_RULES).toMatch(/decision/i);
+    expect(GRAPH_RULES).toMatch(/3–8 words/);
     expect(hasLlmKey()).toBe(Boolean(process.env.OPENAI_API_KEY || process.env.ANTHROPIC_API_KEY));
   });
 });

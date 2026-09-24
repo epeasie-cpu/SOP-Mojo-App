@@ -58,12 +58,26 @@ export function hostLabel(url: string = SITE.host): string {
   return new URL(url).host.replace(/^www\./, "");
 }
 
-export function builderSendUrl(): string {
+export type BuilderSendParams = {
+  flowchartJson?: string;
+  flowchartImage?: string;
+  flowchartTitle?: string;
+  step?: number;
+};
+
+export function builderSendUrl(opts: BuilderSendParams = {}): string {
   const params = new URLSearchParams({
     utm_source: "flowchart-studio",
     utm_medium: "product",
     utm_campaign: "send_to_builder",
     import: "flowchart",
+    attach: "step",
   });
+  if (opts.flowchartJson) params.set("flowchartJson", opts.flowchartJson);
+  if (opts.flowchartImage) params.set("flowchartImage", opts.flowchartImage);
+  if (opts.flowchartTitle) params.set("flowchartTitle", opts.flowchartTitle);
+  if (opts.step != null && Number.isFinite(opts.step) && opts.step >= 1) {
+    params.set("step", String(Math.floor(opts.step)));
+  }
   return `${SITE.builder}?${params.toString()}`;
 }

@@ -146,4 +146,23 @@ describe("prose process parser", () => {
     expect(parsed.decision?.yesSteps.join(" ").toLowerCase()).toMatch(/count the bills/);
     expect(parsed.decision?.noSteps.join(" ").toLowerCase()).toMatch(/unlock the drawer/);
   });
+
+  it("maps ask-if X or Y plus If X / If Y into a diamond", () => {
+    const prompt =
+      "Walk to the front counter. Next ask if they want soup or salad. If soup, ladle the soup. If salad, plate the greens. Finally thank the guest.";
+    const parsed = parseProcess(prompt);
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/soup/);
+    expect(parsed.decision?.question.toLowerCase()).toMatch(/salad/);
+    expect(parsed.decision?.yesSteps.join(" ").toLowerCase()).toMatch(/ladle/);
+    expect(parsed.decision?.noSteps.join(" ").toLowerCase()).toMatch(/plate|greens/);
+    expect(parsed.epilogue.join(" ").toLowerCase()).toMatch(/thank/);
+
+    const graph = generateTemplateGraph(prompt);
+    expect(graph.nodes.filter((node) => node.kind === "decision")).toHaveLength(1);
+    expect(graph.nodes.some((node) => node.kind === "decision" && /soup|salad/i.test(node.label))).toBe(
+      true,
+    );
+    expect(graph.edges.some((edge) => edge.label === "yes")).toBe(true);
+    expect(graph.edges.some((edge) => edge.label === "no")).toBe(true);
+  });
 });

@@ -1,4 +1,5 @@
 import { coerceGraph, emptyGraph, newId, type FlowEdge, type FlowGraph, type FlowNode } from "./graph";
+import { polishGraphLabels } from "./label";
 import { layoutGraph } from "./layout";
 import { parseProcess } from "./parse-process";
 
@@ -100,7 +101,7 @@ export function generateTemplateGraph(text: string): FlowGraph {
   }
 
   nodes.push(end);
-  return layoutGraph(coerceGraph({ title: parsed.title, nodes, edges }, parsed.title));
+  return layoutGraph(polishGraphLabels(coerceGraph({ title: parsed.title, nodes, edges }, parsed.title)));
 }
 
 export function demoGraph(): FlowGraph {
