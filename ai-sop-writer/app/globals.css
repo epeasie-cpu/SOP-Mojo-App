@@ -1,34 +1,34 @@
 @import "tailwindcss";
 
+/* Shared with Flowchart Studio and SOP Builder Pro. */
 :root {
-  --ink: #12150f;
-  --paper: #f6f4ec;
-  --lime: #c6ff4a;
+  --lime: #b0ff56;
   --lime-ink: #10140c;
-  --forest: #1c2a14;
-  --muted: #5c6454;
-  --line: #d9d6c8;
+  --zinc: #09090b;
+  --background: #09090b;
+  --foreground: #f4f4f5;
+  --ink: var(--foreground);
+  --paper: var(--zinc);
+  --muted: #a1a1aa;
+  --line: #27272a;
 }
 
 @theme inline {
-  --color-ink: var(--ink);
-  --color-paper: var(--paper);
   --color-lime: var(--lime);
   --color-lime-ink: var(--lime-ink);
-  --color-forest: var(--forest);
+  --color-ink: var(--ink);
+  --color-paper: var(--paper);
   --color-muted: var(--muted);
   --color-line: var(--line);
+  --color-zinc-950: #09090b;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
-html {
-  background: var(--paper);
-}
-
+html,
 body {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--zinc);
+  color: var(--foreground);
 }
 
 .prose-sop p {
@@ -40,16 +40,17 @@ body {
 
 .prose-sop .lede {
   font-size: 1.125rem;
-  color: var(--ink);
+  color: var(--foreground);
 }
 
 .prose-sop h2 {
   font-family: var(--font-display);
   font-size: 1.5rem;
   font-weight: 600;
-  color: var(--ink);
+  color: var(--foreground);
 }
 
+/* Screen chrome is the dark family. Printed and saved SOPs stay paper documents. */
 @media print {
   .no-print,
   header,
@@ -58,13 +59,29 @@ body {
     display: none !important;
   }
 
+  html,
   body {
-    background: white;
+    background: white !important;
+    color: #18181b !important;
   }
 
   .sop-document {
     border: none !important;
     box-shadow: none !important;
+    margin: 0 !important;
     padding: 0 !important;
+    background: white !important;
+    color: #18181b !important;
+  }
+
+  .sop-document * {
+    color: #18181b !important;
+    background: transparent !important;
+    border-color: transparent !important;
+  }
+
+  .sop-document .banner {
+    background: #fff6c2 !important;
+    border: 1px solid #e0c35a !important;
   }
 }

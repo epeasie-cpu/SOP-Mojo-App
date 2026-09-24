@@ -15,15 +15,15 @@ export default function OpenGraphImage() {
           display: "flex",
           flexDirection: "column",
           justifyContent: "space-between",
-          background: "#10140c",
-          color: "#f6f4ec",
+          background: "#09090b",
+          color: "#f4f4f5",
           padding: "64px",
         }}
       >
         <div style={{ display: "flex", alignItems: "center" }}>
           <div
             style={{
-              background: "#c6ff4a",
+              background: "#B0FF56",
               color: "#10140c",
               fontSize: 28,
               fontWeight: 800,
@@ -34,11 +34,11 @@ export default function OpenGraphImage() {
           </div>
           <div
             style={{
-              color: "#c6ff4a",
+              color: "#B0FF56",
               fontSize: 28,
               fontWeight: 800,
               padding: "8px 14px",
-              border: "2px solid #c6ff4a",
+              border: "2px solid #B0FF56",
             }}
           >
             MOJO
@@ -48,11 +48,11 @@ export default function OpenGraphImage() {
           <div style={{ fontSize: 72, fontWeight: 700, lineHeight: 1.05 }}>
             AI SOP Writer
           </div>
-          <div style={{ marginTop: 18, fontSize: 28, color: "#c6ff4a", maxWidth: 900 }}>
+          <div style={{ marginTop: 18, fontSize: 28, color: "#B0FF56", maxWidth: 900 }}>
             First-draft standard operating procedures — not statements of purpose.
           </div>
         </div>
-        <div style={{ fontSize: 22, color: "#b8bbae" }}>{hostLabel()}</div>
+        <div style={{ fontSize: 22, color: "#a1a1aa" }}>{hostLabel()}</div>
       </div>
     ),
     { ...size },

@@ -7,6 +7,11 @@ import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
 
+const fieldClass =
+  "mt-1 w-full rounded-md border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm font-normal text-zinc-100 outline-none placeholder:text-zinc-600 focus:border-lime";
+const outlineButtonClass =
+  "rounded-sm border border-zinc-700 px-3 py-2 text-sm font-semibold text-zinc-200 hover:border-lime";
+
 const BUSINESS_SUGGESTIONS = [
   "Professional services firm",
   "B2B services company",
@@ -112,10 +117,13 @@ export function Generator({ defaults, outputSlotId }: Props) {
       <form
         id="generator"
         onSubmit={onSubmit}
-        className="rounded-xl border border-line bg-white p-5 shadow-sm sm:p-6"
+        className="rounded-lg border border-zinc-800 bg-zinc-900 p-5 sm:p-6"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <label className="block text-sm font-medium text-ink">
+        <p className="text-xs font-semibold tracking-[0.16em] text-zinc-500 uppercase">
+          First draft
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="block text-sm font-medium text-zinc-200">
             Business type
             <input
               required
@@ -123,54 +131,54 @@ export function Generator({ defaults, outputSlotId }: Props) {
               onChange={(event) => update("businessType", event.target.value)}
               list="business-types"
               placeholder="e.g. trades shop, hotel, B2B firm"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
-          <label className="block text-sm font-medium text-ink">
+          <label className="block text-sm font-medium text-zinc-200">
             Process name
             <input
               required
               value={form.processName}
               onChange={(event) => update("processName", event.target.value)}
               placeholder="e.g. guest room turnover"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
-          <label className="block text-sm font-medium text-ink sm:col-span-2">
+          <label className="block text-sm font-medium text-zinc-200 sm:col-span-2">
             Role (owner)
             <input
               required
               value={form.role}
               onChange={(event) => update("role", event.target.value)}
               placeholder="e.g. lead technician"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
-          <label className="block text-sm font-medium text-ink">
-            Tools <span className="font-normal text-muted">(optional)</span>
+          <label className="block text-sm font-medium text-zinc-200">
+            Tools <span className="font-normal text-zinc-500">(optional)</span>
             <input
               value={form.tools}
               onChange={(event) => update("tools", event.target.value)}
               placeholder="CRM, cart, work-order app…"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
-          <label className="block text-sm font-medium text-ink">
-            Outcome / KPI <span className="font-normal text-muted">(optional)</span>
+          <label className="block text-sm font-medium text-zinc-200">
+            Outcome / KPI <span className="font-normal text-zinc-500">(optional)</span>
             <input
               value={form.kpi}
               onChange={(event) => update("kpi", event.target.value)}
               placeholder="e.g. first-time fix rate"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
-          <label className="block text-sm font-medium text-ink sm:col-span-2">
-            Trigger <span className="font-normal text-muted">(optional)</span>
+          <label className="block text-sm font-medium text-zinc-200 sm:col-span-2">
+            Trigger <span className="font-normal text-zinc-500">(optional)</span>
             <input
               value={form.trigger}
               onChange={(event) => update("trigger", event.target.value)}
               placeholder="e.g. dispatched work order"
-              className="mt-1 w-full rounded-md border border-line bg-paper px-3 py-2 text-base font-normal"
+              className={fieldClass}
             />
           </label>
         </div>
@@ -179,11 +187,11 @@ export function Generator({ defaults, outputSlotId }: Props) {
             <option key={item} value={item} />
           ))}
         </datalist>
-        {error ? <p className="mt-3 text-sm text-red-700">{error}</p> : null}
+        {error ? <p className="mt-3 text-sm text-amber-300">{error}</p> : null}
         <button
           type="submit"
           disabled={loading}
-          className="mt-5 w-full rounded-sm bg-lime px-4 py-3 text-sm font-semibold text-lime-ink hover:bg-lime/90 disabled:opacity-60 sm:w-auto"
+          className="mt-5 w-full rounded-sm bg-lime px-4 py-2.5 text-sm font-semibold text-lime-ink hover:bg-lime/90 disabled:opacity-60 sm:w-auto"
         >
           {loading ? "Writing first draft…" : "Write first-draft SOP"}
         </button>
@@ -229,45 +237,37 @@ function SopOutput({
   const output = (
         <article
           id="sop-output"
-          className="sop-document mt-8 rounded-xl border border-line bg-white p-5 sm:p-8"
+          className="sop-document mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-5 sm:p-8"
         >
-          <p className="banner rounded-md border border-amber-300 bg-amber-100 px-3 py-2 text-sm text-ink">
+          <p className="banner rounded-md border border-amber-400/40 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">
             {SITE.banner}
           </p>
           {mode === "template" ? (
-            <p className="mt-3 text-xs font-semibold tracking-wide text-muted uppercase">
+            <p className="mt-3 text-xs font-semibold tracking-[0.14em] text-zinc-500 uppercase">
               Template mode — no language-model API key configured
             </p>
           ) : llmFailed ? (
-            <p className="mt-3 text-xs text-muted">
+            <p className="mt-3 text-xs text-zinc-500">
               Language model unavailable. Showing a structured draft from the same SOP skeleton.
             </p>
           ) : (
-            <p className="mt-3 text-xs text-muted">AI first draft from AI SOP Writer.</p>
+            <p className="mt-3 text-xs text-zinc-500">AI first draft from AI SOP Writer.</p>
           )}
-          <h2 className="font-display mt-4 text-3xl font-semibold text-ink">{sop.title}</h2>
+          <h2 className="font-display mt-4 text-3xl font-semibold text-zinc-50">{sop.title}</h2>
           <SopSections sop={sop} />
           <div className="no-print mt-6 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={onCopyMarkdown}
-              className="rounded-sm bg-forest px-3 py-2 text-sm font-semibold text-white hover:bg-forest/90"
-            >
+            <button type="button" onClick={onCopyMarkdown} className={outlineButtonClass}>
               {copied === "md" ? "Copied Markdown" : "Copy Markdown"}
             </button>
             <button
               type="button"
               onClick={onCopyPrompt}
               title="Paste into ChatGPT, Claude, Gemini, or any GPT tool"
-              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
+              className={outlineButtonClass}
             >
               {copied === "prompt" ? "Prompt copied" : "Copy AI prompt"}
             </button>
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
-            >
+            <button type="button" onClick={() => window.print()} className={outlineButtonClass}>
               Print
             </button>
             <button
@@ -275,7 +275,7 @@ function SopOutput({
               onClick={() =>
                 downloadFile(sopFilename(sop, "md"), markdown, "text/markdown;charset=utf-8")
               }
-              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
+              className={outlineButtonClass}
             >
               Download Markdown
             </button>
@@ -288,28 +288,40 @@ function SopOutput({
                   "text/html;charset=utf-8",
                 )
               }
-              className="rounded-sm border border-forest px-3 py-2 text-sm font-semibold text-ink hover:bg-paper"
+              className={outlineButtonClass}
             >
               Download print HTML
             </button>
           </div>
-          <div className="no-print mt-6 rounded-md bg-paper p-4 text-sm">
-            <p className="font-semibold text-ink">Ready for a living system?</p>
-            <p className="mt-1 text-muted">
+          <div className="no-print mt-6 rounded-lg border border-zinc-800 bg-zinc-950 p-4 text-sm">
+            <p className="font-semibold text-zinc-100">Ready for a living system?</p>
+            <p className="mt-1 text-zinc-400">
               Take the reviewed SOP into SOP Builder Pro. Browse more tools in the SOP Library,
               or visit SOP Mojo.
             </p>
-            <div className="mt-3 flex flex-wrap gap-3">
-              <a href={WRITER_UPGRADE_URL} className="font-semibold text-forest underline">
+            <div className="mt-3 flex flex-wrap gap-2">
+              <a
+                href={WRITER_UPGRADE_URL}
+                className="rounded-sm bg-lime px-3 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
+              >
                 Get Builder Pro
               </a>
-              <a href={SITE.builder} className="underline">
+              <a
+                href={SITE.builder}
+                className="rounded-sm border border-zinc-700 px-3 py-2 text-zinc-300 hover:border-lime"
+              >
                 Living system
               </a>
-              <a href={SITE.library} className="underline">
+              <a
+                href={SITE.library}
+                className="rounded-sm border border-zinc-700 px-3 py-2 text-zinc-300 hover:border-lime"
+              >
                 SOP Library
               </a>
-              <a href={SITE.parent} className="underline">
+              <a
+                href={SITE.parent}
+                className="rounded-sm border border-zinc-700 px-3 py-2 text-zinc-300 hover:border-lime"
+              >
                 {hostLabel(SITE.parent)}
               </a>
             </div>
@@ -322,21 +334,21 @@ function SopOutput({
 
 function SopSections({ sop }: { sop: SopDraft }) {
   return (
-    <div className="mt-6 space-y-6 text-ink">
+    <div className="mt-6 space-y-6 text-zinc-100">
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Purpose</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Purpose</h3>
         <p className="mt-1">{sop.purpose}</p>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Owner</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Owner</h3>
         <p className="mt-1">{sop.owner}</p>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Trigger</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Trigger</h3>
         <p className="mt-1">{sop.trigger}</p>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Tools</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Tools</h3>
         <ul className="mt-1 list-disc pl-5">
           {sop.tools.map((tool) => (
             <li key={tool}>{tool}</li>
@@ -344,24 +356,24 @@ function SopSections({ sop }: { sop: SopDraft }) {
         </ul>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">KPI</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">KPI</h3>
         <p className="mt-1">{sop.kpi}</p>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Steps</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Steps</h3>
         <ol className="mt-2 space-y-3">
           {sop.steps.map((step) => (
             <li key={step.number}>
               <p className="font-semibold">
                 {step.number}. {step.title}
               </p>
-              <p className="text-muted">{step.detail}</p>
+              <p className="text-zinc-400">{step.detail}</p>
             </li>
           ))}
         </ol>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">
           Exceptions
         </h3>
         <ul className="mt-1 list-disc pl-5">
@@ -371,7 +383,7 @@ function SopSections({ sop }: { sop: SopDraft }) {
         </ul>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">Checklist</h3>
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">Checklist</h3>
         <ul className="mt-1 list-disc pl-5">
           {sop.checklist.map((item) => (
             <li key={item}>{item}</li>
@@ -379,7 +391,7 @@ function SopSections({ sop }: { sop: SopDraft }) {
         </ul>
       </section>
       <section>
-        <h3 className="text-sm font-semibold tracking-[0.14em] text-forest uppercase">
+        <h3 className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">
           Safety notes
         </h3>
         <ul className="mt-1 list-disc pl-5">

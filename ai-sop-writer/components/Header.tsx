@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { WRITER_UPGRADE_URL } from "@/lib/site";
+import { WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import { Logo } from "./Logo";
 
 const NAV = [
@@ -12,17 +12,20 @@ const NAV = [
 
 export function Header() {
   return (
-    <header className="no-print bg-black text-white">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+    <header className="no-print border-b border-zinc-800 bg-zinc-950 text-zinc-100">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <Link href="/" className="shrink-0" aria-label="AI SOP Writer home">
           <Logo />
         </Link>
-        <nav className="hidden items-center gap-5 text-sm text-white/80 lg:flex">
+        <nav className="hidden items-center gap-4 text-sm text-zinc-400 lg:flex">
           {NAV.map((item) => (
             <Link key={item.href} href={item.href} className="hover:text-lime">
               {item.label}
             </Link>
           ))}
+          <span className="hidden text-xs tracking-[0.16em] text-zinc-600 uppercase xl:inline">
+            {hostLabel()}
+          </span>
           <a
             href={WRITER_UPGRADE_URL}
             className="rounded-sm bg-lime px-3 py-1.5 font-semibold text-lime-ink hover:bg-lime/90"
@@ -31,15 +34,15 @@ export function Header() {
           </a>
         </nav>
         <details className="relative lg:hidden">
-          <summary className="cursor-pointer list-none rounded-sm border border-white/20 px-3 py-1 text-sm">
+          <summary className="cursor-pointer list-none rounded-sm border border-zinc-700 px-3 py-1 text-sm text-zinc-300">
             Menu
           </summary>
-          <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-white/10 bg-forest p-3 text-sm shadow-lg">
+          <div className="absolute right-0 z-20 mt-2 w-56 rounded-md border border-zinc-700 bg-zinc-950 p-3 text-sm text-zinc-300 shadow-2xl">
             {NAV.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="block rounded-sm px-2 py-2 hover:bg-white/10"
+                className="block rounded-sm px-2 py-2 hover:bg-zinc-900 hover:text-lime"
               >
                 {item.label}
               </Link>

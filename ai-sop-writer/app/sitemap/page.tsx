@@ -25,7 +25,7 @@ export default function HtmlSitemapPage() {
         .
       </p>
       <section className="mt-10">
-        <h2 className="font-display text-2xl font-semibold">Pages</h2>
+        <h2 className="font-display text-2xl font-semibold text-zinc-50">Pages</h2>
         <ul className="mt-3 space-y-2">
           {pages.map((item) => (
             <li key={item.path}>
@@ -38,7 +38,7 @@ export default function HtmlSitemapPage() {
         </ul>
       </section>
       <section className="mt-10">
-        <h2 className="font-display text-2xl font-semibold">Use cases</h2>
+        <h2 className="font-display text-2xl font-semibold text-zinc-50">Use cases</h2>
         <ul className="mt-3 space-y-2">
           {useCases.map((item) => (
             <li key={item.path}>
