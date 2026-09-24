@@ -1,9 +1,11 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import { coerceGraph } from "@/lib/graph";
+import { printInstructions } from "@/lib/print-instructions";
 import {
+  buildInstructionSheets,
   PDF_MARGIN,
   PDF_PAGE_HEIGHT,
   PDF_PAGE_WIDTH,
@@ -41,7 +43,9 @@ describe("print pdf", () => {
     expect(plan.length).toBe(paginatePrintMap(demoGraph()).length);
     expect(PDF_PAGE_WIDTH).toBe(792);
     expect(PDF_PAGE_HEIGHT).toBe(612);
+    expect(PDF_PAGE_WIDTH).toBeGreaterThan(PDF_PAGE_HEIGHT);
     expect(PDF_MARGIN).toBeCloseTo(0.4 * 72);
+    expect(plan.every((page) => page.stepsHeight === 0)).toBe(true);
     expect(plan[0].blockOffset).toBeGreaterThan(12);
     expect(plan.some((page) => page.continuations.some((stub) => stub.role === "exit"))).toBe(
       plan.length > 1,
@@ -61,18 +65,44 @@ describe("print pdf", () => {
 
     const bytes = await renderPrintPdf(graph);
     const pdf = await PDFDocument.load(bytes);
-    expect(pdf.getPageCount()).toBe(plan.length);
+    const measure = await PDFDocument.create();
+    const font = await measure.embedFont(StandardFonts.Helvetica);
+    const sheets = buildInstructionSheets(graph, font);
+    expect(sheets.length).toBeGreaterThan(0);
+    expect(pdf.getPageCount()).toBe(plan.length + sheets.length);
     expect(pdf.getTitle()).toBe("Wide inspection");
     expect(pdf.getSubject()).toBe("flowchart-click-to-open");
-    const first = pdf.getPage(0).getSize();
-    expect(first.width).toBe(PDF_PAGE_WIDTH);
-    expect(first.height).toBe(PDF_PAGE_HEIGHT);
+    for (const page of pdf.getPages()) {
+      const size = page.getSize();
+      expect(size.width).toBe(PDF_PAGE_WIDTH);
+      expect(size.height).toBe(PDF_PAGE_HEIGHT);
+      expect(size.width).toBeGreaterThan(size.height);
+    }
 
     const source = readFileSync(path.join(process.cwd(), "lib/print-pdf.ts"), "utf8");
     expect(source).toContain("paginatePrintMap");
     expect(source).toContain("continuationDraw");
+    expect(source).toContain("buildInstructionSheets");
     expect(source).toContain("Page ");
     expect(source).not.toContain("cont →");
     expect(source).not.toContain("print-cont");
+    expect(source).not.toContain("slice(0, 110)");
+  });
+
+  it("adds instruction pages only when the map has step text", async () => {
+    const graph = coerceGraph({
+      title: "Empty",
+      nodes: [
+        { id: "start", kind: "start", label: "Start" },
+        { id: "end", kind: "end", label: "End" },
+      ],
+      edges: [{ id: "e", source: "start", target: "end" }],
+    });
+    expect(printInstructions(graph)).toEqual([]);
+    const bytes = await renderPrintPdf(graph);
+    const pdf = await PDFDocument.load(bytes);
+    expect(pdf.getPageCount()).toBe(planPrintPdf(graph).length);
+    const size = pdf.getPage(0).getSize();
+    expect(size.width).toBeGreaterThan(size.height);
   });
 });
