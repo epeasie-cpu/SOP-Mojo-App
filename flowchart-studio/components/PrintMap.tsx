@@ -1,9 +1,17 @@
 import type { FlowGraph } from "@/lib/graph";
-import { NODE_DIMS, printMapBox } from "@/lib/layout";
+import { NODE_DIMS, printMapBox, scalePrintGraph } from "@/lib/layout";
 import { printEdgePath } from "@/lib/print-map";
 
-export function PrintMap({ graph }: { graph: FlowGraph }) {
-  const { graph: laid, width, height, scale } = printMapBox(graph);
+export function PrintMap({
+  graph,
+  alreadyLaid = false,
+}: {
+  graph: FlowGraph;
+  alreadyLaid?: boolean;
+}) {
+  const { graph: laid, width, height, scale } = alreadyLaid
+    ? scalePrintGraph(graph)
+    : printMapBox(graph);
   const innerW = Math.max(1, width / scale);
   const innerH = Math.max(1, height / scale);
 

@@ -289,13 +289,14 @@ export function shiftGraphToOrigin(graph: FlowGraph): FlowGraph {
 export const PRINT_MAP_MAX_WIDTH = 960;
 export const PRINT_MAP_MAX_HEIGHT = 500;
 
-export function printMapBox(graph: FlowGraph): {
+/** Scale an already-laid print graph to the landscape box. Does not re-layout. */
+export function scalePrintGraph(graph: FlowGraph): {
   graph: FlowGraph;
   width: number;
   height: number;
   scale: number;
 } {
-  const shifted = shiftGraphToOrigin(layoutGraphPrint(graph));
+  const shifted = shiftGraphToOrigin(graph);
   const bounds = graphBounds(shifted);
   const scale = Math.min(
     PRINT_MAP_MAX_WIDTH / Math.max(bounds.width, 1),
@@ -308,4 +309,13 @@ export function printMapBox(graph: FlowGraph): {
     height: Math.max(1, Math.round(bounds.height * scale)),
     scale,
   };
+}
+
+export function printMapBox(graph: FlowGraph): {
+  graph: FlowGraph;
+  width: number;
+  height: number;
+  scale: number;
+} {
+  return scalePrintGraph(layoutGraphPrint(graph));
 }

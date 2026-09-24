@@ -23,6 +23,10 @@ describe("print stylesheet", () => {
     expect(css).toContain("background: white");
     expect(css).toContain(".print-steps");
     expect(css).toContain(".print-map");
+    expect(css).toContain(".print-sheet");
+    expect(css).toContain(".print-sheet-last");
+    expect(css).toContain("min-height: 7.4in");
+    expect(css).toContain("justify-content: center");
     expect(css).toContain("page-break-inside: avoid");
     expect(css).toContain(".print-cont");
     expect(css).toMatch(/\.flowchart-canvas[\s\S]*display:\s*none/);
@@ -36,6 +40,10 @@ describe("print stylesheet", () => {
     expect(app).toContain("window.print()");
     expect(app).toContain("print-title");
     expect(app).toContain("print-steps");
+    expect(app).toContain("print-sheet");
+    expect(app).toContain("paginatePrintMap");
+    expect(app).toContain("listableNodes");
+    expect(app).toContain("← backtrack");
     expect(app).toContain("<PrintMap");
     expect(app).toContain("studio-workspace no-print");
     expect(app.indexOf("print-title")).toBeLessThan(app.indexOf("<PrintMap"));

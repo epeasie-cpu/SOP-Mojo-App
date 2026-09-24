@@ -11,6 +11,7 @@ import {
   SAMCART_SLIDE_SCRIPT,
   SITE,
   builderCheckoutUrl,
+  builderSendUrl,
   flowchartCheckoutUrl,
 } from "@/lib/site";
 
@@ -26,6 +27,8 @@ describe("site urls", () => {
       "https://rpease1.mysamcart.com/checkout/flowchart-studio",
     );
     expect(flowchartCheckoutUrl()).toBe(FLOWCHART_DEFAULT_CHECKOUT);
+    expect(builderSendUrl()).toContain("import=flowchart");
+    expect(builderSendUrl()).toContain("attach=step");
     expect(flowchartCheckoutUrl()).toContain("/checkout/flowchart-studio");
     expect(SAMCART_SLIDE_SCRIPT).toBe(
       "https://static.samcart.com/checkouts/sc-slide-script.js",

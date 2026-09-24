@@ -1,4 +1,5 @@
 import { coerceGraph, type FlowGraph } from "./graph";
+import { polishGraphLabels } from "./label";
 import { layoutGraph } from "./layout";
 
 export type GenerateMode = "template" | "llm";
@@ -32,7 +33,8 @@ Rules:
 - Both branches use real source steps. Do not invent "Handle the no / exception path" when the source describes both sides.
 - JOIN steps sit after both branches merge, not on only one arm.
 - Extract every distinct action. Do not collapse a paragraph into one or two nodes (typically 6–16 nodes for a cooked process).
-- Short imperative labels. Every node except end has an outgoing edge; every node except start has an incoming edge.
+- Short imperative labels (3–8 words). Steps are actions, not paragraphs. Decisions are one short question. Happy path stays the readable spine.
+- Every node except end has an outgoing edge; every node except start has an incoming edge.
 - Do not invent legal, medical, or ISO citations.`;
 
 export function extractJson(text: string): unknown {
@@ -72,7 +74,7 @@ export function anthropicModel(vision = false): string {
 function graphFromModel(payload: unknown, fallbackTitle: string): FlowGraph {
   const rec = payload && typeof payload === "object" ? (payload as Record<string, unknown>) : {};
   const graphValue = rec.graph && typeof rec.graph === "object" ? rec.graph : payload;
-  return layoutGraph(coerceGraph(graphValue, fallbackTitle));
+  return layoutGraph(polishGraphLabels(coerceGraph(graphValue, fallbackTitle)));
 }
 
 async function openaiChat(args: {

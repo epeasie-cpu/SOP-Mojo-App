@@ -2,8 +2,10 @@ import type { FlowEdge, FlowGraph, FlowNode } from "./graph";
 import { listableNodes, orderedNodes, slugify } from "./graph";
 import { SITE } from "./site";
 
-export const BUILDER_IMPORT_FORMAT = "sop-builder-pro-import" as const;
-export const BUILDER_IMPORT_VERSION = 1 as const;
+import { BUILDER_BRIDGE_CONTRACT } from "./builder-bridge";
+
+export const BUILDER_IMPORT_FORMAT = BUILDER_BRIDGE_CONTRACT.format;
+export const BUILDER_IMPORT_VERSION = BUILDER_BRIDGE_CONTRACT.version;
 
 export type BuilderDecision = {
   question: string;
@@ -29,6 +31,15 @@ export type BuilderImportPackage = {
   purpose: string;
   steps: BuilderStep[];
   flowchart: FlowGraph;
+  print: typeof BUILDER_BRIDGE_CONTRACT.print;
+  attach: {
+    target: "builder-step";
+    imageRole: typeof BUILDER_BRIDGE_CONTRACT.imageRole;
+    imageFilename: string;
+  };
+  attachments?: {
+    flowchartPng?: string;
+  };
 };
 
 function nodeById(graph: FlowGraph): Map<string, FlowNode> {
@@ -57,6 +68,7 @@ function instructionFor(node: FlowNode, outgoing: FlowEdge[], byId: Map<string, 
 export function exportToBuilder(
   graph: FlowGraph,
   generatedAt = new Date().toISOString(),
+  flowchartPng?: string,
 ): BuilderImportPackage {
   const byId = nodeById(graph);
   const ordered = orderedNodes(graph);
@@ -92,6 +104,7 @@ export function exportToBuilder(
       ? `Imported from ${SITE.name}`
       : `Process with ${listed.length} mapped step${listed.length === 1 ? "" : "s"} from ${SITE.name}.`;
 
+  const imageFilename = `${slugify(graph.title)}-flowchart.png`;
   return {
     format: BUILDER_IMPORT_FORMAT,
     version: BUILDER_IMPORT_VERSION,
@@ -102,6 +115,13 @@ export function exportToBuilder(
     purpose,
     steps,
     flowchart: graph,
+    print: BUILDER_BRIDGE_CONTRACT.print,
+    attach: {
+      target: "builder-step",
+      imageRole: BUILDER_BRIDGE_CONTRACT.imageRole,
+      imageFilename,
+    },
+    attachments: flowchartPng ? { flowchartPng } : undefined,
   };
 }
 

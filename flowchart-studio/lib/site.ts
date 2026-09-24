@@ -64,6 +64,7 @@ export function builderSendUrl(): string {
     utm_medium: "product",
     utm_campaign: "send_to_builder",
     import: "flowchart",
+    attach: "step",
   });
   return `${SITE.builder}?${params.toString()}`;
 }

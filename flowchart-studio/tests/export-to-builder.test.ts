@@ -11,7 +11,13 @@ describe("export to builder", () => {
     const graph = demoGraph();
     const pkg = exportToBuilder(graph, "2026-09-19T00:00:00.000Z");
     expect(pkg.format).toBe(BUILDER_IMPORT_FORMAT);
-    expect(pkg.version).toBe(1);
+    expect(pkg.version).toBe(2);
+    expect(pkg.print.orientation).toBe("landscape");
+    expect(pkg.print.flow).toBe("LR");
+    expect(pkg.attach.target).toBe("builder-step");
+    expect(pkg.attach.imageRole).toBe("builder-step-embed");
+    expect(pkg.attach.imageFilename).toBe("client-onboarding-flowchart.png");
+    expect(pkg.attachments).toBeUndefined();
     expect(pkg.source).toBe("flowchart-studio");
     expect(pkg.title).toBe("Client onboarding");
     expect(pkg.host).toBe("https://flowchart.sopmojo.com");
@@ -26,5 +32,10 @@ describe("export to builder", () => {
     expect(builderPackageFilename(exportToBuilder(demoGraph()))).toBe(
       "client-onboarding-builder-import.json",
     );
+  });
+
+  it("embeds an optional PNG for the Builder step image", () => {
+    const pkg = exportToBuilder(demoGraph(), "2026-09-19T00:00:00.000Z", "data:image/png;base64,abc");
+    expect(pkg.attachments?.flowchartPng).toBe("data:image/png;base64,abc");
   });
 });

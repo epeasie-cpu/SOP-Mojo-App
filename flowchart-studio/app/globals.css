@@ -96,6 +96,25 @@ body {
     color: #18181b;
   }
 
+  /* One landscape sheet: content block centered with equal top/bottom room. */
+  .print-sheet.print-only {
+    display: flex !important;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 7.4in;
+    box-sizing: border-box;
+    padding: 0.15in 0;
+    page-break-after: always;
+    break-after: page;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .print-sheet-last {
+    page-break-after: auto;
+    break-after: auto;
+  }
+
   .print-title h1 {
     color: #18181b;
     margin: 0 0 0.12in;
@@ -103,9 +122,15 @@ body {
     line-height: 1.2;
   }
 
+  .print-page-num {
+    margin: 0.08in 0 0;
+    text-align: right;
+    font-size: 8pt;
+    color: #52525b;
+  }
+
   .print-steps {
     break-before: avoid;
-    break-inside: avoid;
     padding-top: 0.12in;
     font-size: 10pt;
     column-count: 2;
@@ -133,6 +158,10 @@ body {
     transform: translateY(-50%);
   }
 
+  .print-sheet .print-cont {
+    display: flex !important;
+  }
+
   .print-cont-start {
     left: 0.15in;
   }
@@ -153,6 +182,7 @@ body {
 
   /* Live React Flow canvas is no-print; this map is normal-flow so it starts on page 1. */
   .print-map-wrap {
+    position: relative;
     break-inside: avoid;
     page-break-inside: avoid;
     break-before: avoid;
