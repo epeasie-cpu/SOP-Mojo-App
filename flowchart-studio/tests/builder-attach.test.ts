@@ -12,7 +12,7 @@ import {
 import { demoGraph } from "@/lib/template-graph";
 
 describe("builder studio attach contract", () => {
-  it("uses placement own or step and does not send a studio library URL", () => {
+  it("posts target own for Its Own Step and the step id for an existing step", () => {
     const own = attachPayload({
       sopId: "sop_1",
       stepId: OWN_STEP_ID,
@@ -22,12 +22,15 @@ describe("builder studio attach contract", () => {
       graph: demoGraph(),
       pdfBase64: "abc",
     });
+    expect(own.target).toBe("own");
     expect(own.placement).toBe("own");
     expect(own.stepId).toBeNull();
     expect(own.pdfFilename).toBe("client-onboarding-flowchart.pdf");
     expect(own.graph.title).toBe("Client onboarding");
     expect(own).not.toHaveProperty("pdfUrl");
     expect(JSON.stringify(own)).not.toContain("/api/library");
+    expect(JSON.stringify(own)).not.toContain("own-step");
+    expect(JSON.stringify(own)).not.toContain("itsOwnStep");
 
     const existing = attachPayload({
       sopId: "sop_1",
@@ -38,6 +41,7 @@ describe("builder studio attach contract", () => {
       graph: demoGraph(),
       pdfBase64: "abc",
     });
+    expect(existing.target).toBe("step_9");
     expect(existing.placement).toBe("step");
     expect(existing.stepId).toBe("step_9");
   });
@@ -97,24 +101,41 @@ describe("builder studio attach contract", () => {
       expect.anything(),
     );
 
-    const attached = await attachFlowchart(
-      "user-token",
-      attachPayload({
-        sopId: "sop_1",
-        stepId: "step_1",
-        flowchartId: "11111111-1111-4111-8111-111111111111",
-        title: "Client onboarding",
-        purpose: "purpose",
-        graph: demoGraph(),
-        pdfBase64: "abc",
-      }),
-      fetchMock,
-    );
+    const existingBody = attachPayload({
+      sopId: "sop_1",
+      stepId: "step_1",
+      flowchartId: "11111111-1111-4111-8111-111111111111",
+      title: "Client onboarding",
+      purpose: "purpose",
+      graph: demoGraph(),
+      pdfBase64: "abc",
+    });
+    const attached = await attachFlowchart("user-token", existingBody, fetchMock);
     expect(attached.placement).toBe("step");
     expect(attached.pdfUrl).toContain("map.pdf");
     expect(fetchMock).toHaveBeenCalledWith(
       "https://builder.sopmojo.com/api/studio/attach",
-      expect.objectContaining({ method: "POST" }),
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(existingBody),
+      }),
     );
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body)).target).toBe("step_1");
+
+    const ownBody = attachPayload({
+      sopId: "sop_1",
+      stepId: OWN_STEP_ID,
+      flowchartId: "11111111-1111-4111-8111-111111111111",
+      title: "Client onboarding",
+      purpose: "purpose",
+      graph: demoGraph(),
+      pdfBase64: "abc",
+    });
+    await attachFlowchart("user-token", ownBody, fetchMock);
+    expect(JSON.parse(String(fetchMock.mock.calls.at(-1)?.[1]?.body))).toMatchObject({
+      target: "own",
+      placement: "own",
+      stepId: null,
+    });
   });
 });

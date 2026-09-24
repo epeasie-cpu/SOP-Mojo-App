@@ -43,6 +43,8 @@ export const BUILDER_BRIDGE_CONTRACT = {
     attach: "POST /api/studio/attach",
   },
   attach: {
+    /** Live Builder check: target must be this string or a step id. */
+    targetOwn: ATTACH_PLACEMENT_OWN,
     placementOwn: ATTACH_PLACEMENT_OWN,
     placementStep: ATTACH_PLACEMENT_STEP,
     response: ["stepId", "placement", "pdfUrl", "printable"],

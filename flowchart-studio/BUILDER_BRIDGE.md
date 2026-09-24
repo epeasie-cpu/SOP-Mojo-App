@@ -63,6 +63,7 @@ The PDF is not stored in the row. Studio builds it with `lib/print-pdf.ts` (same
 ```json
 {
   "sopId": "sop-id",
+  "target": "own",
   "placement": "own",
   "stepId": null,
   "flowchartId": "uuid",
@@ -74,7 +75,10 @@ The PDF is not stored in the row. Studio builds it with `lib/print-pdf.ts` (same
 }
 ```
 
-`placement` is `own` (Its Own Step, `stepId` null) or `step` (existing step, `stepId` set).
+Builder returns HTTP 400 `target must be "own" or a step id` unless `target` is present.
+
+- **Its Own Step:** `target` is `"own"`, `placement` is `own`, `stepId` is null.
+- **Existing step:** `target` is that step’s id, `placement` is `step`, and `stepId` is the same id.
 
 ### Attach response
 

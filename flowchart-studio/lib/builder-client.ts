@@ -7,7 +7,11 @@ import type { FlowGraph } from "./graph";
 import { slugify } from "./graph";
 import { SITE } from "./site";
 
-/** UI sentinel for “Its Own Step”. The attach body uses placement `own` and stepId null. */
+/**
+ * UI sentinel for “Its Own Step”.
+ * Builder’s POST /api/studio/attach requires `target` to be this string or a step id.
+ * `placement` stays `own` and `stepId` stays null for that choice.
+ */
 export const OWN_STEP_ID = "own";
 
 export type BuilderSopSummary = {
@@ -24,6 +28,8 @@ export type BuilderStepSummary = {
 
 export type BuilderAttachBody = {
   sopId: string;
+  /** `"own"` for Its Own Step, otherwise the existing step id. Builder rejects any other value. */
+  target: string;
   placement: typeof ATTACH_PLACEMENT_OWN | typeof ATTACH_PLACEMENT_STEP;
   stepId: string | null;
   flowchartId: string;
@@ -144,6 +150,7 @@ export function attachPayload(input: {
   const own = input.stepId === OWN_STEP_ID;
   return {
     sopId: input.sopId,
+    target: own ? OWN_STEP_ID : input.stepId,
     placement: own ? ATTACH_PLACEMENT_OWN : ATTACH_PLACEMENT_STEP,
     stepId: own ? null : input.stepId,
     flowchartId: input.flowchartId,
