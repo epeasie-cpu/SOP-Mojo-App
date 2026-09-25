@@ -15,7 +15,11 @@ describe("canonical product URLs", () => {
     expect(SITE.parent).toBe("https://www.sopmojo.com");
     expect(SITE.library).toBe("https://www.sopmojo.com/soplibrary");
     expect(WRITER_CTA_URL).toContain("https://writer.sopmojo.com");
-    expect(BUILDER_CTA_URL).toContain("https://www.sopmojo.com/lp/ai-sop-writer");
+    expect(BUILDER_CTA_URL).toBe(
+      "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left",
+    );
+    expect(BUILDER_CTA_URL).not.toContain("sop-builder-pro");
+    expect(kitCheckoutUrl()).not.toBe(BUILDER_CTA_URL);
   });
 
   it("keeps kit checkout as a placeholder until NEXT_PUBLIC_KIT_CHECKOUT_URL is set", () => {

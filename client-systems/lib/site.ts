@@ -6,6 +6,7 @@ export const SITE = {
   writer: "https://writer.sopmojo.com",
   builder: "https://builder.sopmojo.com",
   library: "https://www.sopmojo.com/soplibrary",
+  /** Framer learn-more page. Builder Pro buy buttons use BUILDER_CTA_URL. */
   upgradeLp: "https://www.sopmojo.com/lp/ai-sop-writer",
   founderEmail: "ryan@sopmojo.com",
   founderName: "Ryan Pease",
@@ -15,13 +16,9 @@ export const SITE = {
 
 export type SiteConfig = typeof SITE;
 
-export const WRITER_TO_BUILDER_UTM = {
-  utm_source: "client-systems",
-  utm_medium: "product",
-  utm_campaign: "clients_to_builder",
-} as const;
-
-export const BUILDER_CTA_URL = `${SITE.upgradeLp}?utm_source=${WRITER_TO_BUILDER_UTM.utm_source}&utm_medium=${WRITER_TO_BUILDER_UTM.utm_medium}&utm_campaign=${WRITER_TO_BUILDER_UTM.utm_campaign}`;
+/** Locked SamCart Slide Checkout for Builder Pro buy / upgrade CTAs. Kit checkout is separate. */
+export const BUILDER_CTA_URL =
+  "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left";
 
 export const WRITER_CTA_URL = `${SITE.writer}?utm_source=client-systems&utm_medium=product&utm_campaign=clients_to_writer`;
 

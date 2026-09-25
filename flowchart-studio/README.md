@@ -43,7 +43,7 @@ npm run lint
 | `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` (vision: `claude-sonnet-4-5`) |
 | `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Flowchart+ / optional $19 SamCart Slide Checkout. Defaults to `https://rpease1.mysamcart.com/checkout/flowchart-studio` |
-| `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Primary CTA. Defaults to `https://rpease1.mysamcart.com/checkout/sop-builder-pro` |
+| `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Primary CTA. Defaults to `https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left` |
 | `NEXT_PUBLIC_SUPABASE_URL` | For sign-in and map save | Builder Pro Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For sign-in and map save | Anon key. Writes use the user access token, not the service role |
 | `NEXT_PUBLIC_BUILDER_ORIGIN` | No | Builder origin for `/api/studio/*`. Defaults to `https://builder.sopmojo.com` |

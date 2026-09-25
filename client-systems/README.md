@@ -92,7 +92,7 @@ Day-one indexed landings on https://clients.sopmojo.com:
 
 Permanent redirects: `/pricing` → `/client-systems-kit`, `/agency-client-onboarding` → `/client-onboarding`. Phase-two pages (meeting agenda, RACI, handbook) are not shipped.
 
-Every landing uses the same CTA row: **Start free in Client Systems** (`/signup`), **Get the $39 Kit** (`NEXT_PUBLIC_KIT_CHECKOUT_URL` or `#`), then Writer and Builder Pro bridges.
+Every landing uses the same CTA row: **Start free in Client Systems** (`/signup`), **Get the $39 Kit** (`NEXT_PUBLIC_KIT_CHECKOUT_URL` or `#`), a Writer bridge, and a Builder Pro checkout (`https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left`). The kit checkout is a different product.
 
 `/app` routes remain `noindex`. Canonical URLs always use `https://clients.sopmojo.com`.
 
