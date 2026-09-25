@@ -19,6 +19,7 @@ import {
   canExportToBuilder,
   canPrintExport,
   clearLegacyUnlockStorage,
+  lockedAccountNotice,
   qaUnlockFromQuery,
   resolveEntitlements,
 } from "@/lib/entitlements";
@@ -106,6 +107,27 @@ describe("entitlement matrix", () => {
     expect(allowsPremium(both, "print")).toBe(true);
     expect(allowsPremium(both, "export")).toBe(true);
     expect(allowsPremium(both, "send")).toBe(true);
+  });
+
+  it("explains a signed-in account that still cannot print, export, or send", () => {
+    expect(lockedAccountNotice("buyer@example.com", "print")).toBe(
+      "Signed in as buyer@example.com. This account does not have Flowchart Plus or Builder Pro yet.",
+    );
+    expect(lockedAccountNotice("buyer@example.com", "export")).toBe(
+      lockedAccountNotice("buyer@example.com", "print"),
+    );
+    expect(lockedAccountNotice("  buyer@example.com  ", "export")).toBe(
+      "Signed in as buyer@example.com. This account does not have Flowchart Plus or Builder Pro yet.",
+    );
+    expect(lockedAccountNotice("", "print")).toBe(
+      "You are signed in. This account does not have Flowchart Plus or Builder Pro yet.",
+    );
+    expect(lockedAccountNotice(null, "send")).toBe(
+      "You are signed in. This account does not have Builder Pro yet.",
+    );
+    expect(lockedAccountNotice("buyer@example.com", "send")).toBe(
+      "Signed in as buyer@example.com. This account does not have Builder Pro yet.",
+    );
   });
 
   it("ignores ?unlock= unless the server QA flag is on", () => {

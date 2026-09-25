@@ -3,7 +3,13 @@
 import { toPng } from "html-to-image";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { allowsPremium, canPrintExport, gateLabel, type PremiumAction } from "@/lib/entitlements";
+import {
+  allowsPremium,
+  canPrintExport,
+  gateLabel,
+  lockedAccountNotice,
+  type PremiumAction,
+} from "@/lib/entitlements";
 import {
   readEntitlementSnapshot,
   refreshEntitlements,
@@ -24,6 +30,7 @@ import { ensurePrintPageStyle, presentPrintPdf, printPdfFilename } from "@/lib/p
 import { renderPrintPdf } from "@/lib/print-pdf";
 import { paginatePrintMap } from "@/lib/print-pages";
 import {
+  clearSession,
   readLibraryIdSnapshot,
   readSessionSnapshot,
   serverSessionSnapshot,
@@ -103,6 +110,7 @@ export function StudioApp() {
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
   const [authPurpose, setAuthPurpose] = useState<"export" | "library" | "purchase">("library");
+  const [signInNonce, setSignInNonce] = useState(0);
   const [resumeExport, setResumeExport] = useState(false);
   const printing = useRef(false);
 
@@ -229,6 +237,24 @@ export function StudioApp() {
     setGateOpen(true);
   }
 
+  function openAuth(purpose: "export" | "library" | "purchase") {
+    setAuthPurpose(purpose);
+    setSignInNonce((value) => value + 1);
+    setAuthOpen(true);
+  }
+
+  function noteLockedAfterSignIn(action: PremiumAction) {
+    setStatus(lockedAccountNotice(readSessionSnapshot()?.email, action));
+  }
+
+  async function reopenUnlockIfLocked(action: PremiumAction) {
+    const fresh = await refreshEntitlements(readSessionSnapshot()?.accessToken);
+    if (allowsPremium(fresh, action)) return;
+    pendingAction.current = action;
+    openGate(action);
+    noteLockedAfterSignIn(action);
+  }
+
   async function capturePng(): Promise<string> {
     const el = document.querySelector(".flowchart-canvas .react-flow") as HTMLElement | null;
     if (!el) {
@@ -247,11 +273,12 @@ export function StudioApp() {
     return dataUrl;
   }
 
-  async function runPremium(action: PremiumAction) {
+  async function runPremium(action: PremiumAction, reason?: "sign-in") {
     const fresh = await refreshEntitlements(readSessionSnapshot()?.accessToken);
     if (!allowsPremium(fresh, action)) {
       pendingAction.current = action;
       openGate(action);
+      if (reason === "sign-in") noteLockedAfterSignIn(action);
       return;
     }
     pendingAction.current = null;
@@ -295,9 +322,8 @@ export function StudioApp() {
   async function beginExport() {
     const current = readSessionSnapshot();
     if (!current) {
-      setAuthPurpose("export");
       setResumeExport(true);
-      setAuthOpen(true);
+      openAuth("export");
       return;
     }
     setBusy(true);
@@ -330,9 +356,8 @@ export function StudioApp() {
         onPremium={(action) => void runPremium(action)}
         onLibrary={() => {
           if (!readSessionSnapshot()) {
-            setAuthPurpose("library");
             setResumeExport(false);
-            setAuthOpen(true);
+            openAuth("library");
             return;
           }
           setLibraryOpen(true);
@@ -452,14 +477,21 @@ export function StudioApp() {
         open={gateOpen}
         action={gateAction}
         detail={gateDetail}
+        accountEmail={session ? (session.email ?? "") : null}
         onClose={() => setGateOpen(false)}
         onSignIn={() => {
           setGateOpen(false);
-          setAuthPurpose(gateAction === "send" ? "export" : "purchase");
-          setAuthOpen(true);
+          openAuth(gateAction === "send" ? "export" : "purchase");
+        }}
+        onUseDifferentAccount={() => {
+          clearSession();
+          setGateOpen(false);
+          setResumeExport(false);
+          openAuth(gateAction === "send" ? "export" : "purchase");
         }}
       />
       <SignInModal
+        key={signInNonce}
         open={authOpen}
         purpose={authPurpose}
         onClose={() => {
@@ -469,14 +501,19 @@ export function StudioApp() {
         onSignedIn={() => {
           setAuthOpen(false);
           const action = pendingAction.current;
+          const purpose = authPurpose;
           pendingAction.current = null;
           if (action) {
-            void runPremium(action);
+            void runPremium(action, "sign-in");
             return;
           }
           if (resumeExport) {
             setResumeExport(false);
             void beginExport();
+            return;
+          }
+          if (purpose === "purchase") {
+            void reopenUnlockIfLocked(gateAction);
           }
         }}
       />

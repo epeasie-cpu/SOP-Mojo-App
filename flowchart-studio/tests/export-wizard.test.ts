@@ -18,7 +18,7 @@ describe("export wizard copy", () => {
     const app = readFileSync(path.join(process.cwd(), "components/StudioApp.tsx"), "utf8");
     expect(signIn).toContain("Sign in with your Builder Pro account before exporting this map.");
     expect(signIn).toContain("Sign in with your Builder Pro account to save this map to your library.");
-    expect(app).toContain("setAuthPurpose(\"export\")");
-    expect(app).toContain("setAuthPurpose(\"library\")");
+    expect(app).toContain("openAuth(\"export\")");
+    expect(app).toContain("openAuth(\"library\")");
   });
 });
