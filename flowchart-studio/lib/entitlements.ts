@@ -86,6 +86,21 @@ export function gateLabel(action: PremiumAction): string {
   return UNLOCK_COPY.send;
 }
 
+/** Shown when a signed-in account still cannot run the gated action. */
+export function lockedAccountNotice(
+  email: string | null | undefined,
+  action: PremiumAction,
+): string {
+  const identity = email?.trim()
+    ? `Signed in as ${email.trim()}.`
+    : "You are signed in.";
+  const gap =
+    action === "send"
+      ? "This account does not have Builder Pro yet."
+      : "This account does not have Flowchart Plus or Builder Pro yet.";
+  return `${identity} ${gap}`;
+}
+
 /**
  * Ryan QA query values. Ignored unless `FLOWCHART_QA_UNLOCK` is enabled
  * on the server. Does not write localStorage.

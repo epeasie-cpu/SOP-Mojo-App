@@ -1,26 +1,32 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { UNLOCK_COPY, type PremiumAction } from "@/lib/entitlements";
+import { lockedAccountNotice, UNLOCK_COPY, type PremiumAction } from "@/lib/entitlements";
 import { builderCheckoutUrl, flowchartCheckoutUrl, PRICING } from "@/lib/site";
 
 export function UnlockModal({
   open,
   action,
   detail,
+  accountEmail,
   onClose,
   onSignIn,
+  onUseDifferentAccount,
 }: {
   open: boolean;
   action: PremiumAction;
   detail: string;
+  /** Null when nobody is signed in. Empty string when signed in without an email. */
+  accountEmail: string | null;
   onClose: () => void;
   onSignIn: () => void;
+  onUseDifferentAccount: () => void;
 }) {
   const flowchartUrl = flowchartCheckoutUrl();
   const builderUrl = builderCheckoutUrl();
   if (!open) return null;
   const send = action === "send";
+  const signedIn = accountEmail != null;
 
   return (
     <div
@@ -38,6 +44,11 @@ export function UnlockModal({
         </h2>
         <p className="mt-3 text-sm text-zinc-400">{detail}</p>
         <p className="mt-3 text-sm text-zinc-400">{UNLOCK_COPY.summary}</p>
+        {signedIn ? (
+          <p className="mt-4 text-sm text-zinc-100" role="status">
+            {lockedAccountNotice(accountEmail, action)}
+          </p>
+        ) : null}
         <div className="mt-5 grid gap-2">
           {send ? (
             <>
@@ -70,13 +81,23 @@ export function UnlockModal({
               </a>
             </>
           )}
-          <button
-            type="button"
-            className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
-            onClick={onSignIn}
-          >
-            Already purchased? Sign in
-          </button>
+          {signedIn ? (
+            <button
+              type="button"
+              className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
+              onClick={onUseDifferentAccount}
+            >
+              Use a different account
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="text-sm text-zinc-400 underline-offset-2 hover:text-zinc-200 hover:underline"
+              onClick={onSignIn}
+            >
+              Already purchased? Sign in
+            </button>
+          )}
         </div>
         <button
           type="button"
