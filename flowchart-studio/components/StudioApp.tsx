@@ -3,17 +3,20 @@
 import { toPng } from "html-to-image";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { canUsePremium, gateLabel, type PremiumAction } from "@/lib/entitlements";
+import { allowsPremium, canPrintExport, gateLabel, type PremiumAction } from "@/lib/entitlements";
+import {
+  readEntitlementSnapshot,
+  refreshEntitlements,
+  serverEntitlementSnapshot,
+  subscribeEntitlements,
+} from "@/lib/entitlement-state";
 import { graphFilename } from "@/lib/export-to-builder";
 import { newId, type FlowGraph } from "@/lib/graph";
 import { saveLibraryMap } from "@/lib/library-client";
 import {
   persistGraph,
-  persistUnlock,
   readGraphSnapshot,
-  readUnlockSnapshot,
   serverGraphSnapshot,
-  serverUnlockSnapshot,
   subscribePersist,
 } from "@/lib/persist";
 import { printInstructions } from "@/lib/print-instructions";
@@ -71,7 +74,11 @@ function downloadDataUrl(filename: string, dataUrl: string) {
 
 export function StudioApp() {
   const graph = useSyncExternalStore(subscribePersist, readGraphSnapshot, serverGraphSnapshot);
-  const unlock = useSyncExternalStore(subscribePersist, readUnlockSnapshot, serverUnlockSnapshot);
+  const entitlements = useSyncExternalStore(
+    subscribeEntitlements,
+    readEntitlementSnapshot,
+    serverEntitlementSnapshot,
+  );
   const setGraph = useCallback((next: FlowGraph | ((prev: FlowGraph) => FlowGraph)) => {
     const resolved = typeof next === "function" ? next(readGraphSnapshot()) : next;
     persistGraph(resolved);
@@ -82,7 +89,9 @@ export function StudioApp() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [gateOpen, setGateOpen] = useState(false);
+  const [gateAction, setGateAction] = useState<PremiumAction>("export");
   const [gateDetail, setGateDetail] = useState(gateLabel("export"));
+  const pendingAction = useRef<PremiumAction | null>(null);
   const [tab, setTab] = useState<MobileTab>("canvas");
   const session = useSyncExternalStore(subscribeSession, readSessionSnapshot, serverSessionSnapshot);
   const libraryId = useSyncExternalStore(
@@ -93,7 +102,7 @@ export function StudioApp() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authPurpose, setAuthPurpose] = useState<"export" | "library">("library");
+  const [authPurpose, setAuthPurpose] = useState<"export" | "library" | "purchase">("library");
   const [resumeExport, setResumeExport] = useState(false);
   const printing = useRef(false);
 
@@ -102,6 +111,10 @@ export function StudioApp() {
     window.addEventListener("beforeprint", ensurePrintPageStyle);
     return () => window.removeEventListener("beforeprint", ensurePrintPageStyle);
   }, []);
+
+  useEffect(() => {
+    void refreshEntitlements(session?.accessToken);
+  }, [session?.accessToken]);
 
   const rememberMap = useCallback((id: string | null) => {
     writeLibraryId(id);
@@ -211,6 +224,7 @@ export function StudioApp() {
   }
 
   function openGate(action: PremiumAction) {
+    setGateAction(action);
     setGateDetail(gateLabel(action));
     setGateOpen(true);
   }
@@ -234,10 +248,13 @@ export function StudioApp() {
   }
 
   async function runPremium(action: PremiumAction) {
-    if (!canUsePremium(unlock)) {
+    const fresh = await refreshEntitlements(readSessionSnapshot()?.accessToken);
+    if (!allowsPremium(fresh, action)) {
+      pendingAction.current = action;
       openGate(action);
       return;
     }
+    pendingAction.current = null;
     if (action === "print") {
       if (printing.current) return;
       printing.current = true;
@@ -301,13 +318,13 @@ export function StudioApp() {
 
   return (
     <div className="studio-shell flex min-h-0 flex-1 flex-col bg-zinc-950">
-      {unlock.unlocked ? null : (
+      {canPrintExport(entitlements) ? null : (
         <UnlockHint onOpen={() => openGate("export")} />
       )}
       <Toolbar
         graph={graph}
         modeLabel={modeLabel}
-        unlock={unlock}
+        entitlements={entitlements}
         busy={busy}
         onTitle={(title) => setGraph((prev) => ({ ...prev, title }))}
         onPremium={(action) => void runPremium(action)}
@@ -433,11 +450,13 @@ export function StudioApp() {
 
       <UnlockModal
         open={gateOpen}
+        action={gateAction}
         detail={gateDetail}
         onClose={() => setGateOpen(false)}
-        onUnlockBrowser={(source) => {
-          persistUnlock(source);
+        onSignIn={() => {
           setGateOpen(false);
+          setAuthPurpose(gateAction === "send" ? "export" : "purchase");
+          setAuthOpen(true);
         }}
       />
       <SignInModal
@@ -449,6 +468,12 @@ export function StudioApp() {
         }}
         onSignedIn={() => {
           setAuthOpen(false);
+          const action = pendingAction.current;
+          pendingAction.current = null;
+          if (action) {
+            void runPremium(action);
+            return;
+          }
           if (resumeExport) {
             setResumeExport(false);
             void beginExport();

@@ -1,11 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  canUsePremium,
-  parseUnlockFlag,
-  readUnlockFromStorage,
-  writeUnlockToStorage,
-} from "@/lib/entitlements";
-import {
   BUILDER_DEFAULT_CHECKOUT,
   FLOWCHART_DEFAULT_CHECKOUT,
   SAMCART_SLIDE_SCRIPT,
@@ -51,26 +45,3 @@ describe("site urls", () => {
   });
 });
 
-describe("unlock stub", () => {
-  it("gates print/export/send until unlocked", () => {
-    const locked = parseUnlockFlag(null);
-    expect(canUsePremium(locked)).toBe(false);
-    expect(canUsePremium(parseUnlockFlag("1"))).toBe(true);
-    expect(parseUnlockFlag("builder-pro").source).toBe("builder-pro");
-  });
-
-  it("round-trips localStorage flags", () => {
-    const store = new Map<string, string>();
-    const storage = {
-      getItem: (key: string) => store.get(key) ?? null,
-      setItem: (key: string, value: string) => {
-        store.set(key, value);
-      },
-    };
-    writeUnlockToStorage(storage, "standalone");
-    expect(readUnlockFromStorage(storage)).toEqual({
-      unlocked: true,
-      source: "standalone",
-    });
-  });
-});

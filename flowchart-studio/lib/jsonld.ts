@@ -58,9 +58,10 @@ export function jsonLdGraph(): JsonLd {
           },
           {
             "@type": "Offer",
-            name: PRICING.unlockLabel,
+            name: "Flowchart Plus",
             price: "19",
             priceCurrency: "USD",
+            description: PRICING.unlockDetail,
           },
         ],
         author: { "@id": `${SITE.parent}#organization` },

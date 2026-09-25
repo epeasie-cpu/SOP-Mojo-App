@@ -1,3 +1,5 @@
+import { resolveRequestEntitlements } from "@/lib/entitlement-admin";
+import { canPrintExport } from "@/lib/entitlements";
 import { exportToBuilderV1 } from "@/lib/export-to-builder";
 import { coerceGraph } from "@/lib/graph";
 import { handoffUrls, parseDataUrlImage, putHandoff } from "@/lib/handoff";
@@ -5,6 +7,17 @@ import { handoffUrls, parseDataUrlImage, putHandoff } from "@/lib/handoff";
 export const maxDuration = 30;
 
 export async function POST(request: Request) {
+  const entitlements = await resolveRequestEntitlements(request);
+  if (!canPrintExport(entitlements)) {
+    return Response.json(
+      {
+        error: "Print and export require Flowchart Plus or Builder Pro.",
+        code: "flowchart_plus_required",
+      },
+      { status: 403, headers: { "Cache-Control": "no-store" } },
+    );
+  }
+
   let body: unknown;
   try {
     body = await request.json();

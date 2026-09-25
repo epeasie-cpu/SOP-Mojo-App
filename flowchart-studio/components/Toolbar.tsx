@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, type ChangeEvent } from "react";
-import type { PremiumAction, UnlockState } from "@/lib/entitlements";
+import type { EntitlementSnapshot, PremiumAction } from "@/lib/entitlements";
 import { UNLOCK_COPY } from "@/lib/entitlements";
 import type { FlowGraph } from "@/lib/graph";
 
 export function Toolbar({
   graph,
   modeLabel,
-  unlock,
+  entitlements,
   busy,
   onTitle,
   onPremium,
@@ -18,7 +18,7 @@ export function Toolbar({
 }: {
   graph: FlowGraph;
   modeLabel: string;
-  unlock: UnlockState;
+  entitlements: EntitlementSnapshot;
   busy: boolean;
   onTitle: (title: string) => void;
   onPremium: (action: PremiumAction) => void;
@@ -78,10 +78,14 @@ export function Toolbar({
       >
         Export to Builder Pro
       </button>
-      {unlock.unlocked ? (
-        <span className="text-[11px] text-lime">Unlocked</span>
+      {entitlements.source === "qa" ? (
+        <span className="text-[11px] text-lime">QA unlock</span>
+      ) : entitlements.builder_pro ? (
+        <span className="text-[11px] text-lime">Builder Pro</span>
+      ) : entitlements.flowchart_plus ? (
+        <span className="text-[11px] text-lime">Flowchart Plus</span>
       ) : (
-        <span className="hidden text-[11px] text-zinc-500 lg:inline">{UNLOCK_COPY.headline}</span>
+        <span className="hidden text-[11px] text-zinc-500 lg:inline">{UNLOCK_COPY.lockedLabel}</span>
       )}
     </div>
   );

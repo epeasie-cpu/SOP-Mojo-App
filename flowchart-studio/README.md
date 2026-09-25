@@ -2,7 +2,7 @@
 
 Canonical host: **https://flowchart.sopmojo.com**
 
-**Flowchart Studio** is a SOP Mojo product: a low-friction AI flowchart tool in the Builder Pro theme (dark zinc + lime `#B0FF56`). Photograph a handwritten scribble, talk the process through, or paste text. Edit the graph on a live canvas. Chat applies modular edits to the same JSON. Create and iterate stay free. Print / export / Export to Builder Pro come with **Builder Pro $39/mo** (optional $19 unlock is a secondary stub).
+**Flowchart Studio** is a SOP Mojo product: a low-friction AI flowchart tool in the Builder Pro theme (dark zinc + lime `#B0FF56`). Photograph a handwritten scribble, talk the process through, or paste text. Edit the graph on a live canvas. Chat applies modular edits to the same JSON. Create and iterate stay free. **Flowchart Plus ($19 one-time)** unlocks print and PNG/JSON export. **Builder Pro ($39/mo)** includes those and Export to Builder Pro. Flowchart Plus does not unlock Export to Builder.
 
 This app lives in `/flowchart-studio` so the Streamlit AUP Engine at the repository root, AI SOP Writer, and Client Systems stay untouched.
 
@@ -42,15 +42,20 @@ npm run lint
 | `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
 | `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` (vision: `claude-sonnet-4-5`) |
-| `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Flowchart+ / optional $19 SamCart Slide Checkout. Defaults to `https://rpease1.mysamcart.com/checkout/flowchart-studio` |
-| `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Primary CTA. Defaults to `https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left` |
-| `NEXT_PUBLIC_SUPABASE_URL` | For sign-in and map save | Builder Pro Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For sign-in and map save | Anon key. Writes use the user access token, not the service role |
-| `NEXT_PUBLIC_BUILDER_ORIGIN` | No | Builder origin for `/api/studio/*`. Defaults to `https://builder.sopmojo.com` |
+| `NEXT_PUBLIC_FLOWCHART_CHECKOUT_URL` | No | Flowchart Plus $19 SamCart checkout. Defaults to `https://rpease1.mysamcart.com/checkout/flowchart-studio` |
+| `NEXT_PUBLIC_BUILDER_CHECKOUT_URL` | No | Builder Pro $39/mo checkout. Defaults to `https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left` |
+| `NEXT_PUBLIC_SUPABASE_URL` | For sign-in, map save, and entitlement reads | Builder Pro Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | For sign-in, map save, and entitlement reads | Anon key. User writes use the user access token |
+| `SUPABASE_SERVICE_ROLE_KEY` | For the entitlement webhook | Server-only. Match/create users and upsert `public.entitlements` |
+| `ENTITLEMENT_WEBHOOK_SECRET` | For the entitlement webhook | Shared secret. `MAKE_WEBHOOK_SECRET` is an accepted alias |
+| `FLOWCHART_QA_UNLOCK` | No | Set to `1` only for Ryan QA. Off in production. See below |
+| `NEXT_PUBLIC_BUILDER_ORIGIN` | No | Builder origin for the Studio `/api/studio/*` proxy. Defaults to `https://builder.sopmojo.com` |
 
-Never hardcode API keys. Unlock state is a `localStorage` flag (`flowchart-studio-unlocked`). Append `?unlock=1` or `?unlock=builder-pro` to mark this browser unlocked. Export and library save also require the shared Builder account. Apply Builder's `database/migrations/20260924_flowchart_library_and_placement.sql` on that Supabase project before saves.
+Never hardcode API keys. Print, export, and Export to Builder read `public.entitlements` (`flowchart_plus`, `builder_pro`) after sign-in. The old `flowchart-studio-unlocked` localStorage flag is not a gate and is cleared on load. Full schema, Make/SamCart steps, and the QA bypass are in [`ENTITLEMENTS.md`](./ENTITLEMENTS.md).
 
-Copy: **Unlock with Builder Pro · $39/mo** (optional $19 unlock is secondary)
+Apply Builder's `database/migrations/20260924_flowchart_library_and_placement.sql` and Studio's `supabase/migrations/20260925_entitlements.sql` on that shared Supabase project before saves and unlocks.
+
+**QA only:** set `FLOWCHART_QA_UNLOCK=1` on the server (not `NEXT_PUBLIC_`). Then `?unlock=1` unlocks print and export, and `?unlock=builder-pro` also unlocks Export to Builder. Leave it unset on Vercel production.
 
 ## Vercel
 
@@ -58,7 +63,7 @@ Create a Vercel project with **Root Directory** = `flowchart-studio`. Framework 
 
 ## Builder bridge
 
-**Export to Builder Pro** (gated) asks you to sign in, upserts the canvas into `public.flowchart_maps` with that user's Supabase token, then opens a wizard: pick an SOP, then a step or **Its Own Step**. Studio posts to `https://builder.sopmojo.com/api/studio/attach` with `target` `"own"` or a step id, `placement` `own` or `step`, the flowchart id, and a PDF from the print pipeline. Builder returns `stepId`, `placement`, `pdfUrl`, and a printable payload.
+**Export to Builder Pro** (Builder Pro only) asks you to sign in, upserts the canvas into `public.flowchart_maps` with that user's Supabase token, then opens a wizard: pick an SOP, then a step or **Its Own Step**. The browser calls Studio `/api/studio/*`, which checks `builder_pro` and forwards to `https://builder.sopmojo.com/api/studio/attach` with `target` `"own"` or a step id, `placement` `own` or `step`, the flowchart id, and a PDF from the print pipeline. Builder returns `stepId`, `placement`, `pdfUrl`, and a printable payload.
 
 The old `?import=flowchart&flowchartJson=…` auto-spawn link is deprecated and is not the export button. The contract is in [`BUILDER_BRIDGE.md`](./BUILDER_BRIDGE.md).
 

@@ -9,24 +9,28 @@ function readStudio(rel: string) {
 }
 
 describe("studio copy", () => {
-  it("sells Builder Pro $39/mo as the primary unlock CTA", () => {
+  it("sells Flowchart Plus and Builder Pro as separate products", () => {
     expect(PRICING.builderPrice).toBe("$39/mo");
     expect(PRICING.builderCta).toBe("Builder Pro $39/mo");
     expect(PRICING.builderLabel).toMatch(/\$39\/mo/);
-    expect(UNLOCK_COPY.headline).toBe("Unlock with Builder Pro");
-    expect(UNLOCK_COPY.standalone).toMatch(/optional/i);
+    expect(PRICING.builderLabel).toMatch(/Export to Builder Pro/);
+    expect(PRICING.unlockLabel).toBe("Flowchart Plus $19");
+    expect(PRICING.unlockDetail).toMatch(/does not include Export to Builder Pro/i);
+    expect(UNLOCK_COPY.headline).toBe("Unlock print and export");
+    expect(UNLOCK_COPY.sendHeadline).toBe("Export to Builder Pro");
     expect(UNLOCK_COPY.builder).toMatch(/\$39\/mo/);
+    expect(UNLOCK_COPY.send).toMatch(/Flowchart Plus does not include/);
   });
 
-  it("keeps Builder Pro primary and $19 secondary in the unlock modal", () => {
+  it("keeps real checkout links and drops the honor-system unlock", () => {
     const source = readStudio("components/UnlockModal.tsx");
     expect(source).toContain("PRICING.builderCta");
-    expect(source).toContain("UNLOCK_COPY.standalone");
-    expect(source).toContain("Unlock with Builder Pro");
+    expect(source).toContain("UNLOCK_COPY.flowchartPlus");
     expect(source).not.toContain("$47");
-    expect(source.indexOf("PRICING.builderCta")).toBeLessThan(
-      source.indexOf("UNLOCK_COPY.standalone"),
-    );
+    expect(source).not.toContain("I have Builder Pro");
+    expect(source).not.toContain("Unlock this browser");
+    expect(source).not.toContain("onUnlockBrowser");
+    expect(source).toContain("Already purchased? Sign in");
     expect(source).toContain("href={flowchartUrl}");
     expect(source).toContain("href={builderUrl}");
   });
@@ -43,7 +47,7 @@ describe("studio copy", () => {
     expect(source).toContain("Export");
     expect(source).toContain("Export to Builder Pro");
     expect(source).toContain("Sign in");
-    expect(source).toContain("UNLOCK_COPY.headline");
+    expect(source).toContain("UNLOCK_COPY.lockedLabel");
   });
 
   it("drops $47 one-time framing from studio copy", () => {
