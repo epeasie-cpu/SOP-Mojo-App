@@ -29,10 +29,12 @@ export const SAMCART_SLIDE_SCRIPT =
 export const PRICING = {
   free: "Create + iterate",
   unlockPrice: "$19",
-  unlockLabel: "Optional $19 unlock",
+  unlockLabel: "Flowchart Plus $19",
+  unlockDetail:
+    "One-time. Print and PNG/JSON export. Does not include Export to Builder Pro.",
   builderPrice: "$39/mo",
   builderCta: "Builder Pro $39/mo",
-  builderLabel: "Builder Pro $39/mo includes flowchart print, export, and import",
+  builderLabel: "Builder Pro $39/mo includes print, export, and Export to Builder Pro",
 } as const;
 
 export function flowchartCheckoutUrl(): string {

@@ -2,17 +2,19 @@
 
 import { useEffect, useState } from "react";
 import {
-  attachFlowchart,
   attachPayload,
   BuilderRequestError,
-  listBuilderSops,
-  listBuilderSteps,
   OWN_STEP_ID,
   uint8ToBase64,
   type BuilderAttachResult,
   type BuilderSopSummary,
   type BuilderStepSummary,
 } from "@/lib/builder-client";
+import {
+  attachGatedFlowchart,
+  listGatedBuilderSops,
+  listGatedBuilderSteps,
+} from "@/lib/studio-client";
 import { flowchartPurpose } from "@/lib/flowchart-maps";
 import type { FlowGraph } from "@/lib/graph";
 import { renderPrintPdf } from "@/lib/print-pdf";
@@ -63,7 +65,7 @@ function ExportWizardBody({
 
   useEffect(() => {
     let cancelled = false;
-    listBuilderSops(session.accessToken)
+    listGatedBuilderSops(session.accessToken)
       .then((rows) => {
         if (!cancelled) setSops(rows);
       })
@@ -85,7 +87,7 @@ function ExportWizardBody({
     setError(null);
     setLoading(true);
     try {
-      setSteps(await listBuilderSteps(session.accessToken, id));
+      setSteps(await listGatedBuilderSteps(session.accessToken, id));
     } catch (reason) {
       setError(messageFrom(reason));
       setSopId(null);
@@ -103,7 +105,7 @@ function ExportWizardBody({
     setError(null);
     try {
       const pdf = await renderPrintPdf(graph);
-      const result = await attachFlowchart(
+      const result = await attachGatedFlowchart(
         session.accessToken,
         attachPayload({
           sopId,

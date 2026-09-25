@@ -18,6 +18,12 @@ PostgREST also sends `apikey: <anon key>`. Studio does **not** use the service r
 
 Unauthenticated export or save opens the sign-in prompt.
 
+## Entitlements
+
+Print, PNG/JSON export, and Export to Builder are gated by `public.entitlements` on this same Supabase project. The contract, webhook, and QA bypass are in [`ENTITLEMENTS.md`](./ENTITLEMENTS.md).
+
+Studio reads `flowchart_plus` and `builder_pro` with the user JWT (`user_id = auth.uid()`). Export to Builder calls Studio `/api/studio/*`, which requires `builder_pro` before it forwards to Builder. Builder AppGate should use the same row. Studio signup does not set either flag.
+
 ## Persistence
 
 Table: `public.flowchart_maps`

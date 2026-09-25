@@ -16,7 +16,7 @@ export function SignInModal({
   onSignedIn,
 }: {
   open: boolean;
-  purpose: "export" | "library";
+  purpose: "export" | "library" | "purchase";
   onClose: () => void;
   onSignedIn: (session: ClientSession) => void;
 }) {
@@ -60,7 +60,9 @@ export function SignInModal({
         <p className="mt-3 text-sm text-zinc-400">
           {purpose === "export"
             ? "Sign in with your Builder Pro account before exporting this map."
-            : "Sign in with your Builder Pro account to save this map to your library."}
+            : purpose === "purchase"
+              ? "Sign in with the email on your Flowchart Plus or Builder Pro purchase. Creating an account does not unlock print or export."
+              : "Sign in with your Builder Pro account to save this map to your library."}
         </p>
         {configured ? (
           <form
@@ -100,14 +102,16 @@ export function SignInModal({
             >
               Sign in
             </button>
-            <button
-              type="button"
-              disabled={busy || !email.trim() || password.length < 6}
-              onClick={() => void submit("up")}
-              className="rounded-sm border border-zinc-600 px-3 py-2 text-sm text-zinc-300 disabled:opacity-40"
-            >
-              Create account
-            </button>
+            {purpose === "purchase" ? null : (
+              <button
+                type="button"
+                disabled={busy || !email.trim() || password.length < 6}
+                onClick={() => void submit("up")}
+                className="rounded-sm border border-zinc-600 px-3 py-2 text-sm text-zinc-300 disabled:opacity-40"
+              >
+                Create account
+              </button>
+            )}
           </form>
         ) : (
           <div className="mt-4 text-sm text-zinc-400">

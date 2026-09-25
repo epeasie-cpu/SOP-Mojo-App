@@ -54,9 +54,9 @@ export default function HowItWorksPage() {
         <li>
           <h2 className="font-display text-2xl font-semibold">4. Export with Builder Pro</h2>
           <p className="mt-2 text-zinc-400">
-            Free is create + iterate. {PRICING.builderLabel}.{" "}
-            {PRICING.unlockLabel} is a secondary path if you only need print and
-            export.
+            Free is create + iterate. {PRICING.unlockLabel} unlocks print and
+            export. {PRICING.builderLabel}. Flowchart Plus does not include
+            Export to Builder Pro.
           </p>
         </li>
       </ol>
