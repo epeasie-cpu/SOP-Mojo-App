@@ -8,7 +8,11 @@ export const LEAVE_BROWSER_ACTIONS = [
 
 export type LeaveBrowserAction = (typeof LEAVE_BROWSER_ACTIONS)[number]["id"];
 
-/** Generate and on-page review stay free. Only leave-browser actions require an account. */
-export function leaveActionRequiresAccount(hasSession: boolean): boolean {
-  return !hasSession;
+/** Generate and on-page review stay free. Leave-browser actions email the current draft first. */
+export function leaveActionRequiresEmail(hasDeliveredThisDraft: boolean): boolean {
+  return !hasDeliveredThisDraft;
+}
+
+export function draftDeliveryKey(sop: unknown): string {
+  return JSON.stringify(sop);
 }
