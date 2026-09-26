@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { LEAVE_BROWSER_ACTIONS, leaveActionRequiresAccount } from "@/lib/leave-gate";
+import { LEAVE_BROWSER_ACTIONS, leaveActionRequiresEmail } from "@/lib/leave-gate";
 import { sessionFromAuthBody } from "@/lib/session";
 
 function readWriter(rel: string) {
@@ -10,7 +10,7 @@ function readWriter(rel: string) {
 
 describe("generator leave-browser gate", () => {
   const source = readWriter("components/Generator.tsx");
-  const modal = readWriter("components/CaptureModal.tsx");
+  const modal = readWriter("components/EmailSopModal.tsx");
 
   it("keeps generate free and gates copy, download, and print", () => {
     const submit = source.slice(
@@ -26,25 +26,30 @@ describe("generator leave-browser gate", () => {
       expect(source).toContain(`data-leave-action="${action.id}"`);
       expect(source).toContain(action.label);
     }
-    expect(leaveActionRequiresAccount(false)).toBe(true);
-    expect(leaveActionRequiresAccount(true)).toBe(false);
+    expect(leaveActionRequiresEmail(false)).toBe(true);
+    expect(leaveActionRequiresEmail(true)).toBe(false);
     expect(source).toContain("pendingLeave.current = action");
-    expect(source).toContain("if (action) void performLeave(action)");
-    expect(source).toContain("notifyLeadCapture(next)");
+    expect(source).toContain("void performLeave(intent)");
+    expect(source).toContain("/api/email-sop");
+    expect(source).not.toContain("notifyLeadCapture");
+    expect(source).not.toContain("signUpWithBuilder");
+    expect(source).not.toContain("signInWithBuilder");
+    expect(source).not.toContain("readSessionSnapshot");
     expect(source).not.toContain("flowchart_plus");
     expect(source).not.toContain("Unlock this browser");
     expect(source).not.toContain("mysamcart.com");
   });
 
-  it("asks for a free email and password, not a paid upgrade", () => {
+  it("asks for an email to send the SOP, without a password or account", () => {
     expect(modal).toContain('type="email"');
-    expect(modal).toContain('type="password"');
-    expect(modal).toContain("Create free account");
-    expect(modal).toContain("Sign in");
+    expect(modal).toContain("Enter email to get your SOP in your inbox");
+    expect(modal).toContain("Email me this SOP");
     expect(modal).toContain("Not now");
-    expect(modal).toContain("a Flowchart Plus or Builder Pro upgrade");
-    expect(modal).toContain("signUpWithBuilder");
-    expect(modal).toContain("signInWithBuilder");
+    expect(modal).not.toContain('type="password"');
+    expect(modal).not.toContain("Create free account");
+    expect(modal).not.toContain("Sign in");
+    expect(modal).not.toContain("signUpWithBuilder");
+    expect(modal).not.toContain("signInWithBuilder");
     expect(modal).not.toContain("mysamcart.com");
     expect(modal).not.toContain("google");
     expect(source).not.toContain('type="email"');

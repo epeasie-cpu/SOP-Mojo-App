@@ -2,16 +2,13 @@
 
 import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { CaptureModal } from "@/components/CaptureModal";
-import type { LeaveBrowserAction } from "@/lib/leave-gate";
-import { notifyLeadCapture } from "@/lib/notify-capture";
-import { buildRefinePrompt } from "@/lib/refine-prompt";
+import { EmailSopModal } from "@/components/EmailSopModal";
 import {
-  readSessionSnapshot,
-  serverSessionSnapshot,
-  subscribeSession,
-  type ClientSession,
-} from "@/lib/session";
+  draftDeliveryKey,
+  leaveActionRequiresEmail,
+  type LeaveBrowserAction,
+} from "@/lib/leave-gate";
+import { buildRefinePrompt } from "@/lib/refine-prompt";
 import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
@@ -61,12 +58,12 @@ export function Generator({ defaults, outputSlotId }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"md" | "prompt" | "none">("none");
   const [gateOpen, setGateOpen] = useState(false);
+  const [gateBusy, setGateBusy] = useState(false);
+  const [gateError, setGateError] = useState<string | null>(null);
+  const [inboxStatus, setInboxStatus] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [delivery, setDelivery] = useState<{ email: string; sopKey: string } | null>(null);
   const pendingLeave = useRef<LeaveBrowserAction | null>(null);
-  const session = useSyncExternalStore(
-    subscribeSession,
-    readSessionSnapshot,
-    serverSessionSnapshot,
-  );
   const isClient = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -85,9 +82,12 @@ export function Generator({ defaults, outputSlotId }: Props) {
 
   async function onSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (gateBusy) return;
     setLoading(true);
     setError(null);
     setCopied("none");
+    setInboxStatus(null);
+    setActionError(null);
     try {
       const response = await fetch("/api/generate", {
         method: "POST",
@@ -104,6 +104,7 @@ export function Generator({ defaults, outputSlotId }: Props) {
         throw new Error(data.error || "Could not generate a draft.");
       }
       setSop(data.sop);
+      setDelivery(null);
       setMode(data.mode);
       setLlmFailed(Boolean(data.llmFailed));
       requestAnimationFrame(() => {
@@ -118,6 +119,7 @@ export function Generator({ defaults, outputSlotId }: Props) {
 
   async function performLeave(action: LeaveBrowserAction) {
     if (!sop) return;
+    setActionError(null);
     try {
       if (action === "copy-md") {
         if (!markdown) return;
@@ -141,30 +143,62 @@ export function Generator({ defaults, outputSlotId }: Props) {
       }
       downloadFile(sopFilename(sop, "html"), sopToPrintHtml(sop), "text/html;charset=utf-8");
     } catch {
-      setError("Your account is ready. Click the button again if the browser blocked that action.");
+      setActionError("Sent to your inbox. Click the button again if the browser blocked that action.");
     }
   }
 
   function requestLeave(action: LeaveBrowserAction) {
-    if (readSessionSnapshot()) {
+    if (!sop || gateBusy) return;
+    const delivered = delivery?.sopKey === draftDeliveryKey(sop);
+    if (!leaveActionRequiresEmail(delivered)) {
       void performLeave(action);
       return;
     }
     pendingLeave.current = action;
+    setGateError(null);
     setGateOpen(true);
   }
 
   function closeGate() {
+    if (gateBusy) return;
     pendingLeave.current = null;
     setGateOpen(false);
+    setGateError(null);
   }
 
-  function onCaptureSignedIn(next: ClientSession) {
-    notifyLeadCapture(next);
-    setGateOpen(false);
-    const action = pendingLeave.current;
-    pendingLeave.current = null;
-    if (action) void performLeave(action);
+  async function onEmailSubmit(email: string) {
+    if (!sop || gateBusy) return;
+    const intent = pendingLeave.current;
+    if (!intent) return;
+    setGateBusy(true);
+    setGateError(null);
+    try {
+      const response = await fetch("/api/email-sop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, intent, sop }),
+      });
+      const data = (await response.json().catch(() => null)) as {
+        ok?: boolean;
+        error?: string;
+      } | null;
+      if (!response.ok || !data?.ok) {
+        setGateError(
+          data?.error ||
+            "We couldn't send the SOP to that inbox. Check the address and try again.",
+        );
+        return;
+      }
+      setDelivery({ email: email.trim(), sopKey: draftDeliveryKey(sop) });
+      setInboxStatus(`Sent to ${email.trim()}. Check your inbox.`);
+      setGateOpen(false);
+      pendingLeave.current = null;
+      void performLeave(intent);
+    } catch {
+      setGateError("We couldn't send the SOP to that inbox. Check the address and try again.");
+    } finally {
+      setGateBusy(false);
+    }
   }
 
   return (
@@ -245,7 +279,7 @@ export function Generator({ defaults, outputSlotId }: Props) {
         {error ? <p className="mt-3 text-sm text-amber-300">{error}</p> : null}
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || gateBusy}
           className="mt-5 w-full rounded-sm bg-lime px-4 py-2.5 text-sm font-semibold text-lime-ink hover:bg-lime/90 disabled:opacity-60 sm:w-auto"
         >
           {loading ? "Writing first draft…" : "Write first-draft SOP"}
@@ -259,14 +293,24 @@ export function Generator({ defaults, outputSlotId }: Props) {
         copied={copied}
         outputSlotId={outputSlotId}
         isClient={isClient}
-        signedInEmail={session?.email}
+        deliveredEmail={
+          sop && delivery?.sopKey === draftDeliveryKey(sop) ? delivery.email : undefined
+        }
+        inboxStatus={inboxStatus}
+        actionError={actionError}
         onCopyMarkdown={() => requestLeave("copy-md")}
         onCopyPrompt={() => requestLeave("copy-prompt")}
         onPrint={() => requestLeave("print")}
         onDownloadMarkdown={() => requestLeave("download-md")}
         onDownloadHtml={() => requestLeave("download-html")}
       />
-      <CaptureModal open={gateOpen} onClose={closeGate} onSignedIn={onCaptureSignedIn} />
+      <EmailSopModal
+        open={gateOpen}
+        busy={gateBusy}
+        error={gateError}
+        onClose={closeGate}
+        onSubmit={(email) => void onEmailSubmit(email)}
+      />
     </div>
   );
 }
@@ -278,7 +322,9 @@ function SopOutput({
   copied,
   outputSlotId,
   isClient,
-  signedInEmail,
+  deliveredEmail,
+  inboxStatus,
+  actionError,
   onCopyMarkdown,
   onCopyPrompt,
   onPrint,
@@ -291,7 +337,9 @@ function SopOutput({
   copied: "md" | "prompt" | "none";
   outputSlotId?: string;
   isClient: boolean;
-  signedInEmail?: string;
+  deliveredEmail?: string;
+  inboxStatus: string | null;
+  actionError: string | null;
   onCopyMarkdown: () => void;
   onCopyPrompt: () => void;
   onPrint: () => void;
@@ -320,10 +368,20 @@ function SopOutput({
           )}
           <h2 className="font-display mt-4 text-3xl font-semibold text-zinc-50">{sop.title}</h2>
           <SopSections sop={sop} />
+          {inboxStatus ? (
+            <p className="no-print mt-6 text-sm text-lime" role="status">
+              {inboxStatus}
+            </p>
+          ) : null}
+          {actionError ? (
+            <p className="no-print mt-3 text-sm text-amber-200" role="alert">
+              {actionError}
+            </p>
+          ) : null}
           <p className="no-print mt-6 text-xs text-zinc-500">
-            {signedInEmail
-              ? `Signed in as ${signedInEmail}`
-              : "Copy, download, and print need a free account. You can review this draft on the page first."}
+            {deliveredEmail
+              ? `Sent to ${deliveredEmail}. Copy, download, and print stay available for this draft.`
+              : "Copy, download, and print email you this draft. You can review it on the page first."}
           </p>
           <div className="no-print mt-3 flex flex-wrap gap-2">
             <button

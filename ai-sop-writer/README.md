@@ -41,12 +41,14 @@ npm test
 | `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
 | `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set. Unset, with no OpenAI key, keeps template mode. |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` |
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes, to copy, download, or print | Shared Builder Supabase project. Same value as Flowchart Studio. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes, to copy, download, or print | Anon key for that project. |
-| `MAILCHIMP_API_KEY` | No | Server-only. Tags the account `writer` on audience `7c2226f741`. Unlock still works if this is missing or Mailchimp errors. |
+| `RESEND_API_KEY` | Yes, to copy, download, or print | Server-only. Sends the current draft with [Resend](https://resend.com). Leave actions show an error if this send fails. |
+| `EMAIL_FROM` | No | From address. Defaults to `SOP Mojo Writer <onboarding@resend.dev>` for local/dev. Production should set a verified domain address, for example `SOP Mojo <writer@sopmojo.com>`. The Resend sandbox sender can only deliver to the Resend account email until a domain is verified. |
+| `MAILCHIMP_API_KEY` | No | Server-only. Adds or updates the submitted email on audience `7c2226f741` with tag `writer`. A Mailchimp error does not block the email or the page. |
 | `MAILCHIMP_AUDIENCE_ID` | No | Defaults to `7c2226f741` (Mojo Business Solutions LLC). |
 
-Generate and on-page review stay free. Copy Markdown, Copy AI prompt, Download Markdown, Download print HTML, and Print ask for a free email and password on the shared Builder Supabase project. That account is not Flowchart Plus or Builder Pro. There is no Writer cloud library. After a successful sign-up or sign-in, the pending copy, download, or print runs. `POST /api/capture` reads the Supabase user from the access token and, when `MAILCHIMP_API_KEY` is set, adds tag `writer` (creating it if tag-search does not find it). A Mailchimp failure does not block the action.
+Generate and on-page review stay free. Copy Markdown, Copy AI prompt, Download Markdown, Download print HTML, and Print open an email-only prompt: “Enter email to get your SOP in your inbox.” No password and no Supabase account are required. `POST /api/email-sop` sends the current draft with Resend and, when `MAILCHIMP_API_KEY` is set, tags that address `writer`. Print and Download print HTML attach the print-ready HTML file (open it and use Print or Save as PDF). Copy and Markdown download attach Markdown and include it in the message. After a successful send, the pending copy, download, or print runs, and further leave actions on that same draft stay available. If Resend cannot send, the modal shows an error and the leave action does not run. A Mailchimp failure is logged and does not block the send.
+
+Set these on the Writer Vercel project: `RESEND_API_KEY`, optional `EMAIL_FROM`, and the existing `MAILCHIMP_API_KEY` / `MAILCHIMP_AUDIENCE_ID`. Do not commit secret values.
 
 ## SEO surfaces
 
