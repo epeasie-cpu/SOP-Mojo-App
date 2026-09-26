@@ -37,10 +37,16 @@ npm test
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `OPENAI_API_KEY` | No | Use OpenAI for drafts when set |
+| `OPENAI_API_KEY` | No | Use OpenAI for drafts when set. Unset keeps template mode. |
 | `OPENAI_MODEL` | No | Defaults to `gpt-4o-mini` |
-| `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set |
+| `ANTHROPIC_API_KEY` | No | Used when OpenAI is not set. Unset, with no OpenAI key, keeps template mode. |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-3-5-haiku-latest` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes, to copy, download, or print | Shared Builder Supabase project. Same value as Flowchart Studio. |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes, to copy, download, or print | Anon key for that project. |
+| `MAILCHIMP_API_KEY` | No | Server-only. Tags the account `writer` on audience `7c2226f741`. Unlock still works if this is missing or Mailchimp errors. |
+| `MAILCHIMP_AUDIENCE_ID` | No | Defaults to `7c2226f741` (Mojo Business Solutions LLC). |
+
+Generate and on-page review stay free. Copy Markdown, Copy AI prompt, Download Markdown, Download print HTML, and Print ask for a free email and password on the shared Builder Supabase project. That account is not Flowchart Plus or Builder Pro. There is no Writer cloud library. After a successful sign-up or sign-in, the pending copy, download, or print runs. `POST /api/capture` reads the Supabase user from the access token and, when `MAILCHIMP_API_KEY` is set, adds tag `writer` (creating it if tag-search does not find it). A Mailchimp failure does not block the action.
 
 ## SEO surfaces
 

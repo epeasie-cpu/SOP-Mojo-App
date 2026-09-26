@@ -18,7 +18,18 @@ import {
 } from "@/lib/entitlement-state";
 import { graphFilename } from "@/lib/export-to-builder";
 import { newId, type FlowGraph } from "@/lib/graph";
+import {
+  dismissKeepPrompt,
+  mapNeedsAccountToKeep,
+  readClientReady,
+  readKeepDismissed,
+  serverClientReady,
+  serverKeepDismissed,
+  subscribeClientReady,
+  subscribeKeepDismiss,
+} from "@/lib/keep-map";
 import { saveLibraryMap } from "@/lib/library-client";
+import { notifyLeadCapture } from "@/lib/notify-capture";
 import {
   persistGraph,
   readGraphSnapshot,
@@ -36,14 +47,16 @@ import {
   serverSessionSnapshot,
   subscribeSession,
   writeLibraryId,
+  type ClientSession,
 } from "@/lib/session";
 import { demoGraph } from "@/lib/template-graph";
 import { ChatPanel, type ChatMessage } from "./ChatPanel";
 import { ExportWizard } from "./ExportWizard";
 import { InputDock } from "./InputDock";
+import { KeepMapBanner } from "./KeepMapBanner";
 import { LibraryModal } from "./LibraryModal";
 import { PrintMap } from "./PrintMap";
-import { SignInModal } from "./SignInModal";
+import { SignInModal, type AuthPurpose } from "./SignInModal";
 import { StepList } from "./StepList";
 import { Toolbar } from "./Toolbar";
 import { UnlockHint, UnlockModal } from "./UnlockModal";
@@ -109,8 +122,14 @@ export function StudioApp() {
   const [wizardOpen, setWizardOpen] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [authOpen, setAuthOpen] = useState(false);
-  const [authPurpose, setAuthPurpose] = useState<"export" | "library" | "purchase">("library");
+  const [authPurpose, setAuthPurpose] = useState<AuthPurpose>("library");
   const [signInNonce, setSignInNonce] = useState(0);
+  const keepReady = useSyncExternalStore(subscribeClientReady, readClientReady, serverClientReady);
+  const keepDismissed = useSyncExternalStore(
+    subscribeKeepDismiss,
+    readKeepDismissed,
+    serverKeepDismissed,
+  );
   const [resumeExport, setResumeExport] = useState(false);
   const printing = useRef(false);
 
@@ -237,10 +256,25 @@ export function StudioApp() {
     setGateOpen(true);
   }
 
-  function openAuth(purpose: "export" | "library" | "purchase") {
+  function openAuth(purpose: AuthPurpose) {
     setAuthPurpose(purpose);
     setSignInNonce((value) => value + 1);
     setAuthOpen(true);
+  }
+
+  async function saveKeptMap(signedIn: ClientSession) {
+    if (signedIn.accessToken.startsWith("dev:")) {
+      setStatus("Signed in on this browser. Cloud save needs the Builder Supabase project.");
+      return;
+    }
+    setStatus("Saving this map to your account…");
+    try {
+      const saved = await saveLibraryMap(signedIn, readGraphSnapshot(), readLibraryIdSnapshot());
+      rememberMap(saved.id);
+      setStatus("Signed in. This map is saved to your library.");
+    } catch {
+      setStatus("Signed in. This browser still has the map — open Library to save a cloud copy.");
+    }
   }
 
   function noteLockedAfterSignIn(action: PremiumAction) {
@@ -374,6 +408,16 @@ export function StudioApp() {
           {status}
         </p>
       ) : null}
+      {keepReady && mapNeedsAccountToKeep(graph) && !session && !keepDismissed ? (
+        <KeepMapBanner
+          onSignIn={() => {
+            pendingAction.current = null;
+            setResumeExport(false);
+            openAuth("keep");
+          }}
+          onDismiss={dismissKeepPrompt}
+        />
+      ) : null}
 
       <div className="no-print flex gap-1 border-b border-zinc-800 px-3 py-2 lg:hidden">
         {(
@@ -498,10 +542,17 @@ export function StudioApp() {
           setAuthOpen(false);
           setResumeExport(false);
         }}
-        onSignedIn={() => {
+        onSignedIn={(signedIn) => {
           setAuthOpen(false);
-          const action = pendingAction.current;
           const purpose = authPurpose;
+          if (purpose === "keep") {
+            pendingAction.current = null;
+            setResumeExport(false);
+            notifyLeadCapture(signedIn);
+            void saveKeptMap(signedIn);
+            return;
+          }
+          const action = pendingAction.current;
           pendingAction.current = null;
           if (action) {
             void runPremium(action, "sign-in");

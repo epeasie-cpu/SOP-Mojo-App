@@ -50,6 +50,10 @@ npm run lint
 | `ENTITLEMENT_WEBHOOK_SECRET` | For the entitlement webhook | Shared secret. `MAKE_WEBHOOK_SECRET` is an accepted alias |
 | `FLOWCHART_QA_UNLOCK` | No | Set to `1` only for Ryan QA. Off in production. See below |
 | `NEXT_PUBLIC_BUILDER_ORIGIN` | No | Builder origin for the Studio `/api/studio/*` proxy. Defaults to `https://builder.sopmojo.com` |
+| `MAILCHIMP_API_KEY` | No | Server-only. Tags `flowchart` after “Sign in to keep this map”. Sign-in still works if this is missing or Mailchimp errors. |
+| `MAILCHIMP_AUDIENCE_ID` | No | Defaults to `7c2226f741` (Mojo Business Solutions LLC). |
+
+Create and iterate stay free. When a map exists only in this browser, a dismissible bar says **Sign in to keep this map** (`Not now` hides it for the tab). Signing in there uses the existing Builder Supabase account, saves the map with the current library upsert, and calls `POST /api/capture` to tag `flowchart`. Print, export, and Export to Builder stay on the Flowchart Plus / Builder Pro entitlement check. Creating an account does not unlock them.
 
 Never hardcode API keys. Print, export, and Export to Builder read `public.entitlements` (`flowchart_plus`, `builder_pro`) after sign-in. The old `flowchart-studio-unlocked` localStorage flag is not a gate and is cleared on load. Full schema, Make/SamCart steps, and the QA bypass are in [`ENTITLEMENTS.md`](./ENTITLEMENTS.md).
 

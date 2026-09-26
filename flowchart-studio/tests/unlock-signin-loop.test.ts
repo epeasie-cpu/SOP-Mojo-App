@@ -60,7 +60,10 @@ describe("unlock sign-in loop", () => {
     expect(switchAccount.indexOf("clearSession()")).toBeLessThan(switchAccount.indexOf("openAuth("));
     expect(switchAccount).toContain('openAuth(gateAction === "send" ? "export" : "purchase")');
 
-    const signedIn = app.slice(app.indexOf("onSignedIn={() => {"), app.indexOf("<LibraryModal"));
+    const signedIn = app.slice(
+      app.indexOf("onSignedIn={(signedIn) => {"),
+      app.indexOf("<LibraryModal"),
+    );
     expect(signedIn.indexOf('void runPremium(action, "sign-in")')).toBeLessThan(
       signedIn.indexOf('if (purpose === "purchase")'),
     );
