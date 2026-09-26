@@ -1,8 +1,17 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
+import { CaptureModal } from "@/components/CaptureModal";
+import type { LeaveBrowserAction } from "@/lib/leave-gate";
+import { notifyLeadCapture } from "@/lib/notify-capture";
 import { buildRefinePrompt } from "@/lib/refine-prompt";
+import {
+  readSessionSnapshot,
+  serverSessionSnapshot,
+  subscribeSession,
+  type ClientSession,
+} from "@/lib/session";
 import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
@@ -51,6 +60,13 @@ export function Generator({ defaults, outputSlotId }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<"md" | "prompt" | "none">("none");
+  const [gateOpen, setGateOpen] = useState(false);
+  const pendingLeave = useRef<LeaveBrowserAction | null>(null);
+  const session = useSyncExternalStore(
+    subscribeSession,
+    readSessionSnapshot,
+    serverSessionSnapshot,
+  );
   const isClient = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -100,16 +116,55 @@ export function Generator({ defaults, outputSlotId }: Props) {
     }
   }
 
-  async function copyMarkdown() {
-    if (!markdown) return;
-    await navigator.clipboard.writeText(markdown);
-    setCopied("md");
+  async function performLeave(action: LeaveBrowserAction) {
+    if (!sop) return;
+    try {
+      if (action === "copy-md") {
+        if (!markdown) return;
+        await navigator.clipboard.writeText(markdown);
+        setCopied("md");
+        return;
+      }
+      if (action === "copy-prompt") {
+        if (!refinePrompt) return;
+        await navigator.clipboard.writeText(refinePrompt);
+        setCopied("prompt");
+        return;
+      }
+      if (action === "print") {
+        window.print();
+        return;
+      }
+      if (action === "download-md") {
+        downloadFile(sopFilename(sop, "md"), markdown, "text/markdown;charset=utf-8");
+        return;
+      }
+      downloadFile(sopFilename(sop, "html"), sopToPrintHtml(sop), "text/html;charset=utf-8");
+    } catch {
+      setError("Your account is ready. Click the button again if the browser blocked that action.");
+    }
   }
 
-  async function copyPrompt() {
-    if (!refinePrompt) return;
-    await navigator.clipboard.writeText(refinePrompt);
-    setCopied("prompt");
+  function requestLeave(action: LeaveBrowserAction) {
+    if (readSessionSnapshot()) {
+      void performLeave(action);
+      return;
+    }
+    pendingLeave.current = action;
+    setGateOpen(true);
+  }
+
+  function closeGate() {
+    pendingLeave.current = null;
+    setGateOpen(false);
+  }
+
+  function onCaptureSignedIn(next: ClientSession) {
+    notifyLeadCapture(next);
+    setGateOpen(false);
+    const action = pendingLeave.current;
+    pendingLeave.current = null;
+    if (action) void performLeave(action);
   }
 
   return (
@@ -201,13 +256,17 @@ export function Generator({ defaults, outputSlotId }: Props) {
         sop={sop}
         mode={mode}
         llmFailed={llmFailed}
-        markdown={markdown}
         copied={copied}
         outputSlotId={outputSlotId}
         isClient={isClient}
-        onCopyMarkdown={copyMarkdown}
-        onCopyPrompt={copyPrompt}
+        signedInEmail={session?.email}
+        onCopyMarkdown={() => requestLeave("copy-md")}
+        onCopyPrompt={() => requestLeave("copy-prompt")}
+        onPrint={() => requestLeave("print")}
+        onDownloadMarkdown={() => requestLeave("download-md")}
+        onDownloadHtml={() => requestLeave("download-html")}
       />
+      <CaptureModal open={gateOpen} onClose={closeGate} onSignedIn={onCaptureSignedIn} />
     </div>
   );
 }
@@ -216,22 +275,28 @@ function SopOutput({
   sop,
   mode,
   llmFailed,
-  markdown,
   copied,
   outputSlotId,
   isClient,
+  signedInEmail,
   onCopyMarkdown,
   onCopyPrompt,
+  onPrint,
+  onDownloadMarkdown,
+  onDownloadHtml,
 }: {
   sop: SopDraft | null;
   mode: GenerateMode | null;
   llmFailed: boolean;
-  markdown: string;
   copied: "md" | "prompt" | "none";
   outputSlotId?: string;
   isClient: boolean;
+  signedInEmail?: string;
   onCopyMarkdown: () => void;
   onCopyPrompt: () => void;
+  onPrint: () => void;
+  onDownloadMarkdown: () => void;
+  onDownloadHtml: () => void;
 }) {
   if (!sop) return null;
   const output = (
@@ -255,39 +320,49 @@ function SopOutput({
           )}
           <h2 className="font-display mt-4 text-3xl font-semibold text-zinc-50">{sop.title}</h2>
           <SopSections sop={sop} />
-          <div className="no-print mt-6 flex flex-wrap gap-2">
-            <button type="button" onClick={onCopyMarkdown} className={outlineButtonClass}>
+          <p className="no-print mt-6 text-xs text-zinc-500">
+            {signedInEmail
+              ? `Signed in as ${signedInEmail}`
+              : "Copy, download, and print need a free account. You can review this draft on the page first."}
+          </p>
+          <div className="no-print mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              data-leave-action="copy-md"
+              onClick={onCopyMarkdown}
+              className={outlineButtonClass}
+            >
               {copied === "md" ? "Copied Markdown" : "Copy Markdown"}
             </button>
             <button
               type="button"
+              data-leave-action="copy-prompt"
               onClick={onCopyPrompt}
               title="Paste into ChatGPT, Claude, Gemini, or any GPT tool"
               className={outlineButtonClass}
             >
               {copied === "prompt" ? "Prompt copied" : "Copy AI prompt"}
             </button>
-            <button type="button" onClick={() => window.print()} className={outlineButtonClass}>
+            <button
+              type="button"
+              data-leave-action="print"
+              onClick={onPrint}
+              className={outlineButtonClass}
+            >
               Print
             </button>
             <button
               type="button"
-              onClick={() =>
-                downloadFile(sopFilename(sop, "md"), markdown, "text/markdown;charset=utf-8")
-              }
+              data-leave-action="download-md"
+              onClick={onDownloadMarkdown}
               className={outlineButtonClass}
             >
               Download Markdown
             </button>
             <button
               type="button"
-              onClick={() =>
-                downloadFile(
-                  sopFilename(sop, "html"),
-                  sopToPrintHtml(sop),
-                  "text/html;charset=utf-8",
-                )
-              }
+              data-leave-action="download-html"
+              onClick={onDownloadHtml}
               className={outlineButtonClass}
             >
               Download print HTML
