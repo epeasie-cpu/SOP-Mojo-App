@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+:root {
+  --mojo: #3dcc4a;
+  --mojo-ink: #157a32;
+  --mojo-soft: #e8f9eb;
+  --page: #f3f4f6;
+  --ink: #18181b;
+  --muted: #71717a;
+  --line: #e4e4e7;
+}
+
+@theme inline {
+  --color-mojo: var(--mojo);
+  --color-mojo-ink: var(--mojo-ink);
+  --color-mojo-soft: var(--mojo-soft);
+  --color-page: var(--page);
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+html,
+body {
+  background: var(--page);
+  color: var(--ink);
+}
+
+::selection {
+  background: #c8f5ce;
+}
