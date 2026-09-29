@@ -106,12 +106,7 @@ export function AuditApp({ children }: { children: React.ReactNode }) {
     });
   }
 
-  const title =
-    quiz.phase === "quiz"
-      ? "Ops Scalability Score"
-      : quiz.phase === "results" && unlock
-        ? "Your Ops Scalability Score"
-        : "Exit / Freedom Readiness";
+  const title = "Ops Scalability Score";
   const subtitle = quiz.phase === "results" && unlock ? "vs similar SMBs (directional)" : undefined;
 
   const report =

@@ -12,14 +12,22 @@ export type Answers = Partial<Record<string, Choice>>;
 
 export type Band = "Fragile" | "Building" | "Ready";
 
+export type GapId = Dimension | "ai";
+
 export type Gap = {
-  id: Dimension;
+  id: GapId;
   score: number;
   title: string;
   visible: string;
   critical: boolean;
   quickWin: boolean;
 };
+
+export const AI_AMPLIFIES =
+  "AI amplifies what's written down. Tribal knowledge stays tribal.";
+
+export const AI_RETEACH =
+  "Automating this today would mean re-teaching the model every week. Document first, then automate.";
 
 export type Metric = {
   id: string;
@@ -289,17 +297,36 @@ function aiReadiness(dimensions: DimensionScores): Metric {
   const value = index < 40 ? "Not ready" : index < 70 ? "Early" : "Usable";
   const detail =
     index < 40
-      ? "The work is not written down consistently enough to automate."
+      ? "AI needs documentation as the source of truth. Without SOPs and maps, automation means re-teaching the model every week."
       : index < 70
-        ? "Some SOPs exist. Tools and maps still vary by person."
-        : "Core work is documented enough to automate in slices.";
+        ? "Some SOPs exist. Weak documentation or handoffs still mean re-teaching a model instead of handing it a source of truth."
+        : "Core work is documented enough to automate in slices. The write-up is the source of truth.";
   return {
     id: "aiReadiness",
     title: "AI implementation readiness",
     subtitle: "How ready you are to automate ops",
     value,
     detail,
-    note: "Tools and models follow what is written, shared, and kept current.",
+    note: AI_AMPLIFIES,
+  };
+}
+
+/** Docs or handoffs below a solid score mean automation would re-teach the model. */
+function aiReadinessGap(dimensions: DimensionScores): Gap | null {
+  const docsWeak = dimensions.documentation < 70;
+  const handoffsWeak = dimensions.coverage < 70;
+  if (!docsWeak && !handoffsWeak) return null;
+  const score = Math.min(
+    docsWeak ? dimensions.documentation : 100,
+    handoffsWeak ? dimensions.coverage : 100,
+  );
+  return {
+    id: "ai",
+    score,
+    title: AI_RETEACH,
+    visible: AI_RETEACH,
+    critical: score < 45,
+    quickWin: true,
   };
 }
 
@@ -395,7 +422,9 @@ export function scoreQuiz(goal: Goal, answers: Answers): ScoreReport {
   } satisfies DimensionScores;
   const score = headlineScore(questions, answers);
   const band = bandFor(score);
-  const gaps = buildGaps(dimensions);
+  const dimensionGaps = buildGaps(dimensions);
+  const aiGap = aiReadinessGap(dimensions);
+  const gaps = aiGap ? [aiGap, ...dimensionGaps] : dimensionGaps;
   return {
     goal,
     score,
@@ -403,7 +432,7 @@ export function scoreQuiz(goal: Goal, answers: Answers): ScoreReport {
     bandLabel: band.label,
     dimensions,
     gaps,
-    topGaps: gaps.slice(0, 2),
+    topGaps: dimensionGaps.slice(0, 2),
     metrics: {
       sellability: sellability(dimensions),
       opsReadiness: opsReadiness(dimensions),

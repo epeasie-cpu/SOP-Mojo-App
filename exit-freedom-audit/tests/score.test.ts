@@ -6,13 +6,14 @@ import {
   type Goal,
 } from "@/lib/questions";
 import {
+  AI_AMPLIFIES,
+  AI_RETEACH,
   bandFor,
   reportText,
   scoreQuiz,
   shareSummaryFromReport,
   type Answers,
 } from "@/lib/score";
-import { parseShareBody } from "@/lib/share";
 
 const GOALS: Goal[] = ["exit", "family", "absentee", "chaos"];
 
@@ -79,6 +80,12 @@ describe("scoring", () => {
     expect(high.metrics.diligenceRisk.value).toBe("Lower risk");
     expect(low.metrics.absenteeRunRate.value).toBe("About 1–2 days");
     expect(high.metrics.absenteeRunRate.value).toBe("A normal month");
+    expect(low.gaps[0]).toMatchObject({ id: "ai", visible: AI_RETEACH });
+    expect(low.topGaps.map((gap) => gap.id)).toEqual(["coverage", "documentation"]);
+    expect(high.gaps.some((gap) => gap.id === "ai")).toBe(false);
+    expect(reportText(low)).toContain(AI_AMPLIFIES);
+    expect(reportText(low)).toContain("re-teaching the model");
+    expect(low.metrics.aiReadiness.note).toBe(AI_AMPLIFIES);
   });
 
   it("puts the weakest dimension in the two clear gaps", () => {
@@ -105,16 +112,12 @@ describe("scoring", () => {
     }
   });
 
-  it("builds a share summary the email route accepts", () => {
+  it("builds a score summary for the call request", () => {
     const report = scoreQuiz("absentee", fill("absentee", "C"));
-    const parsed = parseShareBody({
-      to: "Ops@Acme.com",
-      summary: shareSummaryFromReport(report),
-    });
-    expect("error" in parsed).toBe(false);
-    if ("error" in parsed) return;
-    expect(parsed.to).toBe("ops@acme.com");
-    expect(parsed.summary.gaps).toHaveLength(3);
-    expect(parsed.summary.breakout).toHaveLength(6);
+    const summary = shareSummaryFromReport(report);
+    expect(summary.gaps.length).toBeGreaterThan(0);
+    expect(summary.gaps.length).toBeLessThanOrEqual(3);
+    expect(summary.breakout).toHaveLength(6);
+    expect(summary.gaps.join("\n")).toContain("Document first, then automate");
   });
 });

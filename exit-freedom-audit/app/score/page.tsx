@@ -21,7 +21,7 @@ export default function ScorePage() {
       <JsonLd page={page} />
       <MarketingShell title="Ops Scalability Score">
         <article className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16">
-          <p className="text-sm font-semibold text-mojo-ink">Exit / Freedom Readiness</p>
+          <p className="text-sm font-semibold text-mojo-ink">Ops Audit</p>
           <h1 className="mt-2 text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl">
             Ops Scalability Score
           </h1>
@@ -33,7 +33,7 @@ export default function ScorePage() {
             href="/"
             className="mt-8 inline-flex min-h-12 items-center justify-center rounded-lg bg-zinc-950 px-5 text-base font-semibold text-white hover:bg-zinc-800"
           >
-            Start the gut check →
+            Start the Audit →
           </Link>
 
           <section className="mt-12" aria-labelledby="bands-heading">
@@ -83,9 +83,10 @@ export default function ScorePage() {
               AI readiness for SMBs
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-zinc-600">
-              Automation follows documentation. The AI implementation readiness read is Not ready,
-              Early, or Usable. It describes whether core work is written down consistently enough
-              to hand to a tool. It is not a software recommendation.
+              AI needs documentation as the source of truth. Without SOPs and maps, automation means
+              re-teaching the model every week. AI amplifies what&apos;s written down. Tribal knowledge
+              stays tribal. The read is Not ready, Early, or Usable. It is not a software
+              recommendation.
             </p>
           </section>
         </article>

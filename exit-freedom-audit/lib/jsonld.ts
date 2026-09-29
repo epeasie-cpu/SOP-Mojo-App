@@ -1,5 +1,5 @@
 import { absolutePageUrl, FAQS, type SeoPage } from "./content";
-import { SITE } from "./site";
+import { AUDIENCE, SITE } from "./site";
 
 type JsonLd = Record<string, unknown>;
 
@@ -29,7 +29,7 @@ export function webApplicationLd(): JsonLd {
     operatingSystem: "Web",
     url: SITE.host,
     description:
-      "Free ops and exit readiness score for SMB CEOs and COOs. A three-minute business operations audit from SOP Mojo. Sellability is a directional band, not a valuation.",
+      `Free ops and exit readiness score for ${AUDIENCE}. A three-minute business operations audit from SOP Mojo. Sellability is a directional band, not a valuation.`,
     isAccessibleForFree: true,
     offers: {
       "@type": "Offer",
@@ -39,7 +39,7 @@ export function webApplicationLd(): JsonLd {
     provider: { "@id": `${SITE.parent}#organization` },
     audience: {
       "@type": "BusinessAudience",
-      audienceType: "SMB CEOs and COOs",
+      audienceType: "Operations teams and leaders",
     },
   };
 }

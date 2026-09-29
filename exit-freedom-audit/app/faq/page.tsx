@@ -20,7 +20,7 @@ export default function FaqPage() {
             Ops Scalability Score FAQ
           </h1>
           <p className="mt-4 text-lg leading-relaxed text-zinc-600">
-            Plain answers about the free exit readiness score for SMB CEOs and COOs.
+            Plain answers about the free exit readiness score for operations teams and leaders.
           </p>
           <div className="mt-8 space-y-4">
             {FAQS.map((faq) => (
@@ -32,7 +32,7 @@ export default function FaqPage() {
           </div>
           <p className="mt-8 text-sm text-zinc-600">
             <Link href="/" className="font-semibold text-zinc-950 underline decoration-zinc-300 underline-offset-2">
-              Start the gut check
+              Start the Audit
             </Link>
             {" · "}
             <Link href="/score" className="font-semibold text-zinc-950 underline decoration-zinc-300 underline-offset-2">

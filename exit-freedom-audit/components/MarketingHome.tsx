@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { HOME_SECTIONS } from "@/lib/content";
-import { SITE } from "@/lib/site";
+import { AUDIENCE, SITE } from "@/lib/site";
 import { StartQuizButton } from "./StartQuizButton";
 
 const CARDS = [
@@ -14,7 +14,7 @@ const CARDS = [
   },
   {
     title: "New help",
-    body: "A new hire or an AI tool can only follow steps that are written. If the SOP is missing, both wait on you.",
+    body: "AI needs documentation as the source of truth. Without an SOP or a map, automation means teaching the work again.",
   },
 ];
 
@@ -22,13 +22,13 @@ export function MarketingHome() {
   const [audit, exit, scale, ai] = HOME_SECTIONS;
   return (
     <article className="mx-auto w-full max-w-3xl px-4 py-10 sm:py-16">
-      <p className="text-sm font-semibold text-mojo-ink">{SITE.product}</p>
+      <p className="text-sm font-semibold text-mojo-ink">Ops Audit</p>
       <h1 className="mt-2 text-4xl font-bold tracking-tight text-zinc-950 sm:text-5xl">
-        Exit / Freedom Readiness
+        Ops Scalability Score
       </h1>
       <p className="mt-4 max-w-2xl text-lg leading-relaxed text-zinc-600">
-        A free {audit.heading.toLowerCase()} for SMB CEOs and COOs. {SITE.parentName} scores
-        whether the company can run when you step out — time off, a sale, or a calmer week.
+        A free {audit.heading.toLowerCase()} for {AUDIENCE}. {SITE.parentName} scores whether the
+        work can run when the person who owns it steps out — time off, a sale, or a calmer week.
       </p>
       <StartQuizButton />
       <p className="mt-3 text-sm text-zinc-500">About 3 minutes · 11 questions · answer from memory</p>
@@ -74,8 +74,9 @@ export function MarketingHome() {
             two fixes come first, before any email.
           </li>
           <li>
-            <span className="font-semibold text-zinc-950">4. Unlock the breakout.</span> Your email
-            opens the six directional reads and a note you can send to Ops.
+            <span className="font-semibold text-zinc-950">4. Unlock the report.</span> Your email
+            opens the six directional reads. Then request a call if you want help documenting the
+            work.
           </li>
         </ol>
       </section>

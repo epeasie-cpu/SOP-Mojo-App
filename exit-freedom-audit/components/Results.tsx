@@ -3,24 +3,16 @@
 import { useRef, useState } from "react";
 import { isEmail, normalizeEmail } from "@/lib/email";
 import type { Goal } from "@/lib/questions";
-import { shareSummaryFromReport, type Metric, type ScoreReport } from "@/lib/score";
+import { AI_AMPLIFIES, AI_RETEACH, shareSummaryFromReport, type Metric, type ScoreReport } from "@/lib/score";
 import { SITE } from "@/lib/site";
 import type { StoredMailchimp, StoredUnlock } from "@/lib/storage";
+import { CallRequestDialog } from "./CallRequestDialog";
 import { DimensionBar, ScoreGauge } from "./ScoreVisuals";
-import { ShareDialog } from "./ShareDialog";
 
 type Filter = "all" | "critical" | "quick";
 
-function captureNote(unlock: StoredUnlock): string {
-  if (unlock.mailchimp.skipped) {
-    return "Email unlocked this report · Mailchimp tagging skipped (API key not set)";
-  }
-  if (!unlock.mailchimp.ok) {
-    return "Email unlocked this report · Mailchimp tag didn't apply. Your results are still open.";
-  }
-  const tags = unlock.mailchimp.tags?.join(", ") || "audit";
-  return `Email unlocked this report · Lead captured → Mailchimp tag: ${tags}`;
-}
+const LOCKED_BANNER = "Email required to unlock this report";
+const OPEN_BANNER = "Email unlocked this report";
 
 export function Results({
   report,
@@ -38,8 +30,9 @@ export function Results({
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
   const [filter, setFilter] = useState<Filter>("all");
-  const [shareOpen, setShareOpen] = useState(false);
+  const [callOpen, setCallOpen] = useState(false);
   const open = Boolean(unlock);
+  const aiGap = report.gaps.find((gap) => gap.id === "ai");
 
   function focusUnlock() {
     emailRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -91,11 +84,9 @@ export function Results({
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6">
-      {unlock ? (
-        <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
-          {captureNote(unlock)}
-        </p>
-      ) : null}
+      <p className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+        {unlock ? OPEN_BANNER : LOCKED_BANNER}
+      </p>
 
       {open ? (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,280px)_1fr]">
@@ -129,11 +120,16 @@ export function Results({
                 </li>
               ))}
             </ul>
+            {aiGap ? <p className="mt-3 text-sm leading-relaxed text-zinc-700">{AI_RETEACH}</p> : null}
           </section>
         </div>
       )}
 
-      {open ? <GapSection report={report} gaps={gaps} filter={filter} onFilter={setFilter} onShare={() => setShareOpen(true)} /> : null}
+      <p className="mt-4 text-sm font-medium leading-relaxed text-zinc-800">{AI_AMPLIFIES}</p>
+
+      {open ? (
+        <GapSection report={report} gaps={gaps} filter={filter} onFilter={setFilter} onCall={() => setCallOpen(true)} />
+      ) : null}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {Object.values(report.metrics).map((metric) => (
@@ -149,9 +145,9 @@ export function Results({
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h2 className="text-lg font-bold tracking-tight">Unlock full breakout + Ops share pack</h2>
+              <h2 className="text-lg font-bold tracking-tight">Unlock the full report</h2>
               <p className="mt-1 max-w-xl text-sm leading-relaxed text-zinc-500">
-                Headers stay visible so you know what&apos;s waiting — numbers unlock with email.
+                Headers stay visible. The numbers open with your email.
               </p>
             </div>
             <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
@@ -189,15 +185,15 @@ export function Results({
 
       <div className="mt-6 flex justify-center">
         <button type="button" onClick={onRetake} className="min-h-11 px-3 text-sm font-semibold text-zinc-600 hover:text-zinc-950">
-          Retake the gut check
+          Retake the audit
         </button>
       </div>
 
-      {shareOpen ? (
-        <ShareDialog
+      {callOpen ? (
+        <CallRequestDialog
           summary={shareSummaryFromReport(report)}
-          replyTo={unlock?.email}
-          onClose={() => setShareOpen(false)}
+          defaultEmail={unlock?.email}
+          onClose={() => setCallOpen(false)}
         />
       ) : null}
     </div>
@@ -250,13 +246,13 @@ function GapSection({
   gaps,
   filter,
   onFilter,
-  onShare,
+  onCall,
 }: {
   report: ScoreReport;
   gaps: ScoreReport["gaps"];
   filter: Filter;
   onFilter: (filter: Filter) => void;
-  onShare: () => void;
+  onCall: () => void;
 }) {
   const goalHint: Record<Goal, string> = {
     exit: "You scored this for an exit.",
@@ -303,10 +299,10 @@ function GapSection({
           </a>
           <button
             type="button"
-            onClick={onShare}
+            onClick={onCall}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-950 bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-50"
           >
-            Email Ops team
+            Request a call
           </button>
           <a
             href={SITE.studio}

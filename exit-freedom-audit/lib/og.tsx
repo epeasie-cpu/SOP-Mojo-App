@@ -24,12 +24,12 @@ export function auditOgImage() {
           SOP MOJO
         </div>
         <div style={{ display: "flex", flexDirection: "column" }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: "#157a32" }}>Ops Scalability Score</div>
-          <div style={{ marginTop: 12, fontSize: 68, fontWeight: 800, letterSpacing: -1, lineHeight: 1.05 }}>
-            Exit / Freedom Readiness
+          <div style={{ fontSize: 28, fontWeight: 700, color: "#157a32" }}>Ops Audit</div>
+          <div style={{ marginTop: 12, fontSize: 64, fontWeight: 800, letterSpacing: -1, lineHeight: 1.05 }}>
+            Ops Scalability Score
           </div>
-          <div style={{ marginTop: 20, fontSize: 28, color: "#3f3f46", maxWidth: 860 }}>
-            Free ops and exit readiness score for SMB CEOs and COOs.
+          <div style={{ marginTop: 20, fontSize: 28, color: "#3f3f46", maxWidth: 900 }}>
+            Free ops and exit readiness score for operations teams and leaders.
           </div>
         </div>
         <div style={{ fontSize: 24, color: "#52525b" }}>audit.sopmojo.com</div>

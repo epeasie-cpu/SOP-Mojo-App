@@ -14,7 +14,7 @@ export function StartQuizProvider({
   return <StartQuizContext.Provider value={onStart}>{children}</StartQuizContext.Provider>;
 }
 
-export function StartQuizButton({ children = "Start the gut check →" }: { children?: string }) {
+export function StartQuizButton({ children = "Start the Audit →" }: { children?: string }) {
   const onStart = useContext(StartQuizContext);
   return (
     <button

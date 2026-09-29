@@ -1,5 +1,5 @@
 import { absolutePageUrl, FAQS, PAGES, SCORE_METRICS } from "./content";
-import { SITE } from "./site";
+import { AUDIENCE, SITE } from "./site";
 
 function escapeXml(value: string): string {
   return value
@@ -60,7 +60,7 @@ export function llmsTxt(): string {
   ).join("\n");
   return `# Exit / Freedom Readiness
 
-> Free ops and exit readiness score for SMB CEOs and COOs, from SOP Mojo.
+> Free ops and exit readiness score for ${AUDIENCE}, from SOP Mojo.
 
 ## What it is
 
@@ -68,7 +68,7 @@ Exit / Freedom Readiness is SOP Mojo’s Ops Scalability Score: a free business 
 
 ## Who it is for
 
-SMB CEOs and COOs who want an exit, time with family, a real stretch away, or less chaos in the current week.
+${AUDIENCE[0].toUpperCase()}${AUDIENCE.slice(1)}. Goals include an exit, time with family, a real stretch away, or less chaos in the current week.
 
 ## URL
 
@@ -80,7 +80,7 @@ Answer 11 gut-check questions from memory (a goal, eight core questions, and two
 
 ## CTA
 
-Start the gut check: ${SITE.host}
+Start the Audit: ${SITE.host}
 
 ## Pages
 
@@ -98,7 +98,7 @@ export function llmsFullTxt(): string {
 - Company: ${SITE.parentName}
 - Canonical URL: ${SITE.host}
 - Parent site: ${SITE.parent}
-- Audience: SMB CEOs and COOs
+- Audience: ${AUDIENCE}
 - Price: free
 - Writer: ${SITE.writer}
 - Studio: ${SITE.studio}

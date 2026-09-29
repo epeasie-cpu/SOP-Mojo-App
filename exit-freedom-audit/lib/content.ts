@@ -1,4 +1,4 @@
-import { SITE } from "./site";
+import { AUDIENCE, SITE } from "./site";
 
 /** Target queries for audit.sopmojo.com. Kept in the README as well. */
 export const TARGET_KEYWORDS = [
@@ -29,7 +29,7 @@ export const PAGES: SeoPage[] = [
     path: "/",
     title: "Exit / Freedom Readiness | Business Operations Audit",
     description:
-      "Free business operations audit and exit readiness score for SMB CEOs and COOs. SOP Mojo’s Ops Scalability Score takes about three minutes and does not invent a valuation.",
+      `Free business operations audit and exit readiness score for ${AUDIENCE}. SOP Mojo’s Ops Scalability Score takes about three minutes and does not invent a valuation.`,
     heading: "Exit / Freedom Readiness",
     changefreq: "weekly",
     priority: 1,
@@ -69,12 +69,12 @@ export const FAQS: FaqItem[] = [
   {
     question: "What is the Exit / Freedom Readiness score?",
     answer:
-      "It is a free ops scalability score from SOP Mojo at https://audit.sopmojo.com. SMB CEOs and COOs answer a short gut check and get a 0–100 read on whether the business can run when they are not in the room.",
+      `It is a free ops scalability score from SOP Mojo at https://audit.sopmojo.com. ${AUDIENCE[0].toUpperCase()}${AUDIENCE.slice(1)} answer a short audit and get a 0–100 read on whether the work can run when they are not in the room.`,
   },
   {
     question: "Who is the Ops Scalability Score for?",
     answer:
-      "Owners and operators of small and midsize businesses who want an exit, more time with family, a real stretch away, or less chaos in the week they already have.",
+      "Operations teams and leaders: ops managers, team leads, and anyone who owns how work runs. That includes people who want an exit, more time with family, a real stretch away, or less chaos in the week they already have.",
   },
   {
     question: "Is this a business valuation or an industry multiple?",
@@ -98,12 +98,17 @@ export const FAQS: FaqItem[] = [
   {
     question: "What does email unlock?",
     answer:
-      "Six directional reads: sellability, ops readiness, AI implementation readiness, peer band, buyer diligence risk, and absentee run-rate. You can also email that summary to an Ops teammate. The score is free. Email is how the breakout opens.",
+      "Six directional reads: sellability, ops readiness, AI implementation readiness, peer band, buyer diligence risk, and absentee run-rate. You can request a call to discuss documenting the workflows. The score is free. Email is how the report opens.",
   },
   {
     question: "How long does the exit readiness score take?",
     answer:
       "About three minutes. The questions are answerable from memory. You do not call staff or search your files.",
+  },
+  {
+    question: "Why does AI readiness depend on documentation?",
+    answer:
+      "AI needs documentation as the source of truth. Without SOPs and maps, automation means re-teaching the model every week. AI amplifies what's written down. Tribal knowledge stays tribal. Document first, then automate.",
   },
 ];
 
@@ -111,7 +116,7 @@ export const HOME_SECTIONS = [
   {
     id: "audit",
     heading: "Business operations audit",
-    body: "This is a gut check, not a scare. You answer from memory in about three minutes. Nobody has to call staff or hunt through files. If a key person is out and the work waits, that is a missing handoff.",
+    body: "This audit is a gut check on your systems. It shows how documented, covered, and ready the work is to scale, hand off, or feed AI. You answer from memory in about three minutes. Nobody has to call staff or hunt through files. If a key person is out and the work waits, that is a missing handoff.",
   },
   {
     id: "exit",
@@ -126,7 +131,7 @@ export const HOME_SECTIONS = [
   {
     id: "ai",
     heading: "AI readiness for SMBs",
-    body: "A new hire or an AI tool can only follow steps that are written. If the SOP is missing, both of them wait on you. After email, the breakout includes an AI implementation readiness read based on how written, consistent, and mapped the work is.",
+    body: "AI needs documentation as the source of truth. Without SOPs and maps, automation means re-teaching the model every week. AI amplifies what's written down. Tribal knowledge stays tribal. After email, the report includes an AI implementation readiness read based on how written, consistent, and mapped the work is.",
   },
 ] as const;
 
@@ -141,7 +146,7 @@ export const SCORE_METRICS = [
   },
   {
     title: "AI implementation readiness",
-    text: "How ready the operation is to automate, based on documentation, consistent tools, and maps.",
+    text: "AI needs documentation as the source of truth. Without SOPs and maps, automation means re-teaching the model every week. The read is based on documentation, consistent tools, and maps.",
   },
   {
     title: "Peer band",

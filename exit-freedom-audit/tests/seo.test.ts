@@ -52,7 +52,8 @@ describe("audit discovery files", () => {
     for (const body of [short.body, full.body]) {
       expect(body).toContain("https://audit.sopmojo.com");
       expect(body).toContain("SOP Mojo");
-      expect(body).toContain("SMB CEOs and COOs");
+      expect(body).toContain("ops managers, team leads");
+      expect(body).not.toMatch(/CEO|COO/);
       expect(body).toContain("## How it works");
       expect(body).toContain("## CTA");
       expect(body).not.toMatch(/\d+(\.\d+)?\s*[x×]/i);
