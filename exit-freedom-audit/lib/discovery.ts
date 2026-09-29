@@ -58,13 +58,13 @@ export function llmsTxt(): string {
   const pages = PAGES.map(
     (page) => `- [${page.heading}](${absolutePageUrl(page.path)}): ${page.description}`,
   ).join("\n");
-  return `# Exit / Freedom Readiness
+  return `# Ops Scalability Score
 
-> Free ops and exit readiness score for ${AUDIENCE}, from SOP Mojo.
+> Free business operations audit and exit readiness score for ${AUDIENCE}, from SOP Mojo. Also called Ops Audit.
 
 ## What it is
 
-Exit / Freedom Readiness is SOP Mojo’s Ops Scalability Score: a free business operations audit. It scores whether a small or midsize company can keep running when the owner steps out.
+Ops Scalability Score is SOP Mojo’s free business operations audit. It scores exit readiness: whether a small or midsize company can keep running when the person who owns the work steps out.
 
 ## Who it is for
 

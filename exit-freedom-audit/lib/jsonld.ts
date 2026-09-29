@@ -24,7 +24,7 @@ export function webApplicationLd(): JsonLd {
     "@type": "WebApplication",
     "@id": `${SITE.host}#app`,
     name: SITE.name,
-    alternateName: [SITE.product, "Exit Freedom Readiness"],
+    alternateName: SITE.product,
     applicationCategory: "BusinessApplication",
     operatingSystem: "Web",
     url: SITE.host,

@@ -27,10 +27,10 @@ export const LASTMOD = "2026-09-29";
 export const PAGES: SeoPage[] = [
   {
     path: "/",
-    title: "Exit / Freedom Readiness | Business Operations Audit",
+    title: "Ops Scalability Score | Business Operations Audit",
     description:
       `Free business operations audit and exit readiness score for ${AUDIENCE}. SOP Mojo’s Ops Scalability Score takes about three minutes and does not invent a valuation.`,
-    heading: "Exit / Freedom Readiness",
+    heading: "Ops Scalability Score",
     changefreq: "weekly",
     priority: 1,
     lastmod: LASTMOD,
@@ -49,7 +49,7 @@ export const PAGES: SeoPage[] = [
     path: "/faq",
     title: "Ops Scalability Score FAQ",
     description:
-      "Plain answers about the SOP Mojo Exit / Freedom Readiness score: who it is for, how scoring works, and why sellability is not a valuation.",
+      "Plain answers about the SOP Mojo Ops Scalability Score: who it is for, how scoring works, and why sellability is not a valuation.",
     heading: "Ops Scalability Score FAQ",
     changefreq: "monthly",
     priority: 0.6,
@@ -67,9 +67,9 @@ export type FaqItem = { question: string; answer: string };
 
 export const FAQS: FaqItem[] = [
   {
-    question: "What is the Exit / Freedom Readiness score?",
+    question: "What is the Ops Scalability Score?",
     answer:
-      `It is a free ops scalability score from SOP Mojo at https://audit.sopmojo.com. ${AUDIENCE[0].toUpperCase()}${AUDIENCE.slice(1)} answer a short audit and get a 0–100 read on whether the work can run when they are not in the room.`,
+      `It is SOP Mojo’s free business operations audit and exit readiness score at https://audit.sopmojo.com, also called Ops Audit. ${AUDIENCE[0].toUpperCase()}${AUDIENCE.slice(1)} answer a short audit and get a 0–100 read on whether the work can run when they are not in the room.`,
   },
   {
     question: "Who is the Ops Scalability Score for?",

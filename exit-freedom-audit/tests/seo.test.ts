@@ -52,6 +52,10 @@ describe("audit discovery files", () => {
     for (const body of [short.body, full.body]) {
       expect(body).toContain("https://audit.sopmojo.com");
       expect(body).toContain("SOP Mojo");
+      expect(body).toContain("# Ops Scalability Score");
+      expect(body).toContain("business operations audit");
+      expect(body).toContain("exit readiness");
+      expect(body).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
       expect(body).toContain("ops managers, team leads");
       expect(body).not.toMatch(/CEO|COO/);
       expect(body).toContain("## How it works");
@@ -67,7 +71,12 @@ describe("audit discovery files", () => {
   it("gives each indexable page a unique title and FAQ answers agents can cite", () => {
     const titles = PAGES.map((page) => documentTitle(page));
     expect(new Set(titles).size).toBe(titles.length);
-    expect(titles[0]).toContain("audit.sopmojo.com".replace("audit.sopmojo.com", "SOP Mojo"));
+    expect(titles[0]).toBe("Ops Scalability Score | Business Operations Audit | SOP Mojo");
+    expect(titles.join("\n")).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
+    const homeGraph = jsonLdGraph(PAGES[0])["@graph"] as { "@type": string; name?: string }[];
+    expect(homeGraph.find((node) => node["@type"] === "WebApplication")?.name).toBe("Ops Scalability Score");
+    expect(homeGraph.find((node) => node["@type"] === "WebPage")?.name).toBe("Ops Scalability Score");
+    expect(JSON.stringify(homeGraph)).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
     for (const keyword of ["business operations audit", "exit readiness", "ops scalability", "AI readiness for SMBs"]) {
       expect(TARGET_KEYWORDS).toContain(keyword);
     }

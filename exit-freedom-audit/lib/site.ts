@@ -1,6 +1,6 @@
 export const SITE = {
-  name: "Exit / Freedom Readiness",
-  product: "Ops Scalability Score",
+  name: "Ops Scalability Score",
+  product: "Ops Audit",
   parentName: "SOP Mojo",
   host: "https://audit.sopmojo.com",
   parent: "https://www.sopmojo.com",
