@@ -29,7 +29,7 @@ npm run lint
 npm run build
 ```
 
-Without `MAILCHIMP_API_KEY`, a valid email still unlocks the report. The yellow ribbon does not mention Mailchimp. Without `RESEND_API_KEY`, **Request a call** still shows the form and returns a clear error. Nothing is sent.
+Without `MAILCHIMP_API_KEY`, a valid email still unlocks the report. The yellow ribbon does not mention Mailchimp. **Request a call** opens the visitor’s email app. It does not send mail from the server.
 
 ## Quiz
 
@@ -63,11 +63,9 @@ Sellability is a **directional band** (lower / middle / higher). It is labeled a
 
 ## Request a call
 
-`POST /api/call-request` with the lead’s email, optional name and note, and the score summary when the report is open.
+**Request a call** is a `mailto:` link to **ryan@sopmojo.com** only. There is no server send and no Resend call for this button.
 
-The message says they want to discuss how SOP Mojo can help document their workflows, then includes the score summary when one was sent. Reply-To is the lead. The To address is `CALL_REQUEST_TO`, or `MEETING_REQUEST_TO` if that is the one set. When both are unset, mail goes to **ryan@sopmojo.com**. No other inbox is used.
-
-If the override is set but is not an email, the route returns 503 and does not send. If Resend is unset, it returns a clear error and does not send. A Resend failure returns 502. The form stays on the page either way.
+The draft includes a request for a call or meeting to discuss how SOP Mojo can help document their workflows, plus the score, band, and top gaps. After the link opens, the page shows a confirmation: someone on the SOP Mojo team will be in touch soon.
 
 The results page still links Writer, then Studio, then Builder Pro.
 
@@ -77,13 +75,10 @@ The results page still links Writer, then Studio, then Builder Pro.
 | --- | --- | --- |
 | `MAILCHIMP_API_KEY` | No | Server-only. Upserts the unlock email and tags `audit` plus the goal tag. Unset or failing Mailchimp does not block unlock. Key looks like `<secret>-us21`. |
 | `MAILCHIMP_AUDIENCE_ID` | No | Defaults to `7c2226f741` (Mojo Business Solutions LLC). |
-| `RESEND_API_KEY` | Only for Request a call | Server-only. The call form returns an error when this is missing. |
-| `CALL_REQUEST_TO` | No | Inbox that receives Request a call. Defaults to `ryan@sopmojo.com` when unset. `MEETING_REQUEST_TO` is used only when `CALL_REQUEST_TO` is unset. A non-email value blocks the send. |
-| `EMAIL_FROM` | No | From header. Defaults to `SOP Mojo <onboarding@resend.dev>`. Production should use a verified domain, for example `SOP Mojo <audit@sopmojo.com>`. The Resend sandbox sender can only deliver to the Resend account email until a domain is verified. |
 
 Do not commit secret values.
 
-Full end-to-end capture needs `MAILCHIMP_API_KEY`. Delivering a call request needs `RESEND_API_KEY`. `CALL_REQUEST_TO` is optional and defaults to `ryan@sopmojo.com`. The quiz, score, blur, and unlock UI work without either key.
+Full end-to-end capture needs `MAILCHIMP_API_KEY`. Request a call does not use a server email key. The quiz, score, blur, and unlock UI work without Mailchimp.
 
 ## Preview deploy
 

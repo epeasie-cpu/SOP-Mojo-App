@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { isEmail, normalizeEmail } from "@/lib/email";
 import type { Goal } from "@/lib/questions";
+import { buildCallMailto } from "@/lib/call-mailto";
 import { AI_AMPLIFIES, AI_RETEACH, shareSummaryFromReport, type Metric, type ScoreReport } from "@/lib/score";
 import { SITE } from "@/lib/site";
 import type { StoredMailchimp, StoredUnlock } from "@/lib/storage";
@@ -128,7 +129,14 @@ export function Results({
       <p className="mt-4 text-sm font-medium leading-relaxed text-zinc-800">{AI_AMPLIFIES}</p>
 
       {open ? (
-        <GapSection report={report} gaps={gaps} filter={filter} onFilter={setFilter} onCall={() => setCallOpen(true)} />
+        <GapSection
+          report={report}
+          gaps={gaps}
+          filter={filter}
+          onFilter={setFilter}
+          callHref={buildCallMailto(shareSummaryFromReport(report))}
+          onCall={() => setCallOpen(true)}
+        />
       ) : null}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -189,13 +197,7 @@ export function Results({
         </button>
       </div>
 
-      {callOpen ? (
-        <CallRequestDialog
-          summary={shareSummaryFromReport(report)}
-          defaultEmail={unlock?.email}
-          onClose={() => setCallOpen(false)}
-        />
-      ) : null}
+      {callOpen ? <CallRequestDialog onClose={() => setCallOpen(false)} /> : null}
     </div>
   );
 }
@@ -246,12 +248,14 @@ function GapSection({
   gaps,
   filter,
   onFilter,
+  callHref,
   onCall,
 }: {
   report: ScoreReport;
   gaps: ScoreReport["gaps"];
   filter: Filter;
   onFilter: (filter: Filter) => void;
+  callHref: string;
   onCall: () => void;
 }) {
   const goalHint: Record<Goal, string> = {
@@ -297,13 +301,13 @@ function GapSection({
           >
             Fix gap #1 in Writer
           </a>
-          <button
-            type="button"
+          <a
+            href={callHref}
             onClick={onCall}
             className="inline-flex min-h-11 items-center justify-center rounded-lg border border-zinc-950 bg-white px-4 text-sm font-semibold text-zinc-950 hover:bg-zinc-50"
           >
             Request a call
-          </button>
+          </a>
           <a
             href={SITE.studio}
             target="_blank"
