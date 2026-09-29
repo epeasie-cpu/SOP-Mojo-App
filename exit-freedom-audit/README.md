@@ -96,6 +96,50 @@ Create a Vercel project from this monorepo:
 4. Set the environment variables above for Preview and Production.
 5. Deploy a preview. Leave `audit.sopmojo.com` off the project until DNS is an intentional, separate step.
 
+## SEO and AI findability
+
+Canonical host for titles, Open Graph, Twitter cards, sitemap URLs, and JSON-LD: **https://audit.sopmojo.com**.
+
+Indexable pages (server-rendered HTML, one H1 each):
+
+| URL | Role |
+| --- | --- |
+| `/` | Landing. The quiz starts here and is not a separate URL. |
+| `/score` | Results teaser: bands and the six directional reads. Not a visitor’s private score. |
+| `/faq` | Plain answers, including FAQPage JSON-LD. |
+
+There are no per-question quiz routes. The in-progress quiz and a personal result stay on `/` as client state, so crawlers receive the landing document for that URL.
+
+Also served:
+
+| URL | Role |
+| --- | --- |
+| `/robots.txt` | Allows all major search crawlers and AI crawlers (`GPTBot`, `ClaudeBot`, `PerplexityBot`, `Google-Extended`, and others). No `Disallow`. |
+| `/sitemap.xml` | `/`, `/score`, `/faq` with `loc`, `lastmod`, `changefreq`, `priority`. |
+| `/llms.txt` | Short description: what it is, who it is for, URL, how it works, CTA. |
+| `/llms-full.txt` | Same, plus bands, the six reads, and the FAQ answers. |
+| `/opengraph-image` and `/twitter-image` | Shared card for Open Graph and Twitter. |
+
+JSON-LD on the indexable pages: `Organization` (SOP Mojo), `WebApplication` (the score), and `WebPage`. `/faq` also emits `FAQPage`.
+
+### Target keywords
+
+Use these in titles, headings, and citations. Do not add extra doorway URLs for them.
+
+- business operations audit
+- exit readiness
+- ops scalability
+- ops scalability score
+- AI readiness for SMBs
+- exit freedom readiness
+- SOP Mojo
+
+Entity to cite: **SOP Mojo**, **https://audit.sopmojo.com**, a free ops and exit readiness score for SMB CEOs and COOs.
+
+### Follow-up
+
+Internal links from https://www.sopmojo.com (the Framer marketing site) are out of scope for this app. Add them on sopmojo.com when you point DNS at the audit host.
+
 ## Stack
 
-Next.js App Router, TypeScript, Tailwind CSS. Scoring, capture, and the share email are covered by `npm test`.
+Next.js App Router, TypeScript, Tailwind CSS. Scoring, capture, the share email, and the discovery files are covered by `npm test`.

@@ -22,11 +22,12 @@ import {
   type StoredUnlock,
 } from "@/lib/storage";
 import { Header } from "./Header";
-import { Landing } from "./Landing";
 import { Quiz } from "./Quiz";
 import { Results } from "./Results";
+import { SiteFooter } from "./SiteFooter";
+import { StartQuizProvider } from "./StartQuizButton";
 
-export function AuditApp() {
+export function AuditApp({ children }: { children: React.ReactNode }) {
   const quiz = useSyncExternalStore(subscribeSession, getSessionSnapshot, getServerSessionSnapshot);
   const unlock = useSyncExternalStore(subscribeUnlock, getUnlockSnapshot, getServerUnlockSnapshot);
 
@@ -119,12 +120,10 @@ export function AuditApp() {
       : null;
 
   return (
-    <>
+    <StartQuizProvider onStart={() => setSession({ phase: "quiz", step: 0, goal: null, answers: {} })}>
       <Header title={title} subtitle={subtitle} />
       <main id="main" className="flex-1">
-        {quiz.phase === "landing" || !question ? (
-          <Landing onStart={() => setSession({ phase: "quiz", step: 0, goal: null, answers: {} })} />
-        ) : null}
+        {quiz.phase === "landing" || !question ? children : null}
         {quiz.phase === "quiz" && question ? (
           <Quiz
             question={question}
@@ -148,9 +147,7 @@ export function AuditApp() {
           />
         ) : null}
       </main>
-      <footer className="px-4 py-8 text-center text-xs leading-relaxed text-zinc-500">
-        SOP Mojo · Ops Scalability Score · Directional estimates from your answers, not a valuation.
-      </footer>
-    </>
+      <SiteFooter />
+    </StartQuizProvider>
   );
 }

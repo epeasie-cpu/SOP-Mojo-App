@@ -13,11 +13,21 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE.host),
   applicationName: SITE.name,
   title: {
-    default: `${SITE.name} | ${SITE.parentName}`,
-    template: `%s | ${SITE.parentName}`,
+    default: `${SITE.name} | Business Operations Audit | ${SITE.parentName}`,
+    template: "%s",
   },
   description: SITE.tagline,
+  authors: [{ name: SITE.parentName, url: SITE.parent }],
+  creator: SITE.parentName,
+  publisher: SITE.parentName,
   category: "business",
+  robots: { index: true, follow: true },
+  openGraph: {
+    type: "website",
+    siteName: SITE.parentName,
+    locale: "en_US",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

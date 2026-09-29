@@ -1,13 +1,21 @@
 import type { Metadata } from "next";
 import { AuditApp } from "@/components/AuditApp";
-import { SITE } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { MarketingHome } from "@/components/MarketingHome";
+import { pageByPath } from "@/lib/content";
+import { buildMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: `${SITE.name} | ${SITE.product}`,
-  description: SITE.tagline,
-  alternates: { canonical: "/" },
-};
+const page = pageByPath("/");
+
+export const metadata: Metadata = buildMetadata(page);
 
 export default function HomePage() {
-  return <AuditApp />;
+  return (
+    <>
+      <JsonLd page={page} />
+      <AuditApp>
+        <MarketingHome />
+      </AuditApp>
+    </>
+  );
 }

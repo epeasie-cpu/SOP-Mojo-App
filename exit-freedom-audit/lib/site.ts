@@ -4,6 +4,8 @@ export const SITE = {
   parentName: "SOP Mojo",
   host: "https://audit.sopmojo.com",
   parent: "https://www.sopmojo.com",
+  founderName: "Ryan Pease",
+  founderEmail: "ryan@sopmojo.com",
   writer: "https://writer.sopmojo.com",
   studio: "https://flowchart.sopmojo.com",
   builder: "https://builder.sopmojo.com",
