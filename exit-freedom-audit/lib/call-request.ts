@@ -5,6 +5,9 @@ import { PRODUCT_LINKS, SITE } from "./site";
 
 export const DEFAULT_EMAIL_FROM = "SOP Mojo <onboarding@resend.dev>";
 
+/** Confirmed call-request inbox. Used when CALL_REQUEST_TO and MEETING_REQUEST_TO are unset. */
+export const DEFAULT_CALL_REQUEST_TO = "ryan@sopmojo.com";
+
 export const CALL_NOT_CONFIGURED =
   "Call requests are not configured yet. Nothing was sent.";
 
@@ -49,10 +52,13 @@ export function resolveEmailFrom(env: NodeJS.ProcessEnv): string {
   return configured || DEFAULT_EMAIL_FROM;
 }
 
-/** Recipient inbox. Never invents an address when the env var is missing. */
+/**
+ * Recipient inbox. `CALL_REQUEST_TO` wins, then `MEETING_REQUEST_TO`.
+ * A blank value uses ryan@sopmojo.com. A non-email value is rejected and does not fall back.
+ */
 export function resolveCallRecipient(env: NodeJS.ProcessEnv): string | null {
   const raw = env.CALL_REQUEST_TO?.trim() || env.MEETING_REQUEST_TO?.trim() || "";
-  if (!raw) return null;
+  if (!raw) return DEFAULT_CALL_REQUEST_TO;
   const email = normalizeEmail(raw);
   return isEmail(email) ? email : null;
 }

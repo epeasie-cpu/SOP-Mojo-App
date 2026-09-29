@@ -4,6 +4,7 @@ import {
   CALL_NEEDS_RESEND,
   CALL_NOT_CONFIGURED,
   CALL_SEND_ERROR,
+  DEFAULT_CALL_REQUEST_TO,
   DEFAULT_EMAIL_FROM,
   buildCallEmail,
   handleCallRequest,
@@ -31,17 +32,35 @@ describe("call request", () => {
     expect(send).not.toHaveBeenCalled();
   });
 
-  it("holds the send when the recipient is not configured", async () => {
-    const send = vi.fn();
+  it("sends to ryan@sopmojo.com when the recipient env is unset", async () => {
+    const send = vi.fn<(message: CallMessage) => Promise<{ ok: boolean }>>(async () => ({ ok: true }));
     const result = await handleCallRequest({
       body: { email: "lead@acme.com", summary },
       env: { RESEND_API_KEY: "re_test" } as unknown as NodeJS.ProcessEnv,
       send,
     });
+    expect(result).toEqual({ status: 200, body: { ok: true } });
+    expect(send.mock.calls[0]?.[0]?.to).toBe(DEFAULT_CALL_REQUEST_TO);
+    expect(resolveCallRecipient({} as NodeJS.ProcessEnv)).toBe("ryan@sopmojo.com");
+    expect(resolveCallRecipient({ CALL_REQUEST_TO: "  " } as unknown as NodeJS.ProcessEnv)).toBe("ryan@sopmojo.com");
+    expect(
+      resolveCallRecipient({
+        CALL_REQUEST_TO: "ryan@sopmojo.com",
+        MEETING_REQUEST_TO: "other@example.com",
+      } as unknown as NodeJS.ProcessEnv),
+    ).toBe("ryan@sopmojo.com");
+  });
+
+  it("holds the send when the recipient override is not an email", async () => {
+    const send = vi.fn();
+    const result = await handleCallRequest({
+      body: { email: "lead@acme.com", summary },
+      env: { RESEND_API_KEY: "re_test", CALL_REQUEST_TO: "not-an-email" } as unknown as NodeJS.ProcessEnv,
+      send,
+    });
     expect(result.status).toBe(503);
     expect(result.body).toEqual({ ok: false, error: CALL_NOT_CONFIGURED });
     expect(send).not.toHaveBeenCalled();
-    expect(resolveCallRecipient({} as NodeJS.ProcessEnv)).toBeNull();
     expect(resolveCallRecipient({ CALL_REQUEST_TO: "not-an-email" } as unknown as NodeJS.ProcessEnv)).toBeNull();
   });
 
@@ -97,7 +116,7 @@ describe("call request", () => {
       body: { email: "lead@acme.com", name: "", summary },
       env: {
         RESEND_API_KEY: "re_test",
-        MEETING_REQUEST_TO: "inbox@sopmojo.com",
+        MEETING_REQUEST_TO: "meetings@example.com",
         EMAIL_FROM: "SOP Mojo <audit@sopmojo.com>",
       } as unknown as NodeJS.ProcessEnv,
       send: async () => ({ ok: false }),
@@ -107,8 +126,8 @@ describe("call request", () => {
     expect(resolveEmailFrom({ EMAIL_FROM: " SOP Mojo <audit@sopmojo.com> " } as unknown as NodeJS.ProcessEnv)).toBe(
       "SOP Mojo <audit@sopmojo.com>",
     );
-    expect(resolveCallRecipient({ MEETING_REQUEST_TO: "inbox@sopmojo.com" } as unknown as NodeJS.ProcessEnv)).toBe(
-      "inbox@sopmojo.com",
+    expect(resolveCallRecipient({ MEETING_REQUEST_TO: "meetings@example.com" } as unknown as NodeJS.ProcessEnv)).toBe(
+      "meetings@example.com",
     );
   });
 
