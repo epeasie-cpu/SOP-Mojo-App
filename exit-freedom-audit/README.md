@@ -125,7 +125,6 @@ Use these in titles, headings, and citations. Do not add extra doorway URLs for 
 - ops scalability
 - ops scalability score
 - AI readiness for SMBs
-- exit freedom readiness
 - SOP Mojo
 
 Entity to cite: **SOP Mojo**, **https://audit.sopmojo.com**, a free ops and exit readiness score for operations teams and leaders (ops managers, team leads, and anyone who owns how work runs).

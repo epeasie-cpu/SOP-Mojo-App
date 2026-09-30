@@ -3,10 +3,14 @@ import { GET as llmsFull } from "@/app/llms-full.txt/route";
 import { GET as llms } from "@/app/llms.txt/route";
 import { GET as robots } from "@/app/robots.txt/route";
 import { GET as sitemap } from "@/app/sitemap.xml/route";
-import { FAQS, HOME_SECTIONS, PAGES, TARGET_KEYWORDS } from "@/lib/content";
+import { buildCallMailto } from "@/lib/call-mailto";
+import { FAQS, HOME_SECTIONS, PAGES, SCORE_METRICS, TARGET_KEYWORDS } from "@/lib/content";
 import { jsonLdGraph } from "@/lib/jsonld";
 import { documentTitle } from "@/lib/seo";
 import { SITE } from "@/lib/site";
+
+/** Old product titles. "exit readiness" as a topic does not match. */
+const OLD_PRODUCT_NAME = /exit\s*[/]?\s*freedom/i;
 
 async function read(response: Response) {
   return {
@@ -55,7 +59,7 @@ describe("audit discovery files", () => {
       expect(body).toContain("# Ops Scalability Score");
       expect(body).toContain("business operations audit");
       expect(body).toContain("exit readiness");
-      expect(body).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
+      expect(body).not.toMatch(OLD_PRODUCT_NAME);
       expect(body).toContain("ops managers, team leads");
       expect(body).not.toMatch(/CEO|COO/);
       expect(body).toContain("## How it works");
@@ -72,11 +76,11 @@ describe("audit discovery files", () => {
     const titles = PAGES.map((page) => documentTitle(page));
     expect(new Set(titles).size).toBe(titles.length);
     expect(titles[0]).toBe("Ops Scalability Score | Business Operations Audit | SOP Mojo");
-    expect(titles.join("\n")).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
+    expect(titles.join("\n")).not.toMatch(OLD_PRODUCT_NAME);
     const homeGraph = jsonLdGraph(PAGES[0])["@graph"] as { "@type": string; name?: string }[];
     expect(homeGraph.find((node) => node["@type"] === "WebApplication")?.name).toBe("Ops Scalability Score");
     expect(homeGraph.find((node) => node["@type"] === "WebPage")?.name).toBe("Ops Scalability Score");
-    expect(JSON.stringify(homeGraph)).not.toMatch(/Exit \/ Freedom|Exit Freedom/);
+    expect(JSON.stringify(homeGraph)).not.toMatch(OLD_PRODUCT_NAME);
     for (const keyword of ["business operations audit", "exit readiness", "ops scalability", "AI readiness for SMBs"]) {
       expect(TARGET_KEYWORDS).toContain(keyword);
     }
@@ -96,5 +100,35 @@ describe("audit discovery files", () => {
     expect(home).not.toContain("FAQPage");
     expect(FAQS.length).toBeGreaterThanOrEqual(6);
     expect(FAQS.map((item) => item.answer).join("\n")).toMatch(/not a valuation/i);
+  });
+
+  it("keeps the retired product title off public surfaces", async () => {
+    const short = await read(llms());
+    const full = await read(llmsFull());
+    const map = await read(sitemap());
+    const mailto = decodeURIComponent(
+      buildCallMailto({
+        score: 42,
+        bandLabel: "Building — not yet scalable",
+        gaps: ["Coverage — work stalls when one person is out"],
+      }),
+    );
+    const corpus = [
+      short.body,
+      full.body,
+      map.body,
+      SITE.name,
+      SITE.product,
+      SITE.tagline,
+      ...PAGES.flatMap((page) => [page.title, page.heading, page.description, documentTitle(page), JSON.stringify(jsonLdGraph(page))]),
+      ...FAQS.flatMap((item) => [item.question, item.answer]),
+      ...HOME_SECTIONS.flatMap((section) => [section.heading, section.body]),
+      ...SCORE_METRICS.flatMap((metric) => [metric.title, metric.text]),
+      ...TARGET_KEYWORDS,
+      mailto,
+    ].join("\n");
+    expect(corpus).not.toMatch(OLD_PRODUCT_NAME);
+    expect(corpus).toContain("Ops Scalability Score");
+    expect(corpus).toContain("exit readiness");
   });
 });

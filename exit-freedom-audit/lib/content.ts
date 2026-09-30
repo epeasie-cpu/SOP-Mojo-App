@@ -7,7 +7,6 @@ export const TARGET_KEYWORDS = [
   "ops scalability",
   "ops scalability score",
   "AI readiness for SMBs",
-  "exit freedom readiness",
   "SOP Mojo",
 ] as const;
 
