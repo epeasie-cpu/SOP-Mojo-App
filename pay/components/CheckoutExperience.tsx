@@ -2,13 +2,14 @@
 
 import { CheckoutProvider, PaymentElement, useCheckout } from "@stripe/react-stripe-js/checkout";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { formatUsd, type Product } from "@/lib/catalog";
 import { quoteProduct } from "@/lib/pricing";
 
 const stripeCache = new Map<string, Promise<Stripe | null>>();
 
 function getStripe(publishableKey: string) {
+  if (typeof window === "undefined") return Promise.resolve(null);
   const cached = stripeCache.get(publishableKey);
   if (cached) return cached;
   const promise = loadStripe(publishableKey);
@@ -27,19 +28,132 @@ const appearance = {
   },
 };
 
-function PayFields({ email, payLabel }: { email: string; payLabel: string }) {
+function readyEmail(value: string): string | null {
+  const email = value.trim().toLowerCase();
+  if (!email || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;
+  return email;
+}
+
+function PayFields({
+  email,
+  annual,
+  bump,
+  sessionId,
+  productId,
+  payLabel,
+}: {
+  email: string;
+  annual: boolean;
+  bump: boolean;
+  sessionId: string;
+  productId: string;
+  payLabel: string;
+}) {
   const checkout = useCheckout();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const buyer = readyEmail(email);
+  const ready = checkout.type === "success";
+  const actionsRef = useRef<Extract<typeof checkout, { type: "success" }>["checkout"] | null>(null);
+  const selectionRef = useRef({ annual, bump, buyer });
+  const queueRef = useRef(Promise.resolve());
+
+  useEffect(() => {
+    actionsRef.current = checkout.type === "success" ? checkout.checkout : null;
+    selectionRef.current = { annual, bump, buyer };
+  });
+
+  const enqueue = useCallback((task: () => Promise<void>) => {
+    const run = queueRef.current.then(task, task);
+    queueRef.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }, []);
+
+  const patchSession = useCallback(async (lineItems: boolean, nextBuyer: string | null, nextAnnual: boolean, nextBump: boolean) => {
+    const response = await fetch("/api/checkout/session", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId,
+        slug: productId,
+        email: nextBuyer,
+        annual: nextAnnual,
+        bump: nextBump,
+        lineItems,
+      }),
+    });
+    const body = (await response.json().catch(() => ({}))) as { error?: string };
+    if (!response.ok) throw new Error(body.error || "Could not update checkout.");
+  }, [productId, sessionId]);
+
+  useEffect(() => {
+    if (!ready || !buyer) return;
+    const handle = window.setTimeout(() => {
+      void enqueue(async () => {
+        const actions = actionsRef.current;
+        const latest = selectionRef.current;
+        const nextBuyer = latest.buyer;
+        if (!actions || !nextBuyer) return;
+        const emailed = await actions.updateEmail(nextBuyer);
+        if (emailed.type === "error") throw new Error(emailed.error.message);
+        const updated = await actions.runServerUpdate(() =>
+          patchSession(false, nextBuyer, latest.annual, latest.bump),
+        );
+        if (updated.type === "error") throw new Error(updated.error.message);
+      }).then(
+        () => setError(null),
+        (reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not update checkout."),
+      );
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [buyer, enqueue, patchSession, productId, ready, sessionId]);
+
+  const sentSelection = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    const selection = `${annual}:${bump}`;
+    if (sentSelection.current === selection) return;
+    const previous = sentSelection.current;
+    sentSelection.current = selection;
+    if (previous === null && selection === "false:false") return;
+    void enqueue(async () => {
+      const actions = actionsRef.current;
+      const latest = selectionRef.current;
+      if (!actions) return;
+      const updated = await actions.runServerUpdate(() =>
+        patchSession(true, latest.buyer, latest.annual, latest.bump),
+      );
+      if (updated.type === "error") throw new Error(updated.error.message);
+    }).then(
+      () => setError(null),
+      (reason: unknown) => setError(reason instanceof Error ? reason.message : "Could not update the total."),
+    );
+  }, [annual, bump, enqueue, patchSession, ready]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (checkout.type !== "success") return;
+    const buyerEmail = readyEmail(email);
+    if (checkout.type !== "success" || !buyerEmail) {
+      setError("Enter your email to pay.");
+      return;
+    }
+    const actions = checkout.checkout;
     setPending(true);
     setError(null);
-    const result = await checkout.checkout.confirm({ email, redirect: "always" });
-    if (result.type === "error") {
-      setError(result.error.message);
+    try {
+      await enqueue(async () => {
+        const emailed = await actions.updateEmail(buyerEmail);
+        if (emailed.type === "error") throw new Error(emailed.error.message);
+        const updated = await actions.runServerUpdate(() => patchSession(false, buyerEmail, annual, bump));
+        if (updated.type === "error") throw new Error(updated.error.message);
+        const result = await actions.confirm({ email: buyerEmail, redirect: "always" });
+        if (result.type === "error") throw new Error(result.error.message);
+      });
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : "Payment could not start.");
       setPending(false);
     }
   }
@@ -65,7 +179,7 @@ function PayFields({ email, payLabel }: { email: string; payLabel: string }) {
       ) : null}
       <button
         type="submit"
-        disabled={pending || checkout.type !== "success"}
+        disabled={pending || !ready || !buyer}
         className="min-h-12 w-full rounded-sm bg-lime px-4 text-base font-semibold text-lime-ink disabled:opacity-60"
       >
         {pending ? "Paying…" : payLabel}
@@ -94,70 +208,23 @@ export function CheckoutExperience({
   publishableKey,
   mode,
   embed,
+  clientSecret,
+  sessionId,
+  sessionError,
 }: {
   product: Product;
   publishableKey: string;
   mode: "test" | "live";
   embed: boolean;
+  clientSecret: string | null;
+  sessionId: string | null;
+  sessionError: string | null;
 }) {
   const [email, setEmail] = useState("");
   const [annual, setAnnual] = useState(false);
   const [bump, setBump] = useState(false);
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
   const quote = quoteProduct(product, { annual, bump });
-  const emailReady = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-
-  function updateEmail(value: string) {
-    setEmail(value);
-    setClientSecret(null);
-  }
-
-  function updateAnnual(value: boolean) {
-    setAnnual(value);
-    setClientSecret(null);
-  }
-
-  function updateBump(value: boolean) {
-    setBump(value);
-    setClientSecret(null);
-  }
-
-  useEffect(() => {
-    if (!publishableKey || !emailReady) return;
-    const controller = new AbortController();
-    const handle = window.setTimeout(() => {
-      setLoadError(null);
-      void fetch("/api/checkout/session", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: controller.signal,
-        body: JSON.stringify({
-          slug: product.id,
-          email,
-          annual,
-          bump,
-          returnOrigin: window.location.origin,
-        }),
-      })
-        .then(async (response) => {
-          const body = (await response.json().catch(() => ({}))) as { clientSecret?: string; error?: string };
-          if (!response.ok || !body.clientSecret) {
-            throw new Error(body.error || "Could not start checkout.");
-          }
-          setClientSecret(body.clientSecret);
-        })
-        .catch((error: unknown) => {
-          if (error instanceof DOMException && error.name === "AbortError") return;
-          setClientSecret(null);
-          setLoadError(error instanceof Error ? error.message : "Could not start checkout.");
-        });
-    }, 300);
-    return () => {
-      controller.abort();
-      window.clearTimeout(handle);
-    };
-  }, [annual, bump, email, emailReady, product.id, publishableKey]);
+  const paymentMounted = Boolean(clientSecret && sessionId && publishableKey);
 
   return (
     <div className={`mx-auto w-full max-w-lg px-4 ${embed ? "py-4" : "py-8"}`}>
@@ -186,17 +253,21 @@ export function CheckoutExperience({
           inputMode="email"
           required
           value={email}
-          onChange={(event) => updateEmail(event.target.value)}
+          onChange={(event) => setEmail(event.target.value)}
           className="mt-1 min-h-12 w-full rounded-sm border border-zinc-700 bg-zinc-900 px-3 text-base text-zinc-50"
           placeholder="you@company.com"
+          aria-describedby="buyer-email-hint"
         />
+        <p id="buyer-email-hint" className="mt-1 text-sm text-zinc-500">
+          Required before you pay.
+        </p>
         {product.annual ? (
           <label className="mt-4 flex min-h-12 items-start gap-3 text-sm leading-6 text-zinc-200">
             <input
               type="checkbox"
               className="mt-1 h-5 w-5 accent-lime"
               checked={annual}
-              onChange={(event) => updateAnnual(event.target.checked)}
+              onChange={(event) => setAnnual(event.target.checked)}
             />
             <span>
               {product.annual.label}
@@ -212,7 +283,7 @@ export function CheckoutExperience({
               type="checkbox"
               className="mt-1 h-5 w-5 accent-lime"
               checked={bump}
-              onChange={(event) => updateBump(event.target.checked)}
+              onChange={(event) => setBump(event.target.checked)}
             />
             <span>
               Add {product.orderBump.title} — {formatUsd(product.orderBump.priceCents)}
@@ -222,31 +293,31 @@ export function CheckoutExperience({
             </span>
           </label>
         ) : null}
-        {!publishableKey ? (
-          <p className="mt-4 text-sm text-amber-200" role="status">
-            Stripe test keys are not set yet. Add them and this page can take a test card.
-          </p>
-        ) : null}
-        {loadError ? (
-          <p className="mt-4 text-sm text-rose-300" role="alert">
-            {loadError}
-          </p>
-        ) : null}
-        {clientSecret && publishableKey ? (
-          <CheckoutProvider
-            key={clientSecret}
-            stripe={getStripe(publishableKey)}
-            options={{ clientSecret, elementsOptions: { appearance } }}
-          >
-            <PayFields email={email.trim().toLowerCase()} payLabel={`Pay ${quote.summary}`} />
-          </CheckoutProvider>
-        ) : publishableKey ? (
-          <p className="mt-4 text-sm text-zinc-500">Enter your email to load Apple Pay, Google Pay, or card.</p>
-        ) : null}
+        <div data-payment-slot={paymentMounted ? "mounted" : "unavailable"}>
+          {paymentMounted ? (
+            <CheckoutProvider
+              stripe={getStripe(publishableKey)}
+              options={{ clientSecret: clientSecret ?? "", elementsOptions: { appearance } }}
+            >
+              <PayFields
+                email={email}
+                annual={annual}
+                bump={bump}
+                sessionId={sessionId ?? ""}
+                productId={product.id}
+                payLabel={`Pay ${quote.summary}`}
+              />
+            </CheckoutProvider>
+          ) : (
+            <p className="mt-4 text-sm text-amber-200" role="status">
+              {sessionError ||
+                (publishableKey
+                  ? "Payment fields could not be loaded."
+                  : "Stripe test keys are not set yet. Add them and this page can take a test card.")}
+            </p>
+          )}
+        </div>
         <LegalLine billingLine={quote.billingLine} />
-        {clientSecret ? (
-          <p className="sr-only">Total {formatUsd(quote.amountCents)}</p>
-        ) : null}
       </article>
     </div>
   );

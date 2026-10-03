@@ -1,5 +1,5 @@
 import type Stripe from "stripe";
-import { checkoutSessionParams, isTaxConfigurationError } from "./checkout-params";
+import { checkoutLineItems, checkoutSessionParams, isTaxConfigurationError, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
 import { captureCheckoutLead } from "./mailchimp";
@@ -29,9 +29,17 @@ async function customerForEmail(stripe: Stripe, email: string): Promise<string> 
   return created.id;
 }
 
+function stripeId(value: unknown): string | null {
+  if (typeof value === "string" && value) return value;
+  if (value && typeof value === "object" && "id" in value && typeof (value as { id?: unknown }).id === "string") {
+    return (value as { id: string }).id;
+  }
+  return null;
+}
+
 export async function openCheckoutSession(input: {
   product: Product;
-  email: string;
+  email?: string | null;
   annual: boolean;
   bump: boolean;
   returnOrigin: string;
@@ -49,11 +57,13 @@ export async function openCheckoutSession(input: {
         : "Add the Stripe test secret and publishable keys to take a test payment.",
     );
   }
+  const email = input.email ? normalizeBuyerEmail(input.email) : null;
+  if (input.email && !email) throw new Error("Enter a valid email to continue.");
   const stripe = stripeClient(creds.secretKey);
-  const customerId = await customerForEmail(stripe, input.email);
+  const customerId = email ? await customerForEmail(stripe, email) : null;
   const base = {
     product: input.product,
-    email: input.email,
+    email,
     customerId,
     annual: input.annual,
     bump: input.bump,
@@ -80,7 +90,7 @@ export async function openCheckoutSession(input: {
       .catch(() => undefined);
   }
   if (!session.client_secret) throw new Error("Stripe did not return a checkout client secret.");
-  await captureCheckoutLead({ email: input.email, env, fetchImpl: input.fetchImpl });
+  if (email) await captureCheckoutLead({ email, env, fetchImpl: input.fetchImpl });
   return {
     clientSecret: session.client_secret,
     sessionId: session.id,
@@ -88,4 +98,45 @@ export async function openCheckoutSession(input: {
     publishableKey: creds.publishableKey,
     mode: creds.mode,
   };
+}
+
+export async function updateCheckoutSession(input: {
+  sessionId: string;
+  product: Product;
+  email?: string | null;
+  annual: boolean;
+  bump: boolean;
+  lineItems: boolean;
+  snapshot: CatalogSnapshot;
+  env?: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<void> {
+  const env = input.env ?? process.env;
+  const creds = stripeCredentials(env, input.snapshot.settings.stripeMode);
+  if (!creds.secretKey) throw new Error("Add the Stripe secret key to take a test payment.");
+  const email = input.email ? normalizeBuyerEmail(input.email) : null;
+  if (input.email && !email) throw new Error("Enter a valid email to continue.");
+  const stripe = stripeClient(creds.secretKey);
+  const existing = await stripe.checkout.sessions.retrieve(input.sessionId);
+  if (existing.metadata?.product_id !== input.product.id) {
+    throw new Error("This checkout does not match that product.");
+  }
+  if (existing.status !== "open") throw new Error("This checkout is no longer open.");
+  const metadata = sessionMetadata(input.product, { email, annual: input.annual, bump: input.bump });
+  const params: Stripe.Checkout.SessionUpdateParams = { metadata };
+  if (input.lineItems) {
+    params.line_items = checkoutLineItems(input.product, {
+      email,
+      annual: input.annual,
+      bump: input.bump,
+    }) as Stripe.Checkout.SessionUpdateParams.LineItem[];
+  }
+  const session = await stripe.checkout.sessions.update(input.sessionId, params);
+  if (email && session.mode === "payment") {
+    const paymentIntentId = stripeId(session.payment_intent);
+    if (paymentIntentId) {
+      await stripe.paymentIntents.update(paymentIntentId, { receipt_email: email, metadata });
+    }
+  }
+  if (email) await captureCheckoutLead({ email, env, fetchImpl: input.fetchImpl });
 }

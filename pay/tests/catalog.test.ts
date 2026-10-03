@@ -63,8 +63,41 @@ describe("catalog, price, and checkout session", () => {
       tax: true,
     });
     expect(once.mode).toBe("payment");
+    expect(once.customer_creation).toBeUndefined();
     expect(once.payment_intent_data?.receipt_email).toBe("buyer@example.com");
     expect(once.invoice_creation).toEqual({ enabled: true });
+  });
+
+  it("creates the card session before an email exists", () => {
+    const flowchart = seedProducts()[0]!;
+    const params = checkoutSessionParams({
+      product: flowchart,
+      annual: false,
+      bump: false,
+      returnOrigin: "https://pay.sopmojo.com",
+      tax: true,
+    });
+    expect(params.ui_mode).toBe("elements");
+    expect(params.customer).toBeUndefined();
+    expect(params.customer_email).toBeUndefined();
+    expect(params.customer_creation).toBe("always");
+    expect(params.payment_intent_data?.receipt_email).toBeUndefined();
+    expect(params.metadata?.email).toBeUndefined();
+    expect(params.metadata?.entitlements).toBe("flowchart_plus");
+    const builder = seedProducts()[1]!;
+    const subscription = checkoutSessionParams({
+      product: builder,
+      annual: true,
+      bump: false,
+      returnOrigin: "https://pay.sopmojo.com",
+      tax: true,
+    });
+    expect(subscription.mode).toBe("subscription");
+    expect(subscription.customer).toBeUndefined();
+    expect(subscription.customer_creation).toBeUndefined();
+    expect(subscription.metadata?.email).toBeUndefined();
+    expect(subscription.subscription_data?.metadata?.entitlements).toBe("builder_pro");
+    expect(subscription.subscription_data?.metadata?.annual).toBe("1");
   });
 
   it("publishes the stable Framer link on pay.sopmojo.com", () => {

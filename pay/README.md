@@ -2,7 +2,7 @@
 
 Checkout Ryan owns, at **https://pay.sopmojo.com**. Framer stays the marketing site and only links or embeds this app. This folder is its own Next.js app. Set the Vercel project **Root Directory** to `pay`.
 
-Stripe integration: **Checkout Sessions with `ui_mode: "elements"` and the Payment Element** (`@stripe/react-stripe-js/checkout`). We draw the icon, title, description, price, email, annual checkbox, and order bump. Stripe’s Payment Element collects the card and shows Apple Pay / Google Pay when the device and the Stripe account support them. Stripe charges the card.
+Stripe integration: **Checkout Sessions with `ui_mode: "elements"` and the Payment Element** (`@stripe/react-stripe-js/checkout`). The full checkout page and the slide-out (`?embed=1`) render the icon, title, description, price, email, annual checkbox, order bump, and Payment Element together on first paint. The Checkout Session is created without an email, so the card fields are not a second step. Email is required before Pay. Typing an email calls `updateEmail` and updates that same session (metadata and receipt email). Annual and order-bump changes update line items on that session. Apple Pay and Google Pay stay on the Payment Element.
 
 ## Run
 
@@ -93,7 +93,7 @@ Also handled:
 
 The buyer’s email is added to the existing Mailchimp audience as a `checkout` tag. A Mailchimp failure does not stop checkout or unlock.
 
-Stripe customers are found or created by email. Nothing asks Ryan to paste a Stripe customer id. `/account` opens the Customer Portal for that email so they can update the card.
+The page creates the Checkout Session before the buyer types an email. Payment mode sets `customer_creation: "always"`. Subscription mode lets Checkout create the customer from the email collected at pay. `/account` opens the Customer Portal for the newest Stripe customer with that email. Nothing asks Ryan to paste a customer id.
 
 ## Money ops Ryan still has to turn on in Stripe
 

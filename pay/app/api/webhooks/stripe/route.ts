@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createEventStore } from "@/lib/event-store";
+import { hydrateBuyerEmail } from "@/lib/hydrate-buyer";
 import { processStripeEvent } from "@/lib/process-event";
 import { constructStripeEvent } from "@/lib/stripe-client";
 import type { IncomingStripeEvent } from "@/lib/stripe-events";
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: message }, { status: 400 });
   }
   try {
+    await hydrateBuyerEmail(event);
     const result = await processStripeEvent(event, {
       env: process.env,
       fetchImpl: fetch,
