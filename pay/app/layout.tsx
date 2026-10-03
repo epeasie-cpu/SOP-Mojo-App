@@ -1,0 +1,51 @@
+import type { Metadata } from "next";
+import { Fraunces, Geist } from "next/font/google";
+import { Suspense } from "react";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SITE } from "@/lib/site";
+import "./globals.css";
+
+const geist = Geist({
+  variable: "--font-geist-sans",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE.host),
+  applicationName: SITE.name,
+  title: {
+    default: `Checkout | ${SITE.parentName}`,
+    template: "%s",
+  },
+  description: SITE.tagline,
+  authors: [{ name: SITE.founderName, url: SITE.parent }],
+  creator: SITE.parentName,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en" className={`${geist.variable} ${fraunces.variable} h-full antialiased`}>
+      <body className="flex min-h-full flex-col overflow-x-hidden bg-zinc-950 font-sans text-zinc-100">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-lime focus:px-3 focus:py-2 focus:text-lime-ink"
+        >
+          Skip to content
+        </a>
+        <Suspense fallback={null}>
+          <SiteHeader />
+        </Suspense>
+        <main id="main" className="flex min-w-0 flex-1 flex-col">
+          {children}
+        </main>
+      </body>
+    </html>
+  );
+}
