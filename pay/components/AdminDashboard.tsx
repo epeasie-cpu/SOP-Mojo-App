@@ -11,6 +11,14 @@ import {
   type Product,
 } from "@/lib/catalog";
 import { embedSnippet, stableUrl } from "@/lib/links";
+import {
+  derivedSeoDescription,
+  derivedSeoTitle,
+  followSeoCopy,
+  prettyJsonLd,
+  resolvedSeo,
+  type SeoSource,
+} from "@/lib/product-seo";
 
 type Draft = {
   id: string;
@@ -31,7 +39,6 @@ type Draft = {
   entitlementProduct: "" | EntitlementProduct;
   seoTitle: string;
   seoDescription: string;
-  seoJsonLd: string;
   active: boolean;
 };
 
@@ -39,7 +46,28 @@ function money(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+function sourceOf(draft: Pick<Draft, "id" | "title" | "description" | "price" | "billing" | "annualEnabled" | "annualPrice" | "imageUrl">): SeoSource {
+  return {
+    id: draft.id,
+    title: draft.title,
+    description: draft.description,
+    priceCents: centsFromDollars(draft.price) ?? 0,
+    billing: draft.billing,
+    annualPriceCents: draft.billing === "month" && draft.annualEnabled ? centsFromDollars(draft.annualPrice) : null,
+    imageUrl: draft.imageUrl,
+  };
+}
+
 function toDraft(product: Product): Draft {
+  const source: SeoSource = {
+    id: product.id,
+    title: product.title,
+    description: product.description,
+    priceCents: product.priceCents,
+    billing: product.billing,
+    annualPriceCents: product.annual?.priceCents ?? null,
+    imageUrl: product.imageUrl,
+  };
   return {
     id: product.id,
     title: product.title,
@@ -57,9 +85,8 @@ function toDraft(product: Product): Draft {
     bumpEntitlement: product.orderBump?.entitlementProduct ?? "",
     presentation: product.presentation,
     entitlementProduct: product.entitlementProduct ?? "",
-    seoTitle: product.seo.title,
-    seoDescription: product.seo.description,
-    seoJsonLd: product.seo.jsonLd,
+    seoTitle: product.seo.title || derivedSeoTitle(source),
+    seoDescription: product.seo.description || derivedSeoDescription(source),
     active: product.active,
   };
 }
@@ -84,7 +111,6 @@ function blankDraft(): Draft {
     entitlementProduct: "",
     seoTitle: "",
     seoDescription: "",
-    seoJsonLd: "",
     active: true,
   };
 }
@@ -122,11 +148,7 @@ function draftToProduct(draft: Draft): Product {
     orderBump,
     presentation: draft.presentation,
     entitlementProduct: draft.entitlementProduct || null,
-    seo: {
-      title: draft.seoTitle.trim(),
-      description: draft.seoDescription.trim(),
-      jsonLd: draft.seoJsonLd.trim(),
-    },
+    seo: resolvedSeo(sourceOf(draft), { title: draft.seoTitle, description: draft.seoDescription }),
     active: draft.active,
   };
 }
@@ -168,6 +190,14 @@ export function AdminDashboard({
     if (!id) return null;
     return { stable: stableUrl(id), embed: embedSnippet(id, draft.title || "Buy now") };
   }, [draft.id, draft.title]);
+  const jsonLdPreview = prettyJsonLd(sourceOf(draft));
+
+  function editDraft(patch: Partial<Draft>) {
+    setDraft((prev) => {
+      const next = { ...prev, ...patch };
+      return { ...next, ...followSeoCopy({ previous: sourceOf(prev), next: sourceOf(next), seoTitle: prev.seoTitle, seoDescription: prev.seoDescription }) };
+    });
+  }
 
   function selectProduct(id: string) {
     const product = products.find((item) => item.id === id);
@@ -299,19 +329,19 @@ export function AdminDashboard({
         }}
       >
         <Field label="Product id (stable link name)">
-          <input className={inputClass} value={draft.id} onChange={(event) => setDraft({ ...draft, id: event.target.value })} placeholder="flowchart_plus" />
+          <input className={inputClass} value={draft.id} onChange={(event) => editDraft({ id: event.target.value })} placeholder="flowchart_plus" />
         </Field>
         <Field label="Title">
-          <input className={inputClass} value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+          <input className={inputClass} value={draft.title} onChange={(event) => editDraft({ title: event.target.value })} />
         </Field>
         <Field label="Short description">
-          <textarea className={`${inputClass} min-h-24 py-2`} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />
+          <textarea className={`${inputClass} min-h-24 py-2`} value={draft.description} onChange={(event) => editDraft({ description: event.target.value })} />
         </Field>
         <Field label="Price (USD)">
-          <input className={inputClass} inputMode="decimal" value={draft.price} onChange={(event) => setDraft({ ...draft, price: event.target.value })} />
+          <input className={inputClass} inputMode="decimal" value={draft.price} onChange={(event) => editDraft({ price: event.target.value })} />
         </Field>
         <Field label="Icon or image URL">
-          <input className={inputClass} value={draft.imageUrl} onChange={(event) => setDraft({ ...draft, imageUrl: event.target.value })} placeholder="/products/flowchart.svg" />
+          <input className={inputClass} value={draft.imageUrl} onChange={(event) => editDraft({ imageUrl: event.target.value })} placeholder="/products/flowchart.svg" />
         </Field>
         <label className="text-sm text-zinc-400">
           Or upload a small image
@@ -335,21 +365,21 @@ export function AdminDashboard({
           />
         </label>
         <Field label="Billing">
-          <select className={inputClass} value={draft.billing} onChange={(event) => setDraft({ ...draft, billing: event.target.value === "month" ? "month" : "once" })}>
+          <select className={inputClass} value={draft.billing} onChange={(event) => editDraft({ billing: event.target.value === "month" ? "month" : "once" })}>
             <option value="once">One-time</option>
             <option value="month">Monthly</option>
           </select>
         </Field>
         {draft.billing === "month" ? (
           <label className="flex min-h-12 items-center gap-3 text-sm">
-            <input type="checkbox" className="h-5 w-5 accent-lime" checked={draft.annualEnabled} onChange={(event) => setDraft({ ...draft, annualEnabled: event.target.checked })} />
+            <input type="checkbox" className="h-5 w-5 accent-lime" checked={draft.annualEnabled} onChange={(event) => editDraft({ annualEnabled: event.target.checked })} />
             Offer an annual checkbox
           </label>
         ) : null}
         {draft.billing === "month" && draft.annualEnabled ? (
           <>
             <Field label="Annual price (USD)">
-              <input className={inputClass} inputMode="decimal" value={draft.annualPrice} onChange={(event) => setDraft({ ...draft, annualPrice: event.target.value })} />
+              <input className={inputClass} inputMode="decimal" value={draft.annualPrice} onChange={(event) => editDraft({ annualPrice: event.target.value })} />
             </Field>
             <Field label="Annual checkbox label">
               <input className={inputClass} value={draft.annualLabel} onChange={(event) => setDraft({ ...draft, annualLabel: event.target.value })} />
@@ -397,15 +427,41 @@ export function AdminDashboard({
         </Field>
         <fieldset className="grid gap-3 rounded-lg border border-zinc-800 p-4">
           <legend className="px-1 text-sm text-zinc-400">Public product page SEO only</legend>
+          <p className="text-sm leading-6 text-zinc-400">
+            Filled from the title, description, and price. Checkout stays noindex. Edit either field. Clear it to follow the product again.
+          </p>
           <Field label="SEO title">
-            <input className={inputClass} value={draft.seoTitle} onChange={(event) => setDraft({ ...draft, seoTitle: event.target.value })} />
+            <input
+              className={inputClass}
+              value={draft.seoTitle}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft((prev) => ({ ...prev, seoTitle: value.trim() ? value : derivedSeoTitle(sourceOf(prev)) }));
+              }}
+            />
           </Field>
           <Field label="SEO description">
-            <textarea className={`${inputClass} min-h-24 py-2`} value={draft.seoDescription} onChange={(event) => setDraft({ ...draft, seoDescription: event.target.value })} />
+            <textarea
+              className={`${inputClass} min-h-24 py-2`}
+              value={draft.seoDescription}
+              onChange={(event) => {
+                const value = event.target.value;
+                setDraft((prev) => ({
+                  ...prev,
+                  seoDescription: value.trim() ? value : derivedSeoDescription(sourceOf(prev)),
+                }));
+              }}
+            />
           </Field>
-          <Field label="JSON-LD">
-            <textarea className={`${inputClass} min-h-32 py-2 font-mono text-sm`} value={draft.seoJsonLd} onChange={(event) => setDraft({ ...draft, seoJsonLd: event.target.value })} />
-          </Field>
+          <details className="rounded-sm border border-zinc-800">
+            <summary className="min-h-12 cursor-pointer px-3 py-3 text-sm font-medium text-zinc-200">
+              Advanced: generated JSON-LD
+            </summary>
+            <p className="px-3 text-sm leading-6 text-zinc-400">
+              Built from the title, description, price, and public page URL. Saving does not ask you to edit this.
+            </p>
+            <pre className="overflow-x-auto px-3 pb-3 text-xs leading-5 text-zinc-300">{jsonLdPreview}</pre>
+          </details>
         </fieldset>
         <label className="flex min-h-12 items-center gap-3 text-sm">
           <input type="checkbox" className="h-5 w-5 accent-lime" checked={draft.active} onChange={(event) => setDraft({ ...draft, active: event.target.checked })} />

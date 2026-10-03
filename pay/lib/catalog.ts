@@ -1,3 +1,5 @@
+import { derivedJsonLd, resolvedSeo, type SeoSource } from "./product-seo";
+
 export const ENTITLEMENT_PRODUCTS = ["flowchart_plus", "builder_pro"] as const;
 
 export type EntitlementProduct = (typeof ENTITLEMENT_PRODUCTS)[number];
@@ -117,27 +119,30 @@ export function parseProduct(value: unknown): Product {
   const annual = parseAnnual(row.annual, billing, id);
   const orderBump = parseBump(row.orderBump, id);
   const seoRaw = asRecord(row.seo) ?? {};
-  const jsonLd = typeof seoRaw.jsonLd === "string" ? seoRaw.jsonLd.trim() : "";
-  if (jsonLd) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(jsonLd);
-    } catch {
-      throw new Error(`${id}: SEO JSON-LD must be valid JSON.`);
-    }
-    if (!parsed || typeof parsed !== "object") {
-      throw new Error(`${id}: SEO JSON-LD must be a JSON object.`);
-    }
-  }
   const imageUrl = typeof row.imageUrl === "string" ? row.imageUrl.trim() : "";
   if (imageUrl.length > 120_000) throw new Error(`${id}: image is too large.`);
   if (imageUrl && !/^https?:\/\//.test(imageUrl) && !imageUrl.startsWith("/") && !imageUrl.startsWith("data:image/")) {
     throw new Error(`${id}: image must be a URL or an uploaded image.`);
   }
+  const title = requiredString(row.title, `${id} title`);
+  const description = requiredString(row.description, `${id} description`);
+  const source: SeoSource = {
+    id,
+    title,
+    description,
+    priceCents,
+    billing,
+    annualPriceCents: annual?.priceCents ?? null,
+    imageUrl,
+  };
+  const seo = resolvedSeo(source, {
+    title: typeof seoRaw.title === "string" ? seoRaw.title : "",
+    description: typeof seoRaw.description === "string" ? seoRaw.description : "",
+  });
   return {
     id,
-    title: requiredString(row.title, `${id} title`),
-    description: requiredString(row.description, `${id} description`),
+    title,
+    description,
     priceCents,
     currency: "usd",
     imageUrl,
@@ -146,11 +151,7 @@ export function parseProduct(value: unknown): Product {
     orderBump,
     presentation,
     entitlementProduct,
-    seo: {
-      title: typeof seoRaw.title === "string" ? seoRaw.title.trim() : "",
-      description: typeof seoRaw.description === "string" ? seoRaw.description.trim() : "",
-      jsonLd,
-    },
+    seo,
     active: row.active !== false,
   };
 }
@@ -207,20 +208,16 @@ export function parseCatalog(value: unknown): CatalogSnapshot {
 }
 
 export function productJsonLd(product: Product, pageUrl: string): string {
-  if (product.seo.jsonLd) return product.seo.jsonLd;
-  return JSON.stringify({
-    "@context": "https://schema.org",
-    "@type": "Product",
-    name: product.title,
-    description: product.seo.description || product.description,
-    image: product.imageUrl.startsWith("http") ? product.imageUrl : undefined,
-    brand: { "@type": "Brand", name: "SOP Mojo" },
-    offers: {
-      "@type": "Offer",
-      price: (product.priceCents / 100).toFixed(2),
-      priceCurrency: "USD",
-      availability: "https://schema.org/InStock",
-      url: pageUrl,
+  return derivedJsonLd(
+    {
+      id: product.id,
+      title: product.title,
+      description: product.description,
+      priceCents: product.priceCents,
+      billing: product.billing,
+      annualPriceCents: product.annual?.priceCents ?? null,
+      imageUrl: product.imageUrl,
     },
-  });
+    pageUrl,
+  );
 }

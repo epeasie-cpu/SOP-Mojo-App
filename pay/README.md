@@ -54,7 +54,7 @@ Built in:
 
 Add another product in the dashboard with the same fields (icon, title, description, price, public-page SEO, presentation, entitlement). The seed in `lib/seed.ts` is the same schema.
 
-Checkout (`/checkout/[id]`) is `noindex` in the meta robots tag and the `X-Robots-Tag` header. `/p/[id]` is the indexable product page and is the only place the SEO title, description, and JSON-LD are rendered.
+Checkout (`/checkout/[id]`) is `noindex` in the meta robots tag and the `X-Robots-Tag` header. `/p/[id]` is the indexable product page and is the only place the SEO title, description, and JSON-LD are rendered. The catalog form fills the SEO title and description from the product title, description, and price, and you can edit those two. JSON-LD is generated from those fields plus the public URL. Clearing an SEO field makes it follow the product again. Checkout does not use them.
 
 ## Framer: link vs slide-out
 
