@@ -1,24 +1,42 @@
+import { headers } from "next/headers";
 import Link from "next/link";
-import { checkoutMetadata } from "@/lib/seo";
-import { stripeClient } from "@/lib/stripe-client";
+import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
-import { stripeCredentials } from "@/lib/stripe-mode";
+import { checkoutPath } from "@/lib/links";
+import { checkoutMetadata } from "@/lib/seo";
+import { otherProductLinks, successHeadline } from "@/lib/success";
 import { SITE } from "@/lib/site";
+import { stripeClient } from "@/lib/stripe-client";
+import { stripeCredentials } from "@/lib/stripe-mode";
 
 export const dynamic = "force-dynamic";
 
 export const metadata = checkoutMetadata("Payment received | SOP Mojo");
 
+function requestOrigin(hostHeader: string | null, protoHeader: string | null): string {
+  const host = (hostHeader ?? "").split(",")[0]?.trim() ?? "";
+  if (!host) return SITE.host;
+  const proto =
+    protoHeader?.split(",")[0]?.trim() ||
+    (host.includes("localhost") || host.startsWith("127.0.0.1") ? "http" : "https");
+  return `${proto}://${host}`;
+}
+
 export default async function CompletePage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ slug: string }>;
   searchParams: Promise<{ session_id?: string }>;
 }) {
+  const { slug } = await params;
   const query = await searchParams;
+  const productId = decodeURIComponent(slug);
+  const snapshot = await createCatalogStore().read();
+  const product = snapshot.products.find((item) => item.id === productId) ?? null;
   const sessionId = query.session_id?.trim() ?? "";
   let status = "open";
   if (sessionId) {
-    const snapshot = await createCatalogStore().read();
     const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
     if (creds.secretKey) {
       try {
@@ -30,8 +48,12 @@ export default async function CompletePage({
     }
   }
   const paid = status === "complete";
-  const actionClass =
-    "inline-flex min-h-14 w-full items-center justify-center rounded-sm bg-lime px-4 text-center text-base font-semibold text-lime-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white";
+  const title = product?.title ?? "";
+  const headerList = await headers();
+  const origin = requestOrigin(headerList.get("x-forwarded-host") ?? headerList.get("host"), headerList.get("x-forwarded-proto"));
+  const shareUrl = `${origin}/p/${encodeURIComponent(productId)}`;
+  const others = otherProductLinks(snapshot.products, productId);
+
   return (
     <div className="mx-auto w-full max-w-lg px-4 py-8 sm:py-12">
       <article className="rounded-lg border border-zinc-800 bg-zinc-950 p-5 sm:p-8">
@@ -45,30 +67,55 @@ export default async function CompletePage({
             </svg>
           </div>
         ) : null}
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-zinc-50">
-          {paid ? "You’re in" : "Payment not finished"}
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-balance text-zinc-50">
+          {paid ? successHeadline(title) : "Payment not finished"}
         </h1>
-        <p className="mt-4 text-base leading-7 text-zinc-300">
-          {paid
-            ? "Check your email for your SOP Mojo username and password. Access follows that same email in Flowchart Studio and Builder Pro."
-            : "The card was not charged, or Stripe is still confirming it. You can try the checkout again."}
-        </p>
-        <div className="mt-8 grid gap-3">
-          <a className={actionClass} href={SITE.flowchart}>
-            Open Flowchart Studio
-          </a>
-          <a className={actionClass} href={SITE.builder}>
-            Open Builder Pro
-          </a>
-          {paid ? null : (
-            <Link
-              href="/"
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-sm border border-zinc-700 px-4 text-center text-base font-semibold text-zinc-200"
-            >
-              Back to products
-            </Link>
-          )}
-        </div>
+        {paid ? (
+          <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
+            <p>Check your email for your username and password.</p>
+            <p>Check your junk and spam folder too.</p>
+          </div>
+        ) : (
+          <p className="mt-4 text-base leading-7 text-zinc-300">
+            The card was not charged, or Stripe is still confirming it. You can try the checkout again.
+          </p>
+        )}
+        {paid ? (
+          <div className="mt-8">
+            <ShareProduct title={title} url={shareUrl} />
+          </div>
+        ) : (
+          <Link
+            href={checkoutPath(productId)}
+            className="mt-8 inline-flex min-h-14 w-full items-center justify-center rounded-sm border border-zinc-700 px-4 text-center text-base font-semibold text-zinc-100"
+          >
+            Try checkout again
+          </Link>
+        )}
+        <section className="mt-8 border-t border-zinc-800 pt-6">
+          <h2 className="text-sm font-semibold tracking-wide text-zinc-400 uppercase">Other SOP Mojo products</h2>
+          <ul className="mt-3 grid gap-3">
+            {others.map((item) => (
+              <li key={`${item.href}:${item.title}`}>
+                {item.href.startsWith("http") ? (
+                  <a
+                    href={item.href}
+                    className="flex min-h-14 w-full items-center rounded-sm border border-zinc-700 px-4 text-base text-zinc-100"
+                  >
+                    {item.title}
+                  </a>
+                ) : (
+                  <Link
+                    href={item.href}
+                    className="flex min-h-14 w-full items-center rounded-sm border border-zinc-700 px-4 text-base text-zinc-100"
+                  >
+                    {item.title}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       </article>
     </div>
   );
