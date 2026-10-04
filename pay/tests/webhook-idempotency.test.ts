@@ -195,4 +195,34 @@ describe("idempotent stripe webhook", () => {
     });
     expect(cancel.kind).toBe("revoke");
   });
+
+  it("revokes only the refunded product once when the same event is delivered twice", async () => {
+    const store = memoryEventStore();
+    const posts: { product: string; active: boolean }[] = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/webhooks/entitlements")) {
+        const body = JSON.parse(String(init?.body)) as { product: string; active: boolean };
+        posts.push(body);
+        return json({ ok: true });
+      }
+      return json({});
+    };
+    const event: IncomingStripeEvent = {
+      id: "evt_refund_once",
+      type: "charge.refunded",
+      data: {
+        object: {
+          amount_refunded: 1900,
+          metadata: { entitlements: "flowchart_plus", email: "buyer@example.com" },
+        },
+      },
+    };
+    const env = { ENTITLEMENT_WEBHOOK_SECRET: "secret" } as unknown as NodeJS.ProcessEnv;
+    const first = await processStripeEvent(event, { env, fetchImpl, store });
+    const second = await processStripeEvent(event, { env, fetchImpl, store });
+    expect(first).toEqual({ duplicate: false, action: "revoke" });
+    expect(second).toEqual({ duplicate: true, action: "ignore" });
+    expect(posts).toEqual([{ email: "buyer@example.com", product: "flowchart_plus", active: false }]);
+  });
 });

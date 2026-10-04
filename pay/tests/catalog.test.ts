@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { accessCodeMatches, readSession, signSession } from "@/lib/admin-session";
 import { parseCatalog } from "@/lib/catalog";
 import { checkoutSessionParams } from "@/lib/checkout-params";
+import { automaticTaxEnabled } from "@/lib/tax";
 import { embedSnippet, stableUrl } from "@/lib/links";
 import { CHECKOUT_LEAD_TAG, captureCheckoutLead } from "@/lib/mailchimp";
 import { quoteProduct } from "@/lib/pricing";
@@ -36,6 +37,37 @@ describe("catalog, price, and checkout session", () => {
     expect(parseCatalog(seedCatalog()).products).toHaveLength(2);
   });
 
+  it("adds one optional bump to the same payment and leaves the annual price alone", () => {
+    const builder = seedProducts()[1]!;
+    const bumped = {
+      ...builder,
+      orderBump: {
+        title: "Flowchart Plus",
+        description: "One-time export unlock.",
+        priceCents: 1900,
+        entitlementProduct: "flowchart_plus" as const,
+      },
+    };
+    const quote = quoteProduct(bumped, { annual: true, bump: true });
+    expect(builder.priceCents).toBe(3900);
+    expect(builder.annual?.priceCents).toBe(39000);
+    expect(quote.amountCents).toBe(40900);
+    expect(quote.interval).toBe("year");
+    expect(quote.entitlementProducts).toEqual(["builder_pro", "flowchart_plus"]);
+    const params = checkoutSessionParams({
+      product: bumped,
+      email: "buyer@example.com",
+      annual: true,
+      bump: true,
+      returnOrigin: "https://pay.sopmojo.com",
+      tax: false,
+    });
+    expect(params.line_items).toHaveLength(2);
+    expect(params.metadata?.entitlements).toBe("builder_pro,flowchart_plus");
+    expect(params.metadata?.bump).toBe("1");
+    expect(quoteProduct(builder, { annual: false, bump: false }).amountCents).toBe(3900);
+  });
+
   it("uses Checkout Sessions elements mode so the page owns layout and Stripe charges the card", () => {
     const builder = seedProducts()[1]!;
     const params = checkoutSessionParams({
@@ -45,12 +77,14 @@ describe("catalog, price, and checkout session", () => {
       annual: true,
       bump: false,
       returnOrigin: "https://pay.sopmojo.com",
-      tax: true,
+      tax: automaticTaxEnabled(),
     });
+    expect(automaticTaxEnabled()).toBe(false);
     expect(params.ui_mode).toBe("elements");
     expect(params.mode).toBe("subscription");
     expect(params.customer).toBe("cus_123");
-    expect(params.automatic_tax).toEqual({ enabled: true });
+    expect(params.automatic_tax).toEqual({ enabled: false });
+    expect(params.billing_address_collection).toBeUndefined();
     expect(params.subscription_data?.metadata?.entitlements).toBe("builder_pro");
     const flowchart = seedProducts()[0]!;
     const once = checkoutSessionParams({
@@ -60,7 +94,7 @@ describe("catalog, price, and checkout session", () => {
       annual: false,
       bump: false,
       returnOrigin: "https://pay.sopmojo.com",
-      tax: true,
+      tax: false,
     });
     expect(once.mode).toBe("payment");
     expect(once.customer_creation).toBeUndefined();
@@ -75,7 +109,7 @@ describe("catalog, price, and checkout session", () => {
       annual: false,
       bump: false,
       returnOrigin: "https://pay.sopmojo.com",
-      tax: true,
+      tax: false,
     });
     expect(params.ui_mode).toBe("elements");
     expect(params.customer).toBeUndefined();
@@ -90,7 +124,7 @@ describe("catalog, price, and checkout session", () => {
       annual: true,
       bump: false,
       returnOrigin: "https://pay.sopmojo.com",
-      tax: true,
+      tax: false,
     });
     expect(subscription.mode).toBe("subscription");
     expect(subscription.customer).toBeUndefined();

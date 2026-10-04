@@ -41,6 +41,7 @@ function PayFields({
   sessionId,
   productId,
   payLabel,
+  billingLine,
 }: {
   email: string;
   annual: boolean;
@@ -48,6 +49,7 @@ function PayFields({
   sessionId: string;
   productId: string;
   payLabel: string;
+  billingLine: string | null;
 }) {
   const checkout = useCheckout();
   const [error, setError] = useState<string | null>(null);
@@ -184,20 +186,22 @@ function PayFields({
       >
         {pending ? "Paying…" : payLabel}
       </button>
+      <PayTerms billingLine={billingLine} />
     </form>
   );
 }
 
-function LegalLine({ billingLine }: { billingLine: string | null }) {
+function PayTerms({ billingLine }: { billingLine: string | null }) {
   return (
-    <p className="mt-4 text-center text-sm leading-6 text-zinc-400">
-      {billingLine ? <span className="text-zinc-200">{billingLine}. </span> : null}
-      <a className="underline" href="/legal/terms" target="_blank" rel="noreferrer">
-        Terms
+    <p className="text-sm leading-6 text-zinc-400">
+      By paying, you agree to the{" "}
+      <a className="underline" href="/legal/terms">
+        terms
       </a>
-      {" · "}
-      <a className="underline" href="/legal/refunds" target="_blank" rel="noreferrer">
-        Refund policy
+      . {billingLine ? <span className="text-zinc-200">{billingLine.charAt(0).toUpperCase()}{billingLine.slice(1)}. </span> : "This charge is one-time. "}
+      A refund removes access for that product only.{" "}
+      <a className="underline" href="/legal/refunds">
+        Refunds
       </a>
     </p>
   );
@@ -306,6 +310,7 @@ export function CheckoutExperience({
                 sessionId={sessionId ?? ""}
                 productId={product.id}
                 payLabel={`Pay ${quote.summary}`}
+                billingLine={quote.billingLine}
               />
             </CheckoutProvider>
           ) : (
@@ -317,7 +322,7 @@ export function CheckoutExperience({
             </p>
           )}
         </div>
-        <LegalLine billingLine={quote.billingLine} />
+        {paymentMounted ? null : <PayTerms billingLine={quote.billingLine} />}
       </article>
     </div>
   );

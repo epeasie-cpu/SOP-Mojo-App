@@ -1,10 +1,11 @@
 import type Stripe from "stripe";
-import { checkoutLineItems, checkoutSessionParams, isTaxConfigurationError, sessionMetadata } from "./checkout-params";
+import { checkoutLineItems, checkoutSessionParams, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
 import { captureCheckoutLead } from "./mailchimp";
 import { stripeClient } from "./stripe-client";
 import { stripeCredentials } from "./stripe-mode";
+import { automaticTaxEnabled } from "./tax";
 
 export function normalizeBuyerEmail(value: unknown): string | null {
   if (typeof value !== "string") return null;
@@ -53,7 +54,7 @@ export async function openCheckoutSession(input: {
   if (!creds.secretKey || !creds.publishableKey) {
     throw new Error(
       creds.mode === "live"
-        ? "Live mode is on, but the live Stripe keys are missing. Switch back to test or add the live keys."
+        ? "Live mode is selected, but the live Stripe keys are not set."
         : "Add the Stripe test secret and publishable keys to take a test payment.",
     );
   }
@@ -61,34 +62,18 @@ export async function openCheckoutSession(input: {
   if (input.email && !email) throw new Error("Enter a valid email to continue.");
   const stripe = stripeClient(creds.secretKey);
   const customerId = email ? await customerForEmail(stripe, email) : null;
-  const base = {
-    product: input.product,
-    email,
-    customerId,
-    annual: input.annual,
-    bump: input.bump,
-    returnOrigin: input.returnOrigin,
-  };
-  let taxApplied = true;
-  let session: Stripe.Checkout.Session;
-  try {
-    session = await stripe.checkout.sessions.create(checkoutSessionParams({ ...base, tax: true }));
-  } catch (error) {
-    if (!isTaxConfigurationError(error)) throw error;
-    taxApplied = false;
-    const message = error instanceof Error ? error.message : "Stripe Tax is not active on this account.";
-    session = await stripe.checkout.sessions.create(checkoutSessionParams({ ...base, tax: false }));
-    if (input.snapshot.settings.taxNotice !== message) {
-      await input.store
-        .write({ ...input.snapshot, settings: { ...input.snapshot.settings, taxNotice: message } })
-        .catch(() => undefined);
-    }
-  }
-  if (taxApplied && input.snapshot.settings.taxNotice) {
-    await input.store
-      .write({ ...input.snapshot, settings: { ...input.snapshot.settings, taxNotice: null } })
-      .catch(() => undefined);
-  }
+  const taxApplied = automaticTaxEnabled();
+  const session = await stripe.checkout.sessions.create(
+    checkoutSessionParams({
+      product: input.product,
+      email,
+      customerId,
+      annual: input.annual,
+      bump: input.bump,
+      returnOrigin: input.returnOrigin,
+      tax: taxApplied,
+    }),
+  );
   if (!session.client_secret) throw new Error("Stripe did not return a checkout client secret.");
   if (email) await captureCheckoutLead({ email, env, fetchImpl: input.fetchImpl });
   return {
@@ -137,6 +122,10 @@ export async function updateCheckoutSession(input: {
     if (paymentIntentId) {
       await stripe.paymentIntents.update(paymentIntentId, { receipt_email: email, metadata });
     }
+  }
+  if (email && session.mode === "subscription") {
+    const customerId = stripeId(session.customer) ?? stripeId(existing.customer);
+    if (customerId) await stripe.customers.update(customerId, { email });
   }
   if (email) await captureCheckoutLead({ email, env, fetchImpl: input.fetchImpl });
 }

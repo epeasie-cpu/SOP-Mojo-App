@@ -99,10 +99,10 @@ The page creates the Checkout Session before the buyer types an email. Payment m
 
 These are account settings, not code. Checkout does not pretend they are done.
 
-- **Stripe Tax.** Every session is created with `automatic_tax.enabled`. If Tax is not activated (origin address and a registration), Stripe returns an error, the charge is retried **without** tax, and the dashboard shows that blocker. Do not treat a test purchase as tax-complete until the notice is gone.
-- **Receipts.** One-time charges set `receipt_email` and `invoice_creation`. Subscription invoices email only if Stripe Customer emails are on (successful payments / finalized invoices).
-- **Customer Portal.** `/account` calls the Billing Portal API. Stripe returns an error until the portal is configured in the Dashboard. The page shows that error.
-- **Apple Pay domain.** Add `pay.sopmojo.com` under Stripe payment-method domains so Apple Pay works on the real host. Google Pay and cards work without that step when Stripe enables them for the account.
+- **Stripe Tax.** The test account is pending: no head office and no registrations. Checkout does not request automatic tax and does not add a tax amount. The catalog screen says so. Do not call the tax settings API or invent an address. Turn Tax on in Stripe before this app should start requesting it.
+- **Receipts.** One-time charges set `receipt_email` and `invoice_creation` once the buyer email is known. Subscription checkout saves that email on the customer so Stripe can email the invoice.
+- **Customer Portal.** Test mode opens Billing Portal configuration `bpc_1UMuOAQ8wI2jkOVGxwG9WvdF`. `/account` and a paid subscription receipt link to it. A failed session shows a plain message. Do not create a second configuration.
+- **Apple Pay domain.** This app serves Stripe’s association file at `/.well-known/apple-developer-merchantid-domain-association` for `pay.sopmojo.com`. Wallet buttons stay inside the Payment Element. Register that domain in Stripe test mode after this file is on the host. Do not register a different domain.
 
 ## DNS
 

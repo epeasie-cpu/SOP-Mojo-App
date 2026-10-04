@@ -19,6 +19,7 @@ import {
   resolvedSeo,
   type SeoSource,
 } from "@/lib/product-seo";
+import { TAX_PENDING_NOTICE } from "@/lib/tax";
 
 type Draft = {
   id: string;
@@ -179,7 +180,7 @@ export function AdminDashboard({
 }) {
   const router = useRouter();
   const [products, setProducts] = useState(initial.products);
-  const [stripeMode, setStripeMode] = useState(initial.settings.stripeMode);
+  const stripeMode = initial.settings.stripeMode;
   const taxNotice = initial.settings.taxNotice;
   const [selected, setSelected] = useState(initial.products[0]?.id ?? "");
   const [draft, setDraft] = useState<Draft>(initial.products[0] ? toDraft(initial.products[0]) : blankDraft());
@@ -207,13 +208,13 @@ export function AdminDashboard({
     setMessage("");
   }
 
-  async function save(nextProducts: Product[], mode = stripeMode) {
+  async function save(nextProducts: Product[]) {
     setPending(true);
     setMessage("");
     const response = await fetch("/api/admin/catalog", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ products: nextProducts, settings: { stripeMode: mode, taxNotice } }),
+      body: JSON.stringify({ products: nextProducts, settings: { stripeMode, taxNotice } }),
     });
     const body = (await response.json().catch(() => ({}))) as { error?: string };
     setPending(false);
@@ -222,7 +223,6 @@ export function AdminDashboard({
       return;
     }
     setProducts(nextProducts);
-    setStripeMode(mode);
     setMessage("Saved.");
     router.refresh();
   }
@@ -271,30 +271,18 @@ export function AdminDashboard({
 
       <section className="mt-6 rounded-lg border border-zinc-800 p-4">
         <h2 className="font-semibold">Stripe mode</h2>
-        <p className="mt-1 text-sm leading-6 text-zinc-400">
-          Test is the default. Test cards work only in test mode. Live charges real cards and needs the live keys.
+        <p className="mt-3 inline-flex min-h-12 items-center rounded-sm bg-lime px-4 font-semibold text-lime-ink">
+          {stripeMode === "live" ? "Catalog setting: live" : "Test mode"}
         </p>
-        <div className="mt-3 flex gap-2">
-          {(["test", "live"] as const).map((mode) => (
-            <button
-              key={mode}
-              type="button"
-              className={`min-h-12 flex-1 rounded-sm border font-semibold ${stripeMode === mode ? "border-lime bg-lime text-lime-ink" : "border-zinc-700"}`}
-              onClick={() => void save(products, mode)}
-            >
-              {mode === "test" ? "Test" : "Live"}
-            </button>
-          ))}
-        </div>
-        {taxNotice ? (
-          <p className="mt-3 text-sm leading-6 text-amber-200" role="status">
-            Stripe Tax blocker: {taxNotice} Charges still go through without tax until Stripe Tax is activated (origin address and a registration in the Stripe Dashboard).
-          </p>
-        ) : (
-          <p className="mt-3 text-sm leading-6 text-zinc-400">
-            Stripe Tax is requested on every charge. If the Stripe account has not activated Tax, checkout still works and this page will show the Stripe error here. One-time purchases send Stripe receipts to the buyer email. Subscription receipts also need Customer emails turned on in Stripe.
-          </p>
-        )}
+        <p className="mt-3 text-sm leading-6 text-zinc-300">
+          Checkout uses Stripe test keys. Live keys are not set. This screen does not switch the account to live mode.
+        </p>
+        <p className="mt-3 text-sm leading-6 text-amber-200" role="status">
+          {TAX_PENDING_NOTICE}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-zinc-400">
+          One-time payments put the buyer email on the Stripe receipt. Subscriptions save that email on the customer so Stripe can email the invoice.
+        </p>
       </section>
 
       <div className="mt-6 flex flex-wrap gap-2">

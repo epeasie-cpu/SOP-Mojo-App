@@ -1,10 +1,12 @@
 import { headers } from "next/headers";
 import Link from "next/link";
+import { ManageSubscription } from "@/components/ManageSubscription";
 import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { checkoutPath } from "@/lib/links";
 import { checkoutMetadata } from "@/lib/seo";
 import { otherProductLinks, successHeadline } from "@/lib/success";
+import { normalizeEmail } from "@/lib/stripe-events";
 import { SITE } from "@/lib/site";
 import { stripeClient } from "@/lib/stripe-client";
 import { stripeCredentials } from "@/lib/stripe-mode";
@@ -36,12 +38,14 @@ export default async function CompletePage({
   const product = snapshot.products.find((item) => item.id === productId) ?? null;
   const sessionId = query.session_id?.trim() ?? "";
   let status = "open";
+  let buyerEmail: string | null = null;
   if (sessionId) {
     const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
     if (creds.secretKey) {
       try {
         const session = await stripeClient(creds.secretKey).checkout.sessions.retrieve(sessionId);
         status = session.status ?? "open";
+        buyerEmail = normalizeEmail(session.customer_details?.email) || normalizeEmail(session.customer_email);
       } catch {
         status = "unknown";
       }
@@ -80,6 +84,11 @@ export default async function CompletePage({
             The card was not charged, or Stripe is still confirming it. You can try the checkout again.
           </p>
         )}
+        {paid && product?.billing === "month" ? (
+          <div className="mt-6">
+            <ManageSubscription email={buyerEmail} />
+          </div>
+        ) : null}
         {paid ? (
           <div className="mt-8">
             <ShareProduct title={title} url={shareUrl} />

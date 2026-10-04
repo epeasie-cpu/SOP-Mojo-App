@@ -44,7 +44,7 @@ export function productsFromMetadata(metadata: Record<string, string>): Entitlem
   return found;
 }
 
-function metadataBag(object: Record<string, unknown>): Record<string, string> {
+export function stripeObjectMetadata(object: Record<string, unknown>): Record<string, string> {
   const direct = asMetadata(object.metadata);
   const parent = asRecord(object.parent);
   const nested = asMetadata(asRecord(parent?.subscription_details)?.metadata);
@@ -72,7 +72,7 @@ function emailFromObject(object: Record<string, unknown>, metadata: Record<strin
 
 export function decideAction(event: IncomingStripeEvent): StripeAction {
   const object = event.data?.object ?? {};
-  const metadata = metadataBag(object);
+  const metadata = stripeObjectMetadata(object);
   const email = emailFromObject(object, metadata);
   const products = productsFromMetadata(metadata);
 
