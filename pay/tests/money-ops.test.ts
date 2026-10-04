@@ -12,7 +12,10 @@ describe("tax, portal, wallets, and refunds", () => {
     const admin = readFileSync(path.join(process.cwd(), "components/AdminDashboard.tsx"), "utf8");
     const checkout = readFileSync(path.join(process.cwd(), "lib/open-checkout.ts"), "utf8");
     expect(admin).toContain("Test mode");
-    expect(admin).toContain("does not switch the account to live mode");
+    expect(admin).toContain("Checkout is using Stripe test keys.");
+    expect(admin).toContain("Checkout is using Stripe live keys (real charges).");
+    expect(admin).toContain('stripeMode === "live"');
+    expect(admin).not.toContain("Live keys are not set");
     expect(admin).not.toContain('onClick={() => void save(products, mode)}');
     expect(checkout).toContain("automaticTaxEnabled()");
     expect(checkout).not.toContain("tax/settings");

@@ -272,10 +272,12 @@ export function AdminDashboard({
       <section className="mt-6 rounded-lg border border-zinc-800 p-4">
         <h2 className="font-semibold">Stripe mode</h2>
         <p className="mt-3 inline-flex min-h-12 items-center rounded-sm bg-lime px-4 font-semibold text-lime-ink">
-          {stripeMode === "live" ? "Catalog setting: live" : "Test mode"}
+          {stripeMode === "live" ? "Live mode" : "Test mode"}
         </p>
         <p className="mt-3 text-sm leading-6 text-zinc-300">
-          Checkout uses Stripe test keys. Live keys are not set. This screen does not switch the account to live mode.
+          {stripeMode === "live"
+            ? "Checkout is using Stripe live keys (real charges)."
+            : "Checkout is using Stripe test keys."}
         </p>
         <p className="mt-3 text-sm leading-6 text-amber-200" role="status">
           {TAX_PENDING_NOTICE}
