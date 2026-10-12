@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { memoryEventStore } from "@/lib/event-store";
-import { grantAccess } from "@/lib/fulfillment";
+import { credentialSendKey, memoryEventStore } from "@/lib/event-store";
+import { existingAccountUnlockKey, grantAccess } from "@/lib/fulfillment";
 import { processStripeEvent } from "@/lib/process-event";
 import { decideAction, type IncomingStripeEvent } from "@/lib/stripe-events";
 
@@ -32,6 +32,68 @@ function json(body: unknown, status = 200) {
     status,
     headers: { "Content-Type": "application/json" },
   });
+}
+
+function existingBuyerEnv(): NodeJS.ProcessEnv {
+  return {
+    ...SECRET_ENV,
+    RESEND_API_KEY: "re_test",
+    EMAIL_FROM: "SOP Mojo <orders@sopmojo.com>",
+  } as NodeJS.ProcessEnv;
+}
+
+function recordExistingBuyer(signInUrl = "https://builder.sopmojo.com") {
+  const actionLink = `https://example.supabase.co/auth/v1/verify?token=reset&type=recovery&redirect_to=${encodeURIComponent(signInUrl)}`;
+  const entitlements: { email: string; product: string; active: boolean }[] = [];
+  const recovery: Record<string, unknown>[] = [];
+  const resend: { subject?: string; text?: string; from?: string; to?: string[] }[] = [];
+  const seen = {
+    creates: 0,
+    puts: 0,
+    makeCalls: 0,
+    entitlements,
+    recovery,
+    resend,
+    actionLink,
+    fetchImpl: (async (input, init) => {
+      const url = String(input);
+      const method = init?.method ?? "GET";
+      const body = init?.body ? (JSON.parse(String(init.body)) as Record<string, unknown>) : null;
+      if (url.includes("/rpc/entitlement_user_id_by_email")) return json("user-old");
+      if (url.includes("/auth/v1/admin/generate_link")) {
+        recovery.push(body ?? {});
+        expect(body?.password).toBeUndefined();
+        return json({ action_link: actionLink });
+      }
+      if (url.includes("/auth/v1/admin/users") && method === "POST") {
+        seen.creates += 1;
+        return json({ id: "user-old" });
+      }
+      if (url.includes("/auth/v1/admin/users/") && method === "PUT") {
+        seen.puts += 1;
+        return json({ id: "user-old" });
+      }
+      if (url.includes("/auth/v1/admin/users/") && method === "GET") {
+        return json({ id: "user-old", app_metadata: {} });
+      }
+      if (url.includes("/api/webhooks/entitlements") || url.includes("entitlements")) {
+        entitlements.push(body as { email: string; product: string; active: boolean });
+        return json({ ok: true, created_user: false, builder_pro: body?.product === "builder_pro" });
+      }
+      if (url.includes("api.resend.com")) {
+        resend.push(body as { subject?: string; text?: string; from?: string; to?: string[] });
+        const headers = new Headers(init?.headers);
+        expect(headers.get("authorization")).toBe("Bearer re_test");
+        return json({ id: "email_1" });
+      }
+      if (url.includes("hook.make.test")) {
+        seen.makeCalls += 1;
+        return json({ ok: true });
+      }
+      return json({});
+    }) as typeof fetch,
+  };
+  return seen;
 }
 
 describe("idempotent stripe webhook", () => {
@@ -115,39 +177,108 @@ describe("idempotent stripe webhook", () => {
     expect(passwords[0]?.length).toBeGreaterThan(8);
   });
 
-  it("does not email or rotate a password for someone who already has an account", async () => {
-    let makeCalls = 0;
-    let creates = 0;
-    const fetchImpl: typeof fetch = async (input, init) => {
-      const url = String(input);
-      const method = init?.method ?? "GET";
-      if (url.includes("/rpc/entitlement_user_id_by_email")) return json("user-old");
-      if (url.includes("/auth/v1/admin/users") && method === "POST") {
-        creates += 1;
-        return json({ id: "user-old" });
-      }
-      if (url.includes("/auth/v1/admin/users/") && method === "GET") {
-        return json({ id: "user-old", app_metadata: {} });
-      }
-      if (url.includes("hook.make.test")) {
-        makeCalls += 1;
-        return json({ ok: true });
-      }
-      if (url.includes("entitlements")) return json({ ok: true, created_user: false });
-      return json({});
-    };
+  it("keeps an existing-account unlock claim distinct from a password claim", () => {
+    expect(credentialSendKey("Buyer@Example.com|evt_1AbC")).toBe("buyer@example.com|evt_1AbC");
+    expect(existingAccountUnlockKey("Buyer@Example.com", "evt_1AbC")).toBe("buyer@example.com|evt_1AbC");
+    expect(credentialSendKey("Buyer@Example.com")).toBe("buyer@example.com");
+  });
+
+  it("grants builder_pro and emails one reset link when the buyer already has an account", async () => {
+    const store = memoryEventStore();
+    const seen = recordExistingBuyer();
+    const env = existingBuyerEnv();
+    const event = paid("evt_builder_existing", "builder_pro");
+    const first = await processStripeEvent(event, { env, fetchImpl: seen.fetchImpl, store });
+    const second = await processStripeEvent(event, { env, fetchImpl: seen.fetchImpl, store });
+
+    expect(first).toEqual({ duplicate: false, action: "grant" });
+    expect(second).toEqual({ duplicate: true, action: "ignore" });
+    expect(seen.creates).toBe(0);
+    expect(seen.puts).toBe(0);
+    expect(seen.makeCalls).toBe(0);
+    expect(seen.entitlements).toEqual([
+      { email: "buyer@example.com", product: "builder_pro", active: true },
+    ]);
+    expect(seen.recovery).toEqual([
+      {
+        type: "recovery",
+        email: "buyer@example.com",
+        redirect_to: "https://builder.sopmojo.com",
+      },
+    ]);
+    expect(seen.resend).toHaveLength(1);
+    expect(seen.resend[0]).toMatchObject({
+      from: "SOP Mojo <orders@sopmojo.com>",
+      to: ["buyer@example.com"],
+      subject: "Builder Pro is unlocked",
+    });
+    expect(seen.resend[0]?.text).toContain("Builder Pro is unlocked.");
+    expect(seen.resend[0]?.text).toContain("Sign in to Builder Pro at https://builder.sopmojo.com");
+    expect(seen.resend[0]?.text).toContain(seen.actionLink);
+    expect(seen.resend[0]?.text).not.toContain("Password:");
+    expect(
+      await store.claimCredentialSend(existingAccountUnlockKey("buyer@example.com", "evt_builder_existing")),
+    ).toBe(false);
+    expect(await store.claimCredentialSend("buyer@example.com")).toBe(true);
+  });
+
+  it("sends the unlock email once when a previously skipped event is redelivered", async () => {
+    const store = memoryEventStore();
+    await store.mark("evt_replay", "checkout.session.completed");
+    const seen = recordExistingBuyer();
+    const env = existingBuyerEnv();
+    const event = paid("evt_replay", "builder_pro");
+    const first = await processStripeEvent(event, { env, fetchImpl: seen.fetchImpl, store });
+    const second = await processStripeEvent(event, { env, fetchImpl: seen.fetchImpl, store });
+
+    expect(first).toEqual({ duplicate: true, action: "ignore" });
+    expect(second).toEqual({ duplicate: true, action: "ignore" });
+    expect(seen.creates).toBe(0);
+    expect(seen.puts).toBe(0);
+    expect(seen.makeCalls).toBe(0);
+    expect(seen.entitlements).toEqual([]);
+    expect(seen.resend).toHaveLength(1);
+    expect(seen.recovery[0]?.redirect_to).toBe("https://builder.sopmojo.com");
+    expect(seen.resend[0]?.text).toContain("https://builder.sopmojo.com");
+    expect(await store.claimCredentialSend(existingAccountUnlockKey("buyer@example.com", "evt_replay"))).toBe(
+      false,
+    );
+  });
+
+  it("sends a flowchart unlock to the flowchart sign-in and skips renewals", async () => {
+    const seen = recordExistingBuyer("https://flowchart.sopmojo.com");
     const result = await grantAccess({
       email: "buyer@example.com",
       products: ["flowchart_plus"],
-      eventId: "evt_existing",
+      eventId: "evt_flow",
       allowCredentials: true,
-      env: SECRET_ENV,
-      fetchImpl,
+      env: existingBuyerEnv(),
+      fetchImpl: seen.fetchImpl,
       store: memoryEventStore(),
     });
-    expect(creates).toBe(0);
-    expect(makeCalls).toBe(0);
-    expect(result.credentials).toBe("skipped_existing");
+    expect(result).toMatchObject({ credentials: "sent", mailer: "resend", createdUser: false });
+    expect(seen.recovery[0]?.redirect_to).toBe("https://flowchart.sopmojo.com");
+    expect(seen.resend[0]?.text).toContain("Sign in to Flowchart Plus at https://flowchart.sopmojo.com");
+    expect(seen.entitlements).toEqual([
+      { email: "buyer@example.com", product: "flowchart_plus", active: true },
+    ]);
+
+    const renewal = recordExistingBuyer();
+    const skipped = await grantAccess({
+      email: "buyer@example.com",
+      products: ["builder_pro"],
+      eventId: "evt_renew_existing",
+      allowCredentials: false,
+      env: existingBuyerEnv(),
+      fetchImpl: renewal.fetchImpl,
+      store: memoryEventStore(),
+    });
+    expect(skipped.credentials).toBe("not_applicable");
+    expect(renewal.resend).toHaveLength(0);
+    expect(renewal.recovery).toHaveLength(0);
+    expect(renewal.entitlements).toEqual([
+      { email: "buyer@example.com", product: "builder_pro", active: true },
+    ]);
   });
 
   it("revokes on refund and renewal does not send credentials", () => {

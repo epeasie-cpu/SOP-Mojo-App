@@ -72,7 +72,7 @@ Changing the toggle in the dashboard changes that behavior. The Framer page does
 
 ## After pay
 
-Stripe webhooks are the source of truth. The handler is idempotent on the Stripe **event id** (`pay_stripe_events`). A retry does not create a second user or send a second password email (`pay_credential_sends`).
+Stripe webhooks are the source of truth. The handler is idempotent on the Stripe **event id** (`pay_stripe_events`). A retry does not create a second user or send a second password email. Credential sends are claimed in `pay_credential_sends`. A new buyer is claimed by lowercased email. An existing account’s unlock email is claimed by `{email}|{stripe event id}` (event id keeps its case).
 
 What we do, and what we do not do:
 
@@ -80,8 +80,8 @@ What we do, and what we do not do:
 2. If there is no user, **Pay creates exactly one** confirmed user and keeps the password long enough to email it. Studio’s entitlements webhook is then called with `{ email, product, active }`. That webhook finds the user and only sets the flag. It does not change the password.
 3. The password email goes to **Make** when `MAKE_CREDENTIALS_WEBHOOK_URL` is set, with `action: "email_credentials_only"` and `do_not_create_user: true`. Make must send the username (the email) and password and **must not create a Supabase user**. Creating one there would fight the user Pay already created.
 4. If Make is unset and `RESEND_API_KEY` is set, Pay sends that same email itself.
-5. If the email already had a Supabase user, the password is not changed and no credential email is sent. The entitlement flag is still set.
-6. If neither mailer is set, the webhook returns 500 so Stripe retries until one is set. Access is granted on the first attempt; the retry sends the email.
+5. If the email already had a Supabase user that Pay did not create (`app_metadata.pay_credentials` is not `pending` or `sent`), Pay still sets that product’s entitlement, including `builder_pro`. It does not create another user and it does not change or set the password. It sends one Resend email on the same Resend request Pay already uses: the product is unlocked, sign in at that product’s URL (Builder Pro `https://builder.sopmojo.com`, Flowchart Plus `https://flowchart.sopmojo.com`), and a Supabase recovery link whose redirect is that sign-in URL. The claim key is `{lowercase email}|{stripe event id}` in `pay_credential_sends`. A redelivery of that same event does not send a second email. An event that was already marked before this email existed still sends it once on the next delivery, because that key was never claimed.
+6. If neither mailer is set, the webhook returns 500 so Stripe retries until one is set. Access is granted on the first attempt; the retry sends the email. An existing account needs `RESEND_API_KEY` for the unlock email. That send does not go through the Make password payload.
 7. Calling Make’s old “create the user” scenario **and** the entitlements webhook together is the wrong path. That can create two users or email a password that does not match. It is not what this app does.
 
 Also handled:

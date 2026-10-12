@@ -1,3 +1,5 @@
+import type { EntitlementProduct } from "./catalog";
+
 export const SITE = {
   name: "SOP Mojo Pay",
   parentName: "SOP Mojo",
@@ -32,4 +34,15 @@ export function absoluteUrl(path: string, env?: NodeJS.ProcessEnv): string {
   const origin = publicOrigin(env);
   if (!path || path === "/") return origin;
   return `${origin}${path.startsWith("/") ? path : `/${path}`}`;
+}
+
+/** Catalog products have no app URL. Entitlement name is the mapping. */
+export function productSignInUrl(product: EntitlementProduct): string {
+  if (product === "builder_pro") return SITE.builder;
+  return SITE.flowchart;
+}
+
+export function productAccessLabel(product: EntitlementProduct): string {
+  if (product === "builder_pro") return "Builder Pro";
+  return "Flowchart Plus";
 }

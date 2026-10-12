@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import { isEntitlementProduct, type EntitlementProduct } from "./catalog";
 import type { EventStore } from "./event-store";
-import { ENTITLEMENTS_WEBHOOK_URL } from "./site";
+import { ENTITLEMENTS_WEBHOOK_URL, productAccessLabel, productSignInUrl } from "./site";
 
 export type PayUser = {
   id: string;
@@ -45,6 +45,40 @@ export function credentialEmailText(input: { email: string; password: string; pr
     "",
     `Product: ${input.product}`,
   ].join("\n");
+}
+
+export function existingAccountUnlockKey(email: string, eventId: string): string {
+  return `${email.trim().toLowerCase()}|${eventId.trim()}`;
+}
+
+export function unlockEmailText(input: {
+  email: string;
+  access: { title: string; url: string }[];
+  resetLink: string;
+}): string {
+  const title = input.access.length === 1 ? input.access[0]?.title : "Your SOP Mojo products";
+  return [
+    `${title} is unlocked.`,
+    "",
+    `Sign in as ${input.email}.`,
+    ...input.access.map((item) => `Sign in to ${item.title} at ${item.url}`),
+    "",
+    "Reset your password:",
+    input.resetLink,
+  ].join("\n");
+}
+
+function accessFor(products: EntitlementProduct[]): { title: string; url: string }[] {
+  return products.map((product) => ({
+    title: productAccessLabel(product),
+    url: productSignInUrl(product),
+  }));
+}
+
+/** Pay created this login and still owns the password email. */
+function payOwnsCredentials(appMetadata: Record<string, unknown>, created: boolean): boolean {
+  const flag = appMetadata.pay_credentials;
+  return created || flag === "pending" || flag === "sent";
 }
 
 export async function lookupPayUser(
@@ -150,6 +184,61 @@ export async function postEntitlement(
   return { createdUser: body?.created_user === true };
 }
 
+export async function createRecoveryLink(
+  config: AdminConfig,
+  email: string,
+  redirectTo: string,
+  fetchImpl: typeof fetch,
+): Promise<string> {
+  const response = await fetchImpl(`${config.url}/auth/v1/admin/generate_link`, {
+    method: "POST",
+    headers: adminHeaders(config.serviceRoleKey, true),
+    body: JSON.stringify({
+      type: "recovery",
+      email,
+      redirect_to: redirectTo,
+    }),
+  });
+  if (!response.ok) throw new Error(`Supabase recovery link failed (${response.status}).`);
+  const body = asRecord(await response.json().catch(() => null));
+  const properties = asRecord(body?.properties);
+  const link =
+    typeof body?.action_link === "string"
+      ? body.action_link
+      : typeof properties?.action_link === "string"
+        ? properties.action_link
+        : "";
+  if (!link) throw new Error("Supabase recovery link was empty.");
+  return link;
+}
+
+async function sendResendEmail(input: {
+  email: string;
+  subject: string;
+  text: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl: typeof fetch;
+}): Promise<boolean> {
+  const resendKey = input.env.RESEND_API_KEY?.trim();
+  if (!resendKey) return false;
+  const from = input.env.EMAIL_FROM?.trim() || "SOP Mojo <onboarding@resend.dev>";
+  const response = await input.fetchImpl("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${resendKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [input.email],
+      subject: input.subject,
+      text: input.text,
+    }),
+  });
+  if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
+  return true;
+}
+
 export async function deliverCredentials(input: {
   email: string;
   password: string;
@@ -183,26 +272,88 @@ export async function deliverCredentials(input: {
     if (!response.ok) throw new Error(`Make credentials webhook returned ${response.status}.`);
     return "make";
   }
-  const resendKey = input.env.RESEND_API_KEY?.trim();
-  if (resendKey) {
-    const from = input.env.EMAIL_FROM?.trim() || "SOP Mojo <onboarding@resend.dev>";
-    const response = await input.fetchImpl("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${resendKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from,
-        to: [input.email],
-        subject: "Your SOP Mojo sign-in",
-        text: credentialEmailText({ email: input.email, password: input.password, product: input.product }),
-      }),
-    });
-    if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
-    return "resend";
+  const sent = await sendResendEmail({
+    email: input.email,
+    subject: "Your SOP Mojo sign-in",
+    text: credentialEmailText({ email: input.email, password: input.password, product: input.product }),
+    env: input.env,
+    fetchImpl: input.fetchImpl,
+  });
+  return sent ? "resend" : "unconfigured";
+}
+
+async function sendExistingUnlock(input: {
+  email: string;
+  products: EntitlementProduct[];
+  eventId: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl: typeof fetch;
+  store: EventStore;
+}): Promise<GrantResult> {
+  if (input.products.length === 0) {
+    return { createdUser: false, credentials: "not_applicable", mailer: null };
   }
-  return "unconfigured";
+  const email = input.email.trim().toLowerCase();
+  const key = existingAccountUnlockKey(email, input.eventId);
+  const claimed = await input.store.claimCredentialSend(key);
+  if (!claimed) {
+    return { createdUser: false, credentials: "skipped_existing", mailer: null };
+  }
+  const admin = readAdminConfig(input.env);
+  if (!admin) {
+    await input.store.releaseCredentialSend(key);
+    throw new Error(
+      "Set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY so an existing buyer can get a reset link.",
+    );
+  }
+  try {
+    const access = accessFor(input.products);
+    const primary = access[0];
+    if (!primary) {
+      throw new Error("Existing-account unlock had no product URL.");
+    }
+    const resetLink = await createRecoveryLink(admin, email, primary.url, input.fetchImpl);
+    const title = access.length === 1 ? primary.title : "Your SOP Mojo products";
+    const sent = await sendResendEmail({
+      email,
+      subject: `${title} is unlocked`,
+      text: unlockEmailText({ email, access, resetLink }),
+      env: input.env,
+      fetchImpl: input.fetchImpl,
+    });
+    if (!sent) {
+      throw new Error("Set RESEND_API_KEY so an existing buyer receives the unlock email.");
+    }
+    return { createdUser: false, credentials: "sent", mailer: "resend" };
+  } catch (error) {
+    await input.store.releaseCredentialSend(key);
+    throw error;
+  }
+}
+
+export async function replayExistingAccountUnlock(input: {
+  email: string;
+  products: string[];
+  eventId: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl: typeof fetch;
+  store: EventStore;
+}): Promise<void> {
+  const admin = readAdminConfig(input.env);
+  if (!admin) return;
+  const products = input.products.filter(isEntitlementProduct);
+  if (products.length === 0) return;
+  const email = input.email.trim().toLowerCase();
+  const user = await lookupPayUser(admin, email, input.fetchImpl);
+  if (!user || payOwnsCredentials(user.appMetadata, false)) return;
+  await sendExistingUnlock({
+    email,
+    products,
+    eventId: input.eventId,
+    env: input.env,
+    fetchImpl: input.fetchImpl,
+    store: input.store,
+  });
 }
 
 export type GrantResult = {
@@ -246,8 +397,23 @@ export async function grantAccess(input: {
     webhookCreated = webhookCreated || result.createdUser;
   }
 
+  if (!input.allowCredentials) {
+    return { createdUser: created || webhookCreated, credentials: "not_applicable", mailer: null };
+  }
+  if (user && !payOwnsCredentials(user.appMetadata, created)) {
+    const emailed = await sendExistingUnlock({
+      email,
+      products,
+      eventId: input.eventId,
+      env: input.env,
+      fetchImpl: input.fetchImpl,
+      store: input.store,
+    });
+    return { ...emailed, createdUser: created || webhookCreated };
+  }
+
   const pending = user?.appMetadata?.pay_credentials === "pending" || created;
-  const shouldEmail = input.allowCredentials && pending;
+  const shouldEmail = pending;
   if (!shouldEmail) {
     return { createdUser: created || webhookCreated, credentials: "skipped_existing", mailer: null };
   }

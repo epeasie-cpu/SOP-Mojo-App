@@ -10,6 +10,21 @@ export type EventStore = {
   releaseCredentialSend(email: string): Promise<void>;
 };
 
+/**
+ * New-buyer password emails use the lowercased email.
+ * Existing-account unlock emails use `email|eventId` so a second Stripe
+ * delivery does not send again, and a later purchase still can.
+ * The event id keeps its original case.
+ */
+export function credentialSendKey(value: string): string {
+  const trimmed = value.trim();
+  const pipe = trimmed.indexOf("|");
+  if (pipe === -1) return trimmed.toLowerCase();
+  const email = trimmed.slice(0, pipe).trim().toLowerCase();
+  const eventId = trimmed.slice(pipe + 1).trim();
+  return `${email}|${eventId}`;
+}
+
 export function memoryEventStore(): EventStore {
   const events = new Set<string>();
   const sends = new Set<string>();
@@ -21,13 +36,13 @@ export function memoryEventStore(): EventStore {
       events.add(eventId);
     },
     async claimCredentialSend(email) {
-      const key = email.trim().toLowerCase();
+      const key = credentialSendKey(email);
       if (sends.has(key)) return false;
       sends.add(key);
       return true;
     },
     async releaseCredentialSend(email) {
-      sends.delete(email.trim().toLowerCase());
+      sends.delete(credentialSendKey(email));
     },
   };
 }
@@ -68,7 +83,7 @@ export function fileEventStore(filePath: string): EventStore {
       });
     },
     async claimCredentialSend(email) {
-      const key = email.trim().toLowerCase();
+      const key = credentialSendKey(email);
       const state = await readState(filePath);
       if (state.sends.includes(key)) return false;
       await update((next) => {
@@ -77,7 +92,7 @@ export function fileEventStore(filePath: string): EventStore {
       return true;
     },
     async releaseCredentialSend(email) {
-      const key = email.trim().toLowerCase();
+      const key = credentialSendKey(email);
       await update((state) => {
         state.sends = state.sends.filter((value) => value !== key);
       });
@@ -126,13 +141,14 @@ export function supabaseEventStore(input: {
       }
     },
     async claimCredentialSend(email) {
+      const key = credentialSendKey(email);
       const response = await fetchImpl(sendsUrl, {
         method: "POST",
         headers: {
           ...restHeaders(input.serviceRoleKey, true),
           Prefer: "resolution=ignore-duplicates,return=representation",
         },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: key }),
       });
       if (response.status === 409) return false;
       if (!response.ok) throw new Error(`Credential claim failed (${response.status}).`);
@@ -140,10 +156,11 @@ export function supabaseEventStore(input: {
       return Array.isArray(rows) && rows.length > 0;
     },
     async releaseCredentialSend(email) {
-      const response = await fetchImpl(
-        `${sendsUrl}?email=eq.${encodeURIComponent(email.trim().toLowerCase())}`,
-        { method: "DELETE", headers: restHeaders(input.serviceRoleKey) },
-      );
+      const key = credentialSendKey(email);
+      const response = await fetchImpl(`${sendsUrl}?email=eq.${encodeURIComponent(key)}`, {
+        method: "DELETE",
+        headers: restHeaders(input.serviceRoleKey),
+      });
       if (!response.ok) throw new Error(`Credential release failed (${response.status}).`);
     },
   };

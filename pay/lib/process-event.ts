@@ -1,7 +1,7 @@
 import { captureCheckoutLead } from "./mailchimp";
 import { decideAction, type IncomingStripeEvent } from "./stripe-events";
 import type { EventStore } from "./event-store";
-import { grantAccess, revokeAccess } from "./fulfillment";
+import { grantAccess, replayExistingAccountUnlock, revokeAccess } from "./fulfillment";
 
 export type ProcessResult = {
   duplicate: boolean;
@@ -17,7 +17,20 @@ export async function processStripeEvent(
   },
 ): Promise<ProcessResult> {
   if (!event.id) throw new Error("Stripe event id is required.");
-  if (await deps.store.has(event.id)) return { duplicate: true, action: "ignore" };
+  if (await deps.store.has(event.id)) {
+    const action = decideAction(event);
+    if (action.kind === "grant" && action.allowCredentials) {
+      await replayExistingAccountUnlock({
+        email: action.email,
+        products: action.products,
+        eventId: event.id,
+        env: deps.env,
+        fetchImpl: deps.fetchImpl,
+        store: deps.store,
+      });
+    }
+    return { duplicate: true, action: "ignore" };
+  }
   const action = decideAction(event);
   if (action.kind === "grant") {
     await grantAccess({
