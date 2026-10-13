@@ -5,7 +5,7 @@ import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { checkoutPath } from "@/lib/links";
 import { checkoutMetadata } from "@/lib/seo";
-import { otherProductLinks, successHeadline } from "@/lib/success";
+import { deliveryLink, otherProductLinks, successHeadline } from "@/lib/success";
 import { normalizeEmail } from "@/lib/stripe-events";
 import { SITE } from "@/lib/site";
 import { stripeClient } from "@/lib/stripe-client";
@@ -52,6 +52,7 @@ export default async function CompletePage({
     }
   }
   const paid = status === "complete";
+  const link = paid ? deliveryLink(product) : null;
   const title = product?.title ?? "";
   const headerList = await headers();
   const origin = requestOrigin(headerList.get("x-forwarded-host") ?? headerList.get("host"), headerList.get("x-forwarded-proto"));
@@ -74,7 +75,18 @@ export default async function CompletePage({
         <h1 className="font-display text-4xl font-semibold tracking-tight text-balance text-zinc-50">
           {paid ? successHeadline(title) : "Payment not finished"}
         </h1>
-        {paid ? (
+        {link ? (
+          <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
+            <p>We emailed your {title} link.</p>
+            <p>Check your junk and spam folder too.</p>
+            <a
+              href={link.url}
+              className="inline-flex min-h-14 items-center justify-center rounded-sm bg-lime px-4 text-center text-base font-semibold text-lime-ink"
+            >
+              {link.label}
+            </a>
+          </div>
+        ) : paid ? (
           <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
             <p>Check your email for your username and password.</p>
             <p>Check your junk and spam folder too.</p>

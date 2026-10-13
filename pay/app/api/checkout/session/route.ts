@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCatalogStore } from "@/lib/catalog-store";
+import { checkoutErrorStatus } from "@/lib/library";
 import { allowedReturnOrigin } from "@/lib/links";
 import { findProduct, normalizeBuyerEmail, openCheckoutSession, updateCheckoutSession } from "@/lib/open-checkout";
 
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
     return NextResponse.json(session);
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : "Could not start checkout.";
-    return NextResponse.json({ error: message }, { status: 503 });
+    return NextResponse.json({ error: message }, { status: checkoutErrorStatus(message) });
   }
 }
 
@@ -81,6 +82,6 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ ok: true });
   } catch (caught) {
     const message = caught instanceof Error ? caught.message : "Could not update checkout.";
-    return NextResponse.json({ error: message }, { status: 503 });
+    return NextResponse.json({ error: message }, { status: checkoutErrorStatus(message) });
   }
 }

@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 import { checkoutLineItems, checkoutSessionParams, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
+import { isDeliveryUnavailable, NOT_AVAILABLE_YET } from "./library";
 import { captureCheckoutLead } from "./mailchimp";
 import { stripeClient } from "./stripe-client";
 import { stripeCredentials } from "./stripe-mode";
@@ -49,6 +50,7 @@ export async function openCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<{ clientSecret: string; sessionId: string; taxApplied: boolean; publishableKey: string; mode: "test" | "live" }> {
+  if (isDeliveryUnavailable(input.product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;
   const creds = stripeCredentials(env, input.snapshot.settings.stripeMode);
   if (!creds.secretKey || !creds.publishableKey) {
@@ -96,6 +98,7 @@ export async function updateCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<void> {
+  if (isDeliveryUnavailable(input.product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;
   const creds = stripeCredentials(env, input.snapshot.settings.stripeMode);
   if (!creds.secretKey) throw new Error("Add the Stripe secret key to take a test payment.");

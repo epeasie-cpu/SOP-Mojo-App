@@ -2,6 +2,13 @@ import type { Product } from "./catalog";
 import { productPath } from "./links";
 import { SITE } from "./site";
 
+export function deliveryLink(product: Product | null): { url: string; label: string } | null {
+  if (product?.delivery?.kind !== "email_link") return null;
+  const url = product.delivery.url.trim();
+  if (!url) return null;
+  return { url, label: product.delivery.label.trim() || "Download" };
+}
+
 export function successHeadline(title: string): string {
   const name = title.trim();
   return name ? `Payment succeeded for ${name}.` : "Payment succeeded.";

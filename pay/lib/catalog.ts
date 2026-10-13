@@ -16,6 +16,13 @@ export type AnnualOption = {
   label: string;
 };
 
+/** Link emailed after a one-time payment. This does not grant an app entitlement. */
+export type ProductDelivery = {
+  kind: "email_link";
+  url: string;
+  label: string;
+};
+
 export type ProductSeo = {
   title: string;
   description: string;
@@ -34,6 +41,7 @@ export type Product = {
   orderBump: OrderBump | null;
   presentation: "page" | "panel";
   entitlementProduct: EntitlementProduct | null;
+  delivery: ProductDelivery | null;
   seo: ProductSeo;
   active: boolean;
 };
@@ -118,6 +126,10 @@ export function parseProduct(value: unknown): Product {
   }
   const annual = parseAnnual(row.annual, billing, id);
   const orderBump = parseBump(row.orderBump, id);
+  const delivery = parseDelivery(row.delivery, billing, id);
+  if (delivery && entitlementProduct) {
+    throw new Error(`${id}: an email link does not grant an app entitlement.`);
+  }
   const seoRaw = asRecord(row.seo) ?? {};
   const imageUrl = typeof row.imageUrl === "string" ? row.imageUrl.trim() : "";
   if (imageUrl.length > 120_000) throw new Error(`${id}: image is too large.`);
@@ -151,9 +163,22 @@ export function parseProduct(value: unknown): Product {
     orderBump,
     presentation,
     entitlementProduct,
+    delivery,
     seo,
     active: row.active !== false,
   };
+}
+
+function parseDelivery(value: unknown, billing: "once" | "month", id: string): ProductDelivery | null {
+  if (value == null || value === false) return null;
+  const row = asRecord(value);
+  if (!row) return null;
+  if (row.kind !== "email_link") throw new Error(`${id}: delivery kind must be email_link.`);
+  if (billing !== "once") throw new Error(`${id}: an email link is only for a one-time purchase.`);
+  const url = typeof row.url === "string" ? row.url.trim() : "";
+  if (url && !/^https?:\/\//i.test(url)) throw new Error(`${id}: delivery url must be an http(s) link.`);
+  const label = typeof row.label === "string" && row.label.trim() ? row.label.trim() : "Download";
+  return { kind: "email_link", url, label };
 }
 
 function parseAnnual(value: unknown, billing: "once" | "month", id: string): AnnualOption | null {

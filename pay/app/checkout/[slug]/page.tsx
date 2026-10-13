@@ -6,6 +6,7 @@ import { CheckoutExperience } from "@/components/CheckoutExperience";
 import { createCatalogStore } from "@/lib/catalog-store";
 import type { CatalogSnapshot, Product } from "@/lib/catalog";
 import { allowedReturnOrigin } from "@/lib/links";
+import { isDeliveryUnavailable, NOT_AVAILABLE_YET } from "@/lib/library";
 import { findProduct, openCheckoutSession } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { checkoutMetadata } from "@/lib/seo";
@@ -21,6 +22,19 @@ export async function generateMetadata({
   const { slug } = await params;
   const { product } = await findProduct(createCatalogStore(), decodeURIComponent(slug));
   return checkoutMetadata(product ? `${product.title} checkout` : "Checkout");
+}
+
+function NotAvailable({ title, embed }: { title: string; embed: boolean }) {
+  return (
+    <div className={`mx-auto w-full max-w-lg px-4 ${embed ? "py-4" : "py-8"}`}>
+      <article className="rounded-lg border border-zinc-800 bg-zinc-950 p-4 sm:p-6">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-zinc-50">{title}</h1>
+        <p className="mt-4 text-base text-zinc-200" role="status">
+          {NOT_AVAILABLE_YET}
+        </p>
+      </article>
+    </div>
+  );
 }
 
 function CheckoutProductFallback({ product, embed }: { product: Product; embed: boolean }) {
@@ -101,6 +115,7 @@ export default async function CheckoutPage({
   const store = createCatalogStore();
   const { snapshot, product } = await findProduct(store, decodeURIComponent(slug));
   if (!product || !product.active) notFound();
+  if (isDeliveryUnavailable(product)) return <NotAvailable title={product.title} embed={embed} />;
   const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
   const session = (
     <CheckoutSessionBody

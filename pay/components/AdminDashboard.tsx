@@ -9,6 +9,7 @@ import {
   type EntitlementProduct,
   type OrderBump,
   type Product,
+  type ProductDelivery,
 } from "@/lib/catalog";
 import { embedSnippet, stableUrl } from "@/lib/links";
 import {
@@ -38,6 +39,9 @@ type Draft = {
   bumpEntitlement: "" | EntitlementProduct;
   presentation: "page" | "panel";
   entitlementProduct: "" | EntitlementProduct;
+  deliveryKind: "" | "email_link";
+  deliveryUrl: string;
+  deliveryLabel: string;
   seoTitle: string;
   seoDescription: string;
   active: boolean;
@@ -86,6 +90,9 @@ function toDraft(product: Product): Draft {
     bumpEntitlement: product.orderBump?.entitlementProduct ?? "",
     presentation: product.presentation,
     entitlementProduct: product.entitlementProduct ?? "",
+    deliveryKind: product.delivery?.kind === "email_link" ? "email_link" : "",
+    deliveryUrl: product.delivery?.url ?? "",
+    deliveryLabel: product.delivery?.label ?? "Download",
     seoTitle: product.seo.title || derivedSeoTitle(source),
     seoDescription: product.seo.description || derivedSeoDescription(source),
     active: product.active,
@@ -110,6 +117,9 @@ function blankDraft(): Draft {
     bumpEntitlement: "",
     presentation: "page",
     entitlementProduct: "",
+    deliveryKind: "",
+    deliveryUrl: "",
+    deliveryLabel: "Download",
     seoTitle: "",
     seoDescription: "",
     active: true,
@@ -137,6 +147,14 @@ function draftToProduct(draft: Draft): Product {
     };
     if (!orderBump.title) throw new Error("Order bump needs a title.");
   }
+  let delivery: ProductDelivery | null = null;
+  if (draft.billing === "once" && draft.deliveryKind === "email_link") {
+    delivery = {
+      kind: "email_link",
+      url: draft.deliveryUrl.trim(),
+      label: draft.deliveryLabel.trim() || "Download",
+    };
+  }
   return {
     id: draft.id.trim().toLowerCase(),
     title: draft.title.trim(),
@@ -148,7 +166,8 @@ function draftToProduct(draft: Draft): Product {
     annual: draft.billing === "month" ? annual : null,
     orderBump,
     presentation: draft.presentation,
-    entitlementProduct: draft.entitlementProduct || null,
+    entitlementProduct: delivery ? null : draft.entitlementProduct || null,
+    delivery,
     seo: resolvedSeo(sourceOf(draft), { title: draft.seoTitle, description: draft.seoDescription }),
     active: draft.active,
   };
@@ -243,6 +262,26 @@ export function AdminDashboard({
     }
   }
 
+  async function addLibraryProducts() {
+    setPending(true);
+    setMessage("");
+    const response = await fetch("/api/admin/catalog/library", { method: "POST" });
+    const body = (await response.json().catch(() => ({}))) as { error?: string; inserted?: string[]; skipped?: string[] };
+    if (!response.ok) {
+      setPending(false);
+      setMessage(body.error || "Could not add the library products.");
+      return;
+    }
+    const listed = await fetch("/api/admin/catalog");
+    const catalog = (await listed.json().catch(() => ({}))) as { products?: Product[] };
+    if (listed.ok && Array.isArray(catalog.products)) setProducts(catalog.products);
+    const inserted = body.inserted ?? [];
+    const skipped = body.skipped ?? [];
+    setPending(false);
+    setMessage(inserted.length > 0 ? `Added ${inserted.join(", ")}.` : `Already in the catalog: ${skipped.join(", ")}.`);
+    router.refresh();
+  }
+
   async function copy(value: string) {
     await navigator.clipboard.writeText(value);
     setMessage("Copied.");
@@ -308,6 +347,14 @@ export function AdminDashboard({
           }}
         >
           Add product
+        </button>
+        <button
+          type="button"
+          disabled={pending}
+          className="min-h-12 rounded-sm border border-dashed border-zinc-600 px-3 disabled:opacity-60"
+          onClick={() => void addLibraryProducts()}
+        >
+          Add SOP Library products
         </button>
       </div>
 
@@ -393,6 +440,46 @@ export function AdminDashboard({
             </Field>
           </>
         ) : null}
+        {draft.billing === "once" ? (
+          <Field label="Delivery">
+            <select
+              className={inputClass}
+              value={draft.deliveryKind}
+              onChange={(event) =>
+                setDraft({
+                  ...draft,
+                  deliveryKind: event.target.value === "email_link" ? "email_link" : "",
+                  entitlementProduct: event.target.value === "email_link" ? "" : draft.entitlementProduct,
+                })
+              }
+            >
+              <option value="">None</option>
+              <option value="email_link">Email a link</option>
+            </select>
+          </Field>
+        ) : null}
+        {draft.billing === "once" && draft.deliveryKind === "email_link" ? (
+          <>
+            <Field label="Delivery link">
+              <input
+                className={inputClass}
+                value={draft.deliveryUrl}
+                placeholder="https://"
+                onChange={(event) => setDraft({ ...draft, deliveryUrl: event.target.value })}
+              />
+            </Field>
+            <Field label="Button label">
+              <input
+                className={inputClass}
+                value={draft.deliveryLabel}
+                onChange={(event) => setDraft({ ...draft, deliveryLabel: event.target.value })}
+              />
+            </Field>
+            <p className="text-sm leading-6 text-zinc-400">
+              Leave the link empty until the file is ready. Checkout then says Not available yet.
+            </p>
+          </>
+        ) : null}
         <Field label="Open the stable link as">
           <select className={inputClass} value={draft.presentation} onChange={(event) => setDraft({ ...draft, presentation: event.target.value === "panel" ? "panel" : "page" })}>
             <option value="page">Full checkout page</option>
@@ -403,12 +490,15 @@ export function AdminDashboard({
           <select
             className={inputClass}
             value={draft.entitlementProduct}
-            onChange={(event) =>
+            onChange={(event) => {
+              const entitlementProduct =
+                event.target.value === "flowchart_plus" || event.target.value === "builder_pro" ? event.target.value : "";
               setDraft({
                 ...draft,
-                entitlementProduct: event.target.value === "flowchart_plus" || event.target.value === "builder_pro" ? event.target.value : "",
-              })
-            }
+                entitlementProduct,
+                deliveryKind: entitlementProduct ? "" : draft.deliveryKind,
+              });
+            }}
           >
             <option value="">None</option>
             <option value="flowchart_plus">flowchart_plus</option>

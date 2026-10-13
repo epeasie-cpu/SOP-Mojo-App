@@ -51,6 +51,7 @@ export function seedProducts(): Product[] {
       orderBump: null,
       presentation: "page",
       entitlementProduct: "flowchart_plus",
+      delivery: null,
       seo: {
         title: "Flowchart Plus — $19 one-time unlock | SOP Mojo",
         description:
@@ -80,6 +81,7 @@ export function seedProducts(): Product[] {
       orderBump: null,
       presentation: "panel",
       entitlementProduct: "builder_pro",
+      delivery: null,
       seo: {
         title: "Builder Pro — $39/month | SOP Mojo",
         description:

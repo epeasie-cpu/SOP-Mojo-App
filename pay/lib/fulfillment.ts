@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
-import { isEntitlementProduct, type EntitlementProduct } from "./catalog";
+import { isEntitlementProduct, type EntitlementProduct, type Product } from "./catalog";
 import type { EventStore } from "./event-store";
+import { captureCheckoutLead } from "./mailchimp";
 import { ENTITLEMENTS_WEBHOOK_URL, productAccessLabel, productSignInUrl } from "./site";
 
 export type PayUser = {
@@ -216,6 +217,7 @@ async function sendResendEmail(input: {
   email: string;
   subject: string;
   text: string;
+  html?: string;
   env: NodeJS.ProcessEnv;
   fetchImpl: typeof fetch;
 }): Promise<boolean> {
@@ -233,10 +235,89 @@ async function sendResendEmail(input: {
       to: [input.email],
       subject: input.subject,
       text: input.text,
+      ...(input.html ? { html: input.html } : {}),
     }),
   });
   if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
   return true;
+}
+
+export function deliverySendKey(email: string, eventId: string): string {
+  return `${email.trim().toLowerCase()}|${eventId.trim()}|delivery`;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function deliveryEmailContent(input: { title: string; url: string; label: string }): {
+  subject: string;
+  text: string;
+  html: string;
+} {
+  const title = input.title.trim() || "Your SOP Mojo download";
+  const label = input.label.trim() || "Download";
+  const url = input.url.trim();
+  return {
+    subject: `${title} is ready`,
+    text: [`Your ${title} is ready.`, "", `${label}: ${url}`, "", "Check your junk and spam folder too."].join("\n"),
+    html: [
+      `<p>Your ${escapeHtml(title)} is ready.</p>`,
+      `<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;background:#b0ff56;color:#10140c;font-weight:600;text-decoration:none;">${escapeHtml(label)}</a></p>`,
+      "<p>Check your junk and spam folder too.</p>",
+    ].join(""),
+  };
+}
+
+/** Email the download or access link. No app entitlement and no password. */
+export async function sendDeliveryEmail(input: {
+  email: string;
+  eventId: string;
+  product: Product;
+  env: NodeJS.ProcessEnv;
+  fetchImpl: typeof fetch;
+  store: EventStore;
+}): Promise<"sent" | "skipped"> {
+  const delivery = input.product.delivery;
+  if (input.product.billing !== "once" || delivery?.kind !== "email_link" || !delivery.url.trim()) {
+    return "skipped";
+  }
+  const email = input.email.trim().toLowerCase();
+  const key = deliverySendKey(email, input.eventId);
+  const claimed = await input.store.claimCredentialSend(key);
+  if (!claimed) return "skipped";
+  try {
+    const content = deliveryEmailContent({
+      title: input.product.title,
+      url: delivery.url.trim(),
+      label: delivery.label,
+    });
+    const sent = await sendResendEmail({
+      email,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+      env: input.env,
+      fetchImpl: input.fetchImpl,
+    });
+    if (!sent) {
+      throw new Error("Set RESEND_API_KEY so the buyer receives the download link.");
+    }
+    await captureCheckoutLead({
+      email,
+      products: [input.product.id],
+      env: input.env,
+      fetchImpl: input.fetchImpl,
+    });
+    return "sent";
+  } catch (error) {
+    await input.store.releaseCredentialSend(key);
+    throw error;
+  }
 }
 
 export async function deliverCredentials(input: {

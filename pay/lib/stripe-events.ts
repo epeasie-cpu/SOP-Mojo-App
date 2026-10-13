@@ -58,7 +58,7 @@ export function stripeObjectMetadata(object: Record<string, unknown>): Record<st
   return { ...lineMeta, ...legacy, ...nested, ...direct };
 }
 
-function emailFromObject(object: Record<string, unknown>, metadata: Record<string, string>): string | null {
+export function emailFromObject(object: Record<string, unknown>, metadata: Record<string, string>): string | null {
   const details = asRecord(object.customer_details);
   const billing = asRecord(object.billing_details);
   return (
