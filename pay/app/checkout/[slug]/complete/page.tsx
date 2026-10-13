@@ -5,7 +5,9 @@ import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { checkoutPath } from "@/lib/links";
 import { checkoutMetadata } from "@/lib/seo";
-import { deliveryLink, otherProductLinks, successHeadline } from "@/lib/success";
+import { productForCheckout } from "@/lib/library";
+import { accessFromMetadata } from "@/lib/make-delivery";
+import { otherProductLinks, paidDeliveryView, successHeadline } from "@/lib/success";
 import { normalizeEmail } from "@/lib/stripe-events";
 import { SITE } from "@/lib/site";
 import { stripeClient } from "@/lib/stripe-client";
@@ -35,10 +37,12 @@ export default async function CompletePage({
   const query = await searchParams;
   const productId = decodeURIComponent(slug);
   const snapshot = await createCatalogStore().read();
-  const product = snapshot.products.find((item) => item.id === productId) ?? null;
+  const storedProduct = snapshot.products.find((item) => item.id === productId) ?? null;
+  const product = storedProduct ? productForCheckout(storedProduct) : null;
   const sessionId = query.session_id?.trim() ?? "";
   let status = "open";
   let buyerEmail: string | null = null;
+  let accessUrl: string | null = null;
   if (sessionId) {
     const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
     if (creds.secretKey) {
@@ -46,13 +50,15 @@ export default async function CompletePage({
         const session = await stripeClient(creds.secretKey).checkout.sessions.retrieve(sessionId);
         status = session.status ?? "open";
         buyerEmail = normalizeEmail(session.customer_details?.email) || normalizeEmail(session.customer_email);
+        const stored = accessFromMetadata(session.metadata);
+        accessUrl = stored === "missing" || stored === "pending" ? null : stored;
       } catch {
         status = "unknown";
       }
     }
   }
   const paid = status === "complete";
-  const link = paid ? deliveryLink(product) : null;
+  const delivery = paid ? paidDeliveryView(product, accessUrl) : null;
   const title = product?.title ?? "";
   const headerList = await headers();
   const origin = requestOrigin(headerList.get("x-forwarded-host") ?? headerList.get("host"), headerList.get("x-forwarded-proto"));
@@ -75,16 +81,21 @@ export default async function CompletePage({
         <h1 className="font-display text-4xl font-semibold tracking-tight text-balance text-zinc-50">
           {paid ? successHeadline(title) : "Payment not finished"}
         </h1>
-        {link ? (
+        {delivery?.kind === "link" ? (
           <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
             <p>We emailed your {title} link.</p>
             <p>Check your junk and spam folder too.</p>
             <a
-              href={link.url}
+              href={delivery.url}
               className="inline-flex min-h-14 items-center justify-center rounded-sm bg-lime px-4 text-center text-base font-semibold text-lime-ink"
             >
-              {link.label}
+              {delivery.label}
             </a>
+          </div>
+        ) : delivery?.kind === "pending" ? (
+          <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
+            <p>{delivery.message}</p>
+            <p>Check your junk and spam folder too.</p>
           </div>
         ) : paid ? (
           <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">

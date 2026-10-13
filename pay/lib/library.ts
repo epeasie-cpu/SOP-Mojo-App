@@ -1,4 +1,5 @@
 import { parseProduct, type Product } from "./catalog";
+import type { CatalogStore } from "./catalog-store";
 
 export const NOT_AVAILABLE_YET = "Not available yet";
 
@@ -41,11 +42,21 @@ type LibrarySeed = {
   label: string;
 };
 
+export const AUP_PRODUCT_ID = "aup_generator";
+
+/** SamCart product slug the existing Make scenario already maps. */
+export const AUP_SAMCART_SLUG = "acceptable-use-policy-generator";
+
+/** Name of the env var that holds the Make webhook URL. The URL itself is never written here. */
+export const AUP_MAKE_ENV = "AUP_MAKE_WEBHOOK_URL";
+
+export const ACCESS_LINK_ON_THE_WAY = "Your access link is on its way by email";
+
 const LIBRARY_SEEDS: LibrarySeed[] = [
   {
-    id: "aup_generator",
+    id: AUP_PRODUCT_ID,
     title: "Acceptable Use Policy Generator",
-    description: "Access to the acceptable use policy tool. The link is emailed after payment.",
+    description: "Access to the acceptable use policy tool. The buyer's link is created after payment.",
     priceCents: 9799,
     label: "Open the policy tool",
   },
@@ -72,7 +83,14 @@ const LIBRARY_SEEDS: LibrarySeed[] = [
   },
 ];
 
-/** Four SOP Library products. Delivery URL stays empty until an admin pastes the link. */
+function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
+  if (seed.id === AUP_PRODUCT_ID) {
+    return { kind: "make_webhook", envVar: AUP_MAKE_ENV, label: seed.label };
+  }
+  return { kind: "email_link", url: "", label: seed.label };
+}
+
+/** Four SOP Library products. Download links stay empty until an admin pastes them. */
 export function libraryProducts(): Product[] {
   return LIBRARY_SEEDS.map((seed) =>
     parseProduct({
@@ -87,8 +105,33 @@ export function libraryProducts(): Product[] {
       orderBump: null,
       presentation: "panel",
       entitlementProduct: null,
-      delivery: { kind: "email_link", url: "", label: seed.label },
+      delivery: libraryDelivery(seed),
       active: true,
     }),
   );
+}
+
+/** Point an existing aup_generator row at the Make webhook without rewriting other products. */
+export async function syncAupDelivery(store: CatalogStore): Promise<string[]> {
+  const snapshot = await store.read();
+  const current = snapshot.products.find((product) => product.id === AUP_PRODUCT_ID);
+  if (!current) return [];
+  if (current.delivery?.kind === "make_webhook") return [];
+  const next = productForCheckout(current);
+  await store.updateProduct(next);
+  return [AUP_PRODUCT_ID];
+}
+
+export function productForCheckout(product: Product): Product {
+  if (product.id !== AUP_PRODUCT_ID) return product;
+  if (product.delivery?.kind === "make_webhook") return product;
+  return {
+    ...product,
+    entitlementProduct: null,
+    delivery: {
+      kind: "make_webhook",
+      envVar: AUP_MAKE_ENV,
+      label: product.delivery?.label?.trim() || "Open the policy tool",
+    },
+  };
 }

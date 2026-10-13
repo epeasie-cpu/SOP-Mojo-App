@@ -213,7 +213,7 @@ export async function createRecoveryLink(
   return link;
 }
 
-async function sendResendEmail(input: {
+export async function sendResendEmail(input: {
   email: string;
   subject: string;
   text: string;

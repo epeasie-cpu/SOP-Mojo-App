@@ -16,12 +16,19 @@ export type AnnualOption = {
   label: string;
 };
 
-/** Link emailed after a one-time payment. This does not grant an app entitlement. */
-export type ProductDelivery = {
-  kind: "email_link";
-  url: string;
-  label: string;
-};
+/** How a one-time purchase is handed to the buyer. This does not grant an app entitlement. */
+export type ProductDelivery =
+  | {
+      kind: "email_link";
+      url: string;
+      label: string;
+    }
+  | {
+      /** POST the paid order to the webhook URL stored in this environment variable. */
+      kind: "make_webhook";
+      envVar: string;
+      label: string;
+    };
 
 export type ProductSeo = {
   title: string;
@@ -173,7 +180,16 @@ function parseDelivery(value: unknown, billing: "once" | "month", id: string): P
   if (value == null || value === false) return null;
   const row = asRecord(value);
   if (!row) return null;
-  if (row.kind !== "email_link") throw new Error(`${id}: delivery kind must be email_link.`);
+  if (row.kind === "make_webhook") {
+    if (billing !== "once") throw new Error(`${id}: a Make webhook is only for a one-time purchase.`);
+    const envVar = typeof row.envVar === "string" ? row.envVar.trim() : "";
+    if (!/^[A-Z][A-Z0-9_]*WEBHOOK_URL$/.test(envVar)) {
+      throw new Error(`${id}: delivery envVar must be a WEBHOOK_URL environment variable name.`);
+    }
+    const label = typeof row.label === "string" && row.label.trim() ? row.label.trim() : "Open";
+    return { kind: "make_webhook", envVar, label };
+  }
+  if (row.kind !== "email_link") throw new Error(`${id}: delivery kind must be email_link or make_webhook.`);
   if (billing !== "once") throw new Error(`${id}: an email link is only for a one-time purchase.`);
   const url = typeof row.url === "string" ? row.url.trim() : "";
   if (url && !/^https?:\/\//i.test(url)) throw new Error(`${id}: delivery url must be an http(s) link.`);

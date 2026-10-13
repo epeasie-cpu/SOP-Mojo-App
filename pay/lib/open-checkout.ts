@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import { checkoutLineItems, checkoutSessionParams, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
-import { isDeliveryUnavailable, NOT_AVAILABLE_YET } from "./library";
+import { isDeliveryUnavailable, NOT_AVAILABLE_YET, productForCheckout } from "./library";
 import { captureCheckoutLead } from "./mailchimp";
 import { stripeClient } from "./stripe-client";
 import { stripeCredentials } from "./stripe-mode";
@@ -50,7 +50,8 @@ export async function openCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<{ clientSecret: string; sessionId: string; taxApplied: boolean; publishableKey: string; mode: "test" | "live" }> {
-  if (isDeliveryUnavailable(input.product)) throw new Error(NOT_AVAILABLE_YET);
+  const product = productForCheckout(input.product);
+  if (isDeliveryUnavailable(product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;
   const creds = stripeCredentials(env, input.snapshot.settings.stripeMode);
   if (!creds.secretKey || !creds.publishableKey) {
@@ -67,7 +68,7 @@ export async function openCheckoutSession(input: {
   const taxApplied = automaticTaxEnabled();
   const session = await stripe.checkout.sessions.create(
     checkoutSessionParams({
-      product: input.product,
+      product,
       email,
       customerId,
       annual: input.annual,
@@ -98,7 +99,8 @@ export async function updateCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<void> {
-  if (isDeliveryUnavailable(input.product)) throw new Error(NOT_AVAILABLE_YET);
+  const product = productForCheckout(input.product);
+  if (isDeliveryUnavailable(product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;
   const creds = stripeCredentials(env, input.snapshot.settings.stripeMode);
   if (!creds.secretKey) throw new Error("Add the Stripe secret key to take a test payment.");
@@ -106,14 +108,14 @@ export async function updateCheckoutSession(input: {
   if (input.email && !email) throw new Error("Enter a valid email to continue.");
   const stripe = stripeClient(creds.secretKey);
   const existing = await stripe.checkout.sessions.retrieve(input.sessionId);
-  if (existing.metadata?.product_id !== input.product.id) {
+  if (existing.metadata?.product_id !== product.id) {
     throw new Error("This checkout does not match that product.");
   }
   if (existing.status !== "open") throw new Error("This checkout is no longer open.");
-  const metadata = sessionMetadata(input.product, { email, annual: input.annual, bump: input.bump });
+  const metadata = sessionMetadata(product, { email, annual: input.annual, bump: input.bump });
   const params: Stripe.Checkout.SessionUpdateParams = { metadata };
   if (input.lineItems) {
-    params.line_items = checkoutLineItems(input.product, {
+    params.line_items = checkoutLineItems(product, {
       email,
       annual: input.annual,
       bump: input.bump,

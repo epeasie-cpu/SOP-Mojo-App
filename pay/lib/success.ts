@@ -1,5 +1,6 @@
 import type { Product } from "./catalog";
 import { productPath } from "./links";
+import { ACCESS_LINK_ON_THE_WAY } from "./library";
 import { SITE } from "./site";
 
 export function deliveryLink(product: Product | null): { url: string; label: string } | null {
@@ -7,6 +8,20 @@ export function deliveryLink(product: Product | null): { url: string; label: str
   const url = product.delivery.url.trim();
   if (!url) return null;
   return { url, label: product.delivery.label.trim() || "Download" };
+}
+
+export function paidDeliveryView(
+  product: Product | null,
+  accessUrl: string | null,
+): { kind: "link"; url: string; label: string } | { kind: "pending"; message: string } | null {
+  const link = deliveryLink(product);
+  if (link) return { kind: "link", ...link };
+  if (product?.delivery?.kind !== "make_webhook") return null;
+  const url = accessUrl?.trim() ?? "";
+  if (url.startsWith("https://")) {
+    return { kind: "link", url, label: product.delivery.label.trim() || "Open the policy tool" };
+  }
+  return { kind: "pending", message: ACCESS_LINK_ON_THE_WAY };
 }
 
 export function successHeadline(title: string): string {

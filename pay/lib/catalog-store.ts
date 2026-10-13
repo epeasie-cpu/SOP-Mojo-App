@@ -22,11 +22,19 @@ function assertLibraryInsert(products: Product[]) {
   }
 }
 
+function assertProductUpdate(product: Product) {
+  if ((PROTECTED_CATALOG_IDS as readonly string[]).includes(product.id)) {
+    throw new Error("The library seed cannot write builder_pro, flowchart_plus, or __settings.");
+  }
+}
+
 export type CatalogStore = {
   read(): Promise<CatalogSnapshot>;
   write(next: CatalogSnapshot): Promise<void>;
   /** Insert missing product rows. Existing ids, including protected ones, are left as they are. */
   insertIfAbsent(products: Product[]): Promise<InsertResult>;
+  /** Replace one product row. Protected catalog ids are refused. Other rows are not deleted. */
+  updateProduct(product: Product): Promise<void>;
 };
 
 function adminHeaders(key: string, json = false): HeadersInit {
@@ -56,6 +64,14 @@ export function memoryCatalogStore(initial: CatalogSnapshot = seedCatalog()): Ca
         inserted: missing.map((product) => product.id),
         skipped: products.filter((product) => ids.has(product.id)).map((product) => product.id),
       };
+    },
+    async updateProduct(product) {
+      assertProductUpdate(product);
+      const index = snapshot.products.findIndex((item) => item.id === product.id);
+      if (index === -1) return;
+      const products = snapshot.products.slice();
+      products[index] = product;
+      snapshot = { ...snapshot, products };
     },
   };
 }
@@ -110,6 +126,27 @@ export function fileCatalogStore(filePath: string): CatalogStore {
         inserted: missing.map((product) => product.id),
         skipped: products.filter((product) => ids.has(product.id)).map((product) => product.id),
       };
+    },
+    async updateProduct(product) {
+      assertProductUpdate(product);
+      let raw: { products?: unknown[]; settings?: unknown } = { products: [] };
+      try {
+        raw = JSON.parse(await readFile(filePath, "utf8")) as { products?: unknown[]; settings?: unknown };
+      } catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code === "ENOENT") return;
+        throw error;
+      }
+      const list = Array.isArray(raw.products) ? raw.products : [];
+      const index = list.findIndex((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) return false;
+        return (item as { id?: unknown }).id === product.id;
+      });
+      if (index === -1) return;
+      list[index] = product;
+      raw.products = list;
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, `${JSON.stringify(raw, null, 2)}\n`);
     },
   };
 }
@@ -191,6 +228,18 @@ export function supabaseCatalogStore(input: {
         inserted: missing.map((product) => product.id),
         skipped: products.filter((product) => present.has(product.id)).map((product) => product.id),
       };
+    },
+    async updateProduct(product) {
+      assertProductUpdate(product);
+      const saved = await fetchImpl(`${endpoint}?on_conflict=id`, {
+        method: "POST",
+        headers: {
+          ...adminHeaders(input.serviceRoleKey, true),
+          Prefer: "resolution=merge-duplicates,return=minimal",
+        },
+        body: JSON.stringify([{ id: product.id, payload: product }]),
+      });
+      if (!saved.ok) throw new Error(`Catalog update failed (${saved.status}).`);
     },
   };
 }
@@ -275,6 +324,20 @@ export function createCatalogStore(env: NodeJS.ProcessEnv = process.env): Catalo
         );
       }
       return file.insertIfAbsent(products);
+    },
+    async updateProduct(product) {
+      catalogCache.delete(key);
+      catalogInflight.delete(key);
+      if (remote) {
+        await remote.updateProduct(product);
+        return;
+      }
+      if (env.VERCEL) {
+        throw new Error(
+          "Catalog edits on Vercel need SUPABASE_SERVICE_ROLE_KEY and the pay_catalog table. Built-in products still check out.",
+        );
+      }
+      await file.updateProduct(product);
     },
   };
 }

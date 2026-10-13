@@ -39,8 +39,9 @@ type Draft = {
   bumpEntitlement: "" | EntitlementProduct;
   presentation: "page" | "panel";
   entitlementProduct: "" | EntitlementProduct;
-  deliveryKind: "" | "email_link";
+  deliveryKind: "" | "email_link" | "make_webhook";
   deliveryUrl: string;
+  deliveryEnvVar: string;
   deliveryLabel: string;
   seoTitle: string;
   seoDescription: string;
@@ -90,8 +91,10 @@ function toDraft(product: Product): Draft {
     bumpEntitlement: product.orderBump?.entitlementProduct ?? "",
     presentation: product.presentation,
     entitlementProduct: product.entitlementProduct ?? "",
-    deliveryKind: product.delivery?.kind === "email_link" ? "email_link" : "",
-    deliveryUrl: product.delivery?.url ?? "",
+    deliveryKind:
+      product.delivery?.kind === "email_link" || product.delivery?.kind === "make_webhook" ? product.delivery.kind : "",
+    deliveryUrl: product.delivery?.kind === "email_link" ? product.delivery.url : "",
+    deliveryEnvVar: product.delivery?.kind === "make_webhook" ? product.delivery.envVar : "AUP_MAKE_WEBHOOK_URL",
     deliveryLabel: product.delivery?.label ?? "Download",
     seoTitle: product.seo.title || derivedSeoTitle(source),
     seoDescription: product.seo.description || derivedSeoDescription(source),
@@ -119,6 +122,7 @@ function blankDraft(): Draft {
     entitlementProduct: "",
     deliveryKind: "",
     deliveryUrl: "",
+    deliveryEnvVar: "AUP_MAKE_WEBHOOK_URL",
     deliveryLabel: "Download",
     seoTitle: "",
     seoDescription: "",
@@ -153,6 +157,13 @@ function draftToProduct(draft: Draft): Product {
       kind: "email_link",
       url: draft.deliveryUrl.trim(),
       label: draft.deliveryLabel.trim() || "Download",
+    };
+  }
+  if (draft.billing === "once" && draft.deliveryKind === "make_webhook") {
+    delivery = {
+      kind: "make_webhook",
+      envVar: draft.deliveryEnvVar.trim(),
+      label: draft.deliveryLabel.trim() || "Open",
     };
   }
   return {
@@ -448,15 +459,39 @@ export function AdminDashboard({
               onChange={(event) =>
                 setDraft({
                   ...draft,
-                  deliveryKind: event.target.value === "email_link" ? "email_link" : "",
-                  entitlementProduct: event.target.value === "email_link" ? "" : draft.entitlementProduct,
+                  deliveryKind:
+                    event.target.value === "email_link" || event.target.value === "make_webhook" ? event.target.value : "",
+                  entitlementProduct:
+                    event.target.value === "email_link" || event.target.value === "make_webhook" ? "" : draft.entitlementProduct,
                 })
               }
             >
               <option value="">None</option>
               <option value="email_link">Email a link</option>
+              <option value="make_webhook">Make webhook</option>
             </select>
           </Field>
+        ) : null}
+        {draft.billing === "once" && draft.deliveryKind === "make_webhook" ? (
+          <>
+            <Field label="Webhook environment variable">
+              <input
+                className={inputClass}
+                value={draft.deliveryEnvVar}
+                onChange={(event) => setDraft({ ...draft, deliveryEnvVar: event.target.value })}
+              />
+            </Field>
+            <Field label="Button label">
+              <input
+                className={inputClass}
+                value={draft.deliveryLabel}
+                onChange={(event) => setDraft({ ...draft, deliveryLabel: event.target.value })}
+              />
+            </Field>
+            <p className="text-sm leading-6 text-zinc-400">
+              The webhook URL stays in that environment variable. It is not saved in the catalog.
+            </p>
+          </>
         ) : null}
         {draft.billing === "once" && draft.deliveryKind === "email_link" ? (
           <>
