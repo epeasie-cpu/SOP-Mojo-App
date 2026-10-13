@@ -37,8 +37,16 @@ function readyEmail(value: string): string | null {
 function signalCheckoutReady() {
   if (typeof window === "undefined") return;
   document.documentElement.dataset.payReady = "1";
-  if (window.parent === window) return;
-  window.parent.postMessage("ready", "*");
+  // The host that loads embed.js is usually window.parent. A test page or Framer shell
+  // can sit above that frame, so walk every ancestor. targetOrigin * is required because
+  // a cross-origin parent location cannot be read. The payload is the string "ready".
+  let current: Window = window;
+  const seen = new Set<Window>();
+  while (current.parent && current.parent !== current && !seen.has(current.parent)) {
+    seen.add(current.parent);
+    current.parent.postMessage("ready", "*");
+    current = current.parent;
+  }
 }
 
 function PayFields({

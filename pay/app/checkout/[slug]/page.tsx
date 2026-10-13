@@ -129,9 +129,9 @@ export default async function CheckoutPage({
   if (!embed) return session;
   return (
     <>
-      <link rel="preconnect" href="https://js.stripe.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://js.stripe.com" />
       <link rel="preconnect" href="https://api.stripe.com" crossOrigin="" />
-      <link rel="preload" href="https://js.stripe.com/v3" as="script" crossOrigin="anonymous" />
+      <link rel="preload" href="https://js.stripe.com/clover/stripe.js" as="script" />
       <Suspense fallback={<CheckoutProductFallback product={product} embed />}>{session}</Suspense>
     </>
   );

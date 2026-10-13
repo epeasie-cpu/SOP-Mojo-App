@@ -43,15 +43,26 @@
     link.rel = rel;
     link.href = href;
     if (as) link.as = as;
+    // Stripe.js injects clover/stripe.js with no crossorigin attribute. A preload
+    // must match that mode or the browser downloads the script twice.
     if (cross) link.crossOrigin = "anonymous";
     document.head.appendChild(link);
   }
 
   function connect() {
     hint("preconnect", origin, "", false);
-    hint("preconnect", "https://js.stripe.com", "", true);
+    // No crossorigin: Stripe.js injects clover/stripe.js as a no-cors script. A parent
+    // preload does not satisfy that iframe request and downloads the file twice.
+    hint("preconnect", "https://js.stripe.com", "", false);
     hint("preconnect", "https://api.stripe.com", "", true);
-    hint("preload", "https://js.stripe.com/v3", "script", true);
+  }
+
+  function constrainedNetwork() {
+    var conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!conn) return false;
+    if (conn.saveData) return true;
+    var type = String(conn.effectiveType || "");
+    return type === "slow-2g" || type === "2g" || type === "3g";
   }
 
   function ensureStyle() {
@@ -79,19 +90,9 @@
       ".sop-pay-overlay,.sop-pay-aside{transition:none;}",
       ".sop-pay-progress > span{animation:none;width:100%;}",
       "}",
-      "#sop-pay-preload{position:fixed;left:0;top:0;width:28rem;height:100%;transform:translate3d(-120vw,0,0);visibility:hidden;pointer-events:none;}",
+      ".sop-pay-parked{position:fixed;inset:0;z-index:2147483000;display:flex;justify-content:flex-end;visibility:hidden;pointer-events:none;}",
     ].join("");
     document.head.appendChild(style);
-  }
-
-  function preloadHolder() {
-    var holder = document.getElementById("sop-pay-preload");
-    if (holder) return holder;
-    holder = document.createElement("div");
-    holder.id = "sop-pay-preload";
-    holder.setAttribute("aria-hidden", "true");
-    document.body.appendChild(holder);
-    return holder;
   }
 
   function paintSkeleton(panel, slug) {
@@ -116,67 +117,16 @@
     }, READY_FALLBACK_MS);
   }
 
-  function frameFor(slug) {
+  function shellFor(slug) {
     var id = (products[slug] && products[slug].id) || slug;
     var existing = document.querySelector('iframe.sop-pay-frame[data-slug="' + id + '"]');
-    if (existing) return existing;
-    var frame = document.createElement("iframe");
-    frame.className = "sop-pay-frame";
-    frame.setAttribute("data-slug", id);
-    frame.title = "SOP Mojo checkout";
-    frame.allow = "payment";
-    frame.src = checkoutHref(slug, true);
-    frame.addEventListener("load", function () {
-      frame.setAttribute("data-loaded", "1");
-      scheduleFallback(frame);
-    });
-    preloadHolder().appendChild(frame);
-    return frame;
-  }
-
-  function preloadFrame(slug) {
-    var info = products[slug];
-    if (info && info.presentation && info.presentation !== "panel") return;
-    frameFor(slug);
-  }
-
-  function finishClose(panel) {
-    if (!panel || !panel.isConnected) return;
-    var frame = panel.querySelector("iframe.sop-pay-frame");
-    if (frame) preloadHolder().appendChild(frame);
-    panel.remove();
-    if (!document.getElementById("sop-pay-panel")) document.body.style.overflow = "";
-  }
-
-  function closePanel(immediate) {
-    var panel = document.getElementById("sop-pay-panel");
-    if (!panel || panel.getAttribute("data-closing") === "1") return;
-    panel.setAttribute("data-closing", "1");
-    panel.classList.remove("is-open");
-    var ms = immediate ? 0 : motionMs();
-    if (ms === 0) {
-      finishClose(panel);
-      return;
+    if (existing) {
+      var shell = existing.closest(".sop-pay-parked, #sop-pay-panel");
+      if (shell) return shell;
     }
-    var done = false;
-    var finish = function () {
-      if (done) return;
-      done = true;
-      finishClose(panel);
-    };
-    var aside = panel.querySelector(".sop-pay-aside");
-    if (aside) aside.addEventListener("transitionend", finish);
-    window.setTimeout(finish, ms + 50);
-  }
-
-  function openPanel(slug) {
-    ensureStyle();
-    var current = document.getElementById("sop-pay-panel");
-    if (current) finishClose(current);
     var info = products[slug];
-    var id = (info && info.id) || slug;
     var panel = document.createElement("div");
-    panel.id = "sop-pay-panel";
+    panel.className = "sop-pay-parked";
     panel.setAttribute("role", "dialog");
     panel.setAttribute("aria-modal", "true");
     panel.setAttribute("aria-label", info && info.title ? info.title : "Checkout");
@@ -196,23 +146,82 @@
     var close = panel.querySelector(".sop-pay-close");
     if (close) close.addEventListener("click", function () { closePanel(false); });
     var overlay = panel.querySelector(".sop-pay-overlay");
-    if (overlay) {
-      overlay.addEventListener("click", function () { closePanel(false); });
-    }
+    if (overlay) overlay.addEventListener("click", function () { closePanel(false); });
+    var frame = document.createElement("iframe");
+    frame.className = "sop-pay-frame";
+    frame.setAttribute("data-slug", id);
+    frame.title = "SOP Mojo checkout";
+    frame.allow = "payment";
+    frame.addEventListener("load", function () {
+      frame.setAttribute("data-loaded", "1");
+      scheduleFallback(frame);
+    });
     var stage = panel.querySelector(".sop-pay-stage");
-    var frame = frameFor(slug);
     if (stage) stage.appendChild(frame);
     document.body.appendChild(panel);
+    frame.src = checkoutHref(slug, true);
+    return panel;
+  }
+
+  function preloadFrame(slug, automatic) {
+    if (automatic && constrainedNetwork()) return;
+    var info = products[slug];
+    if (info && info.presentation && info.presentation !== "panel") return;
+    shellFor(slug);
+  }
+
+  function park(panel) {
+    if (!panel || !panel.isConnected) return;
+    panel.classList.remove("is-open");
+    panel.classList.add("sop-pay-parked");
+    panel.removeAttribute("id");
+    panel.removeAttribute("data-closing");
+    if (!document.getElementById("sop-pay-panel")) document.body.style.overflow = "";
+  }
+
+  function closePanel(immediate) {
+    var panel = document.getElementById("sop-pay-panel");
+    if (!panel || panel.getAttribute("data-closing") === "1") return;
+    panel.setAttribute("data-closing", "1");
+    panel.classList.remove("is-open");
+    var ms = immediate ? 0 : motionMs();
+    if (ms === 0) {
+      park(panel);
+      return;
+    }
+    var done = false;
+    var finish = function () {
+      if (done) return;
+      done = true;
+      park(panel);
+    };
+    var aside = panel.querySelector(".sop-pay-aside");
+    if (aside) aside.addEventListener("transitionend", finish);
+    window.setTimeout(finish, ms + 50);
+  }
+
+  function openPanel(slug) {
+    ensureStyle();
+    var info = products[slug];
+    var id = (info && info.id) || slug;
+    var current = document.getElementById("sop-pay-panel");
+    if (current && current.getAttribute("data-slug") !== id) park(current);
+    var panel = shellFor(slug);
+    if (panel.id === "sop-pay-panel" && panel.classList.contains("is-open")) return;
+    panel.id = "sop-pay-panel";
+    panel.classList.remove("sop-pay-parked");
+    panel.removeAttribute("data-closing");
     document.body.style.overflow = "hidden";
-    if (frame.getAttribute("data-ready") === "1") reveal(panel);
-    else if (frame.getAttribute("data-loaded") === "1") scheduleFallback(frame);
+    var frame = panel.querySelector("iframe.sop-pay-frame");
+    if (frame && frame.getAttribute("data-ready") === "1") reveal(panel);
+    else if (frame && frame.getAttribute("data-loaded") === "1") scheduleFallback(frame);
     if (motionMs() === 0) {
       panel.classList.add("is-open");
       return;
     }
     window.requestAnimationFrame(function () {
       window.requestAnimationFrame(function () {
-        panel.classList.add("is-open");
+        if (panel.isConnected) panel.classList.add("is-open");
       });
     });
   }
@@ -231,7 +240,7 @@
       var label = panel.querySelector("[data-skeleton-title]");
       if (label && product.title) panel.setAttribute("aria-label", product.title);
     }
-    if (!product.presentation || product.presentation === "panel") preloadFrame(slug);
+    if (!product.presentation || product.presentation === "panel") preloadFrame(slug, true);
   }
 
   function ensureProduct(slug) {
@@ -263,6 +272,13 @@
       frames[i].setAttribute("data-ready", "1");
       var panel = document.getElementById("sop-pay-panel");
       if (panel && panel.contains(frames[i])) reveal(panel);
+      if (window.top && window.top !== window) {
+        try {
+          window.top.postMessage("ready", "*");
+        } catch {
+          /* a top window that cannot be posted to still leaves this frame's listener intact */
+        }
+      }
     }
   });
 
@@ -271,8 +287,11 @@
     var slug = slugFrom(link.href);
     if (!slug) return;
     link.setAttribute("data-sop-pay", "1");
-    ensureProduct(slug);
-    var warm = function () { preloadFrame(slug); };
+    if (!constrainedNetwork()) ensureProduct(slug);
+    var warm = function () {
+      ensureProduct(slug);
+      preloadFrame(slug, false);
+    };
     link.addEventListener("pointerenter", warm);
     link.addEventListener("focus", warm);
   }
