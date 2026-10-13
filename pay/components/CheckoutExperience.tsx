@@ -34,6 +34,13 @@ function readyEmail(value: string): string | null {
   return email;
 }
 
+function signalCheckoutReady() {
+  if (typeof window === "undefined") return;
+  document.documentElement.dataset.payReady = "1";
+  if (window.parent === window) return;
+  window.parent.postMessage("ready", "*");
+}
+
 function PayFields({
   email,
   annual,
@@ -42,6 +49,7 @@ function PayFields({
   productId,
   payLabel,
   billingLine,
+  embed,
 }: {
   email: string;
   annual: boolean;
@@ -50,6 +58,7 @@ function PayFields({
   productId: string;
   payLabel: string;
   billingLine: string | null;
+  embed: boolean;
 }) {
   const checkout = useCheckout();
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +73,10 @@ function PayFields({
     actionsRef.current = checkout.type === "success" ? checkout.checkout : null;
     selectionRef.current = { annual, bump, buyer };
   });
+
+  useEffect(() => {
+    if (embed && checkout.type === "error") signalCheckoutReady();
+  }, [checkout.type, embed]);
 
   const enqueue = useCallback((task: () => Promise<void>) => {
     const run = queueRef.current.then(task, task);
@@ -168,6 +181,9 @@ function PayFields({
         </p>
       ) : (
         <PaymentElement
+          onReady={() => {
+            if (embed) signalCheckoutReady();
+          }}
           options={{
             layout: "tabs",
             wallets: { applePay: "auto", googlePay: "auto" },
@@ -229,6 +245,11 @@ export function CheckoutExperience({
   const [bump, setBump] = useState(false);
   const quote = quoteProduct(product, { annual, bump });
   const paymentMounted = Boolean(clientSecret && sessionId && publishableKey);
+
+  useEffect(() => {
+    if (!embed || paymentMounted) return;
+    signalCheckoutReady();
+  }, [embed, paymentMounted]);
 
   return (
     <div className={`mx-auto w-full max-w-lg px-4 ${embed ? "py-4" : "py-8"}`}>
@@ -311,6 +332,7 @@ export function CheckoutExperience({
                 productId={product.id}
                 payLabel={`Pay ${quote.summary}`}
                 billingLine={quote.billingLine}
+                embed={embed}
               />
             </CheckoutProvider>
           ) : (

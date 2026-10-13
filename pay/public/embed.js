@@ -1,4 +1,6 @@
 (function () {
+  var MOTION_MS = 280;
+  var READY_FALLBACK_MS = 2000;
   var script = document.currentScript;
   var origin = "https://pay.sopmojo.com";
   if (script && script.src) {
@@ -7,6 +9,14 @@
     } catch {
       origin = "https://pay.sopmojo.com";
     }
+  }
+
+  var products = {};
+  var inflight = {};
+
+  function motionMs() {
+    var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    return reduce ? 0 : MOTION_MS;
   }
 
   function slugFrom(href) {
@@ -20,45 +30,256 @@
     }
   }
 
-  function closePanel() {
-    var panel = document.getElementById("sop-pay-panel");
-    if (panel) panel.remove();
-    document.body.style.overflow = "";
+  function checkoutHref(slug, embed) {
+    var info = products[slug];
+    var id = (info && info.id) || slug;
+    var path = origin + "/checkout/" + encodeURIComponent(id);
+    return embed ? path + "?embed=1" : path;
   }
 
-  function openPanel(url) {
-    closePanel();
-    var root = document.createElement("div");
-    root.id = "sop-pay-panel";
-    root.setAttribute("role", "dialog");
-    root.setAttribute("aria-modal", "true");
-    root.setAttribute("aria-label", "Checkout");
-    root.style.cssText =
-      "position:fixed;inset:0;z-index:2147483000;background:rgba(0,0,0,.62);display:flex;justify-content:flex-end;";
-    var aside = document.createElement("div");
-    aside.style.cssText =
-      "background:#09090b;width:min(100%,28rem);height:100%;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.45);";
-    var bar = document.createElement("div");
-    bar.style.cssText = "display:flex;justify-content:flex-end;padding:8px;";
-    var close = document.createElement("button");
-    close.type = "button";
-    close.textContent = "Close";
-    close.style.cssText =
-      "min-height:48px;min-width:48px;padding:0 16px;background:#b0ff56;color:#10140c;border:0;font:600 16px/1 system-ui,sans-serif;cursor:pointer;";
-    close.addEventListener("click", closePanel);
+  function hint(rel, href, as, cross) {
+    if (!document.head) return;
+    var link = document.createElement("link");
+    link.rel = rel;
+    link.href = href;
+    if (as) link.as = as;
+    if (cross) link.crossOrigin = "anonymous";
+    document.head.appendChild(link);
+  }
+
+  function connect() {
+    hint("preconnect", origin, "", false);
+    hint("preconnect", "https://js.stripe.com", "", true);
+    hint("preconnect", "https://api.stripe.com", "", true);
+    hint("preload", "https://js.stripe.com/v3", "script", true);
+  }
+
+  function ensureStyle() {
+    if (document.getElementById("sop-pay-style")) return;
+    var style = document.createElement("style");
+    style.id = "sop-pay-style";
+    style.textContent = [
+      "#sop-pay-panel{position:fixed;inset:0;z-index:2147483000;display:flex;justify-content:flex-end;}",
+      ".sop-pay-overlay{position:absolute;inset:0;background:rgba(0,0,0,.62);opacity:0;transition:opacity 280ms ease-out;}",
+      ".sop-pay-aside{position:relative;background:#09090b;width:min(100%,28rem);height:100%;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(0,0,0,.45);transform:translate3d(100%,0,0);transition:transform 280ms ease-out;}",
+      "#sop-pay-panel.is-open .sop-pay-overlay{opacity:1;}",
+      "#sop-pay-panel.is-open .sop-pay-aside{transform:translate3d(0,0,0);}",
+      ".sop-pay-bar{display:flex;justify-content:flex-end;padding:8px;}",
+      ".sop-pay-close{min-height:48px;min-width:48px;padding:0 16px;background:#b0ff56;color:#10140c;border:0;font:600 16px/1 system-ui,sans-serif;cursor:pointer;}",
+      ".sop-pay-stage{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;background:#09090b;}",
+      ".sop-pay-frame{border:0;flex:1;width:100%;height:100%;background:#09090b;}",
+      ".sop-pay-skeleton{position:absolute;inset:0;display:flex;flex-direction:column;gap:16px;padding:24px;background:#09090b;color:#f4f4f5;font:16px/1.4 system-ui,sans-serif;}",
+      ".sop-pay-skeleton[hidden]{display:none;}",
+      ".sop-pay-progress{height:4px;background:#27272a;overflow:hidden;border-radius:999px;}",
+      ".sop-pay-progress > span{display:block;height:100%;width:40%;background:#b0ff56;animation:sop-pay-progress 1s ease-in-out infinite;}",
+      ".sop-pay-title{margin:12px 0 0;font:600 28px/1.15 Georgia,serif;}",
+      ".sop-pay-price{margin:8px 0 0;font:600 22px/1.2 system-ui,sans-serif;color:#b0ff56;}",
+      "@keyframes sop-pay-progress{0%{transform:translateX(-120%);}100%{transform:translateX(320%);}}",
+      "@media (prefers-reduced-motion: reduce){",
+      ".sop-pay-overlay,.sop-pay-aside{transition:none;}",
+      ".sop-pay-progress > span{animation:none;width:100%;}",
+      "}",
+      "#sop-pay-preload{position:fixed;left:0;top:0;width:28rem;height:100%;transform:translate3d(-120vw,0,0);visibility:hidden;pointer-events:none;}",
+    ].join("");
+    document.head.appendChild(style);
+  }
+
+  function preloadHolder() {
+    var holder = document.getElementById("sop-pay-preload");
+    if (holder) return holder;
+    holder = document.createElement("div");
+    holder.id = "sop-pay-preload";
+    holder.setAttribute("aria-hidden", "true");
+    document.body.appendChild(holder);
+    return holder;
+  }
+
+  function paintSkeleton(panel, slug) {
+    var info = products[slug];
+    var title = panel.querySelector("[data-skeleton-title]");
+    var price = panel.querySelector("[data-skeleton-price]");
+    if (title) title.textContent = info && info.title ? info.title : "Checkout";
+    if (price) price.textContent = info && info.priceLabel ? info.priceLabel : "";
+  }
+
+  function reveal(panel) {
+    if (!panel || panel.getAttribute("data-state") === "ready") return;
+    panel.setAttribute("data-state", "ready");
+    var skeleton = panel.querySelector(".sop-pay-skeleton");
+    if (skeleton) skeleton.hidden = true;
+  }
+
+  function scheduleFallback(frame) {
+    window.setTimeout(function () {
+      var panel = document.getElementById("sop-pay-panel");
+      if (panel && panel.contains(frame)) reveal(panel);
+    }, READY_FALLBACK_MS);
+  }
+
+  function frameFor(slug) {
+    var id = (products[slug] && products[slug].id) || slug;
+    var existing = document.querySelector('iframe.sop-pay-frame[data-slug="' + id + '"]');
+    if (existing) return existing;
     var frame = document.createElement("iframe");
-    frame.src = url;
+    frame.className = "sop-pay-frame";
+    frame.setAttribute("data-slug", id);
     frame.title = "SOP Mojo checkout";
-    frame.style.cssText = "border:0;flex:1;width:100%;background:#09090b;";
-    bar.appendChild(close);
-    aside.appendChild(bar);
-    aside.appendChild(frame);
-    root.appendChild(aside);
-    root.addEventListener("click", function (event) {
-      if (event.target === root) closePanel();
+    frame.allow = "payment";
+    frame.src = checkoutHref(slug, true);
+    frame.addEventListener("load", function () {
+      frame.setAttribute("data-loaded", "1");
+      scheduleFallback(frame);
     });
-    document.body.appendChild(root);
+    preloadHolder().appendChild(frame);
+    return frame;
+  }
+
+  function preloadFrame(slug) {
+    var info = products[slug];
+    if (info && info.presentation && info.presentation !== "panel") return;
+    frameFor(slug);
+  }
+
+  function finishClose(panel) {
+    if (!panel || !panel.isConnected) return;
+    var frame = panel.querySelector("iframe.sop-pay-frame");
+    if (frame) preloadHolder().appendChild(frame);
+    panel.remove();
+    if (!document.getElementById("sop-pay-panel")) document.body.style.overflow = "";
+  }
+
+  function closePanel(immediate) {
+    var panel = document.getElementById("sop-pay-panel");
+    if (!panel || panel.getAttribute("data-closing") === "1") return;
+    panel.setAttribute("data-closing", "1");
+    panel.classList.remove("is-open");
+    var ms = immediate ? 0 : motionMs();
+    if (ms === 0) {
+      finishClose(panel);
+      return;
+    }
+    var done = false;
+    var finish = function () {
+      if (done) return;
+      done = true;
+      finishClose(panel);
+    };
+    var aside = panel.querySelector(".sop-pay-aside");
+    if (aside) aside.addEventListener("transitionend", finish);
+    window.setTimeout(finish, ms + 50);
+  }
+
+  function openPanel(slug) {
+    ensureStyle();
+    var current = document.getElementById("sop-pay-panel");
+    if (current) finishClose(current);
+    var info = products[slug];
+    var id = (info && info.id) || slug;
+    var panel = document.createElement("div");
+    panel.id = "sop-pay-panel";
+    panel.setAttribute("role", "dialog");
+    panel.setAttribute("aria-modal", "true");
+    panel.setAttribute("aria-label", info && info.title ? info.title : "Checkout");
+    panel.setAttribute("data-state", "loading");
+    panel.setAttribute("data-slug", id);
+    panel.innerHTML =
+      '<div class="sop-pay-overlay"></div>' +
+      '<div class="sop-pay-aside">' +
+      '<div class="sop-pay-bar"><button type="button" class="sop-pay-close">Close</button></div>' +
+      '<div class="sop-pay-stage">' +
+      '<div class="sop-pay-skeleton" role="status">' +
+      '<div class="sop-pay-progress" aria-hidden="true"><span></span></div>' +
+      '<p class="sop-pay-title" data-skeleton-title>Checkout</p>' +
+      '<p class="sop-pay-price" data-skeleton-price></p>' +
+      "</div></div></div>";
+    paintSkeleton(panel, slug);
+    var close = panel.querySelector(".sop-pay-close");
+    if (close) close.addEventListener("click", function () { closePanel(false); });
+    var overlay = panel.querySelector(".sop-pay-overlay");
+    if (overlay) {
+      overlay.addEventListener("click", function () { closePanel(false); });
+    }
+    var stage = panel.querySelector(".sop-pay-stage");
+    var frame = frameFor(slug);
+    if (stage) stage.appendChild(frame);
+    document.body.appendChild(panel);
     document.body.style.overflow = "hidden";
+    if (frame.getAttribute("data-ready") === "1") reveal(panel);
+    else if (frame.getAttribute("data-loaded") === "1") scheduleFallback(frame);
+    if (motionMs() === 0) {
+      panel.classList.add("is-open");
+      return;
+    }
+    window.requestAnimationFrame(function () {
+      window.requestAnimationFrame(function () {
+        panel.classList.add("is-open");
+      });
+    });
+  }
+
+  function remember(slug, product) {
+    products[slug] = product;
+    if (product.id && product.id !== slug) products[product.id] = product;
+    var panel = document.getElementById("sop-pay-panel");
+    var id = product.id || slug;
+    if (panel && panel.getAttribute("data-slug") === id) {
+      if (product.presentation && product.presentation !== "panel") {
+        window.location.href = checkoutHref(slug, false);
+        return;
+      }
+      paintSkeleton(panel, slug);
+      var label = panel.querySelector("[data-skeleton-title]");
+      if (label && product.title) panel.setAttribute("aria-label", product.title);
+    }
+    if (!product.presentation || product.presentation === "panel") preloadFrame(slug);
+  }
+
+  function ensureProduct(slug) {
+    if (products[slug] || inflight[slug]) return inflight[slug] || Promise.resolve(products[slug]);
+    inflight[slug] = fetch(origin + "/api/products/" + encodeURIComponent(slug))
+      .then(function (response) {
+        if (!response.ok) throw new Error("product");
+        return response.json();
+      })
+      .then(function (product) {
+        remember(slug, product);
+        return product;
+      })
+      .catch(function () {
+        return null;
+      })
+      .then(function (product) {
+        delete inflight[slug];
+        return product;
+      });
+    return inflight[slug];
+  }
+
+  window.addEventListener("message", function (event) {
+    if (event.origin !== origin || event.data !== "ready") return;
+    var frames = document.querySelectorAll("iframe.sop-pay-frame");
+    for (var i = 0; i < frames.length; i++) {
+      if (frames[i].contentWindow !== event.source) continue;
+      frames[i].setAttribute("data-ready", "1");
+      var panel = document.getElementById("sop-pay-panel");
+      if (panel && panel.contains(frames[i])) reveal(panel);
+    }
+  });
+
+  function watchLink(link) {
+    if (link.getAttribute("data-sop-pay") === "1") return;
+    var slug = slugFrom(link.href);
+    if (!slug) return;
+    link.setAttribute("data-sop-pay", "1");
+    ensureProduct(slug);
+    var warm = function () { preloadFrame(slug); };
+    link.addEventListener("pointerenter", warm);
+    link.addEventListener("focus", warm);
+  }
+
+  function collect() {
+    var links = document.querySelectorAll("a[href]");
+    for (var i = 0; i < links.length; i++) watchLink(links[i]);
   }
 
   document.addEventListener(
@@ -71,20 +292,27 @@
       var slug = slugFrom(link.href);
       if (!slug) return;
       event.preventDefault();
-      fetch(origin + "/api/products/" + encodeURIComponent(slug))
-        .then(function (response) {
-          if (!response.ok) throw new Error("product");
-          return response.json();
-        })
-        .then(function (product) {
-          var checkout = origin + "/checkout/" + encodeURIComponent(product.id || slug);
-          if (product.presentation === "panel") openPanel(checkout + "?embed=1");
-          else window.location.href = checkout;
-        })
-        .catch(function () {
-          window.location.href = link.href;
-        });
+      var known = products[slug];
+      if (known && known.presentation && known.presentation !== "panel") {
+        window.location.href = checkoutHref(slug, false);
+        return;
+      }
+      ensureProduct(slug);
+      openPanel(slug);
     },
     true,
   );
+
+  function boot() {
+    connect();
+    ensureStyle();
+    collect();
+    var idle = function () { collect(); };
+    if (window.requestIdleCallback) window.requestIdleCallback(idle, { timeout: 300 });
+    else window.setTimeout(idle, 300);
+  }
+
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
+  window.addEventListener("load", collect);
 })();

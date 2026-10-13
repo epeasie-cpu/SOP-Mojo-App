@@ -69,7 +69,8 @@ export function supabaseCatalogStore(input: {
     async read() {
       const response = await fetchImpl(`${endpoint}?select=id,payload`, {
         headers: adminHeaders(input.serviceRoleKey),
-      });
+        next: { revalidate: 15 },
+      } as RequestInit);
       if (!response.ok) throw new Error(`Catalog read failed (${response.status}).`);
       const rows = (await response.json()) as { id: string; payload: unknown }[];
       if (!Array.isArray(rows) || rows.length === 0) return seedCatalog();
@@ -112,22 +113,61 @@ export function catalogFilePath(): string {
   return path.join(process.cwd(), "data", "catalog.json");
 }
 
+/** Short read cache so embed prefetch and checkout do not each wait on Supabase. */
+export const CATALOG_READ_TTL_MS = 15_000;
+
+type CatalogCacheEntry = { at: number; value: CatalogSnapshot };
+
+const catalogCache = new Map<string, CatalogCacheEntry>();
+const catalogInflight = new Map<string, Promise<CatalogSnapshot>>();
+
+export function clearCatalogReadCache(): void {
+  catalogCache.clear();
+  catalogInflight.clear();
+}
+
+function catalogCacheKey(env: NodeJS.ProcessEnv): string {
+  const admin = readAdminConfig(env);
+  return admin ? `remote:${admin.url}` : "file";
+}
+
 export function createCatalogStore(env: NodeJS.ProcessEnv = process.env): CatalogStore {
   const admin = readAdminConfig(env);
   const file = fileCatalogStore(catalogFilePath());
   const remote = admin ? supabaseCatalogStore(admin) : null;
+  const key = catalogCacheKey(env);
+  async function load(): Promise<CatalogSnapshot> {
+    if (remote) {
+      try {
+        return await remote.read();
+      } catch (error) {
+        console.error("pay catalog supabase read failed", error instanceof Error ? error.message : error);
+      }
+    }
+    return file.read();
+  }
   return {
     async read() {
-      if (remote) {
-        try {
-          return await remote.read();
-        } catch (error) {
-          console.error("pay catalog supabase read failed", error instanceof Error ? error.message : error);
-        }
-      }
-      return file.read();
+      const hit = catalogCache.get(key);
+      if (hit && Date.now() - hit.at < CATALOG_READ_TTL_MS) return hit.value;
+      const pending = catalogInflight.get(key);
+      if (pending) return pending;
+      const request = load()
+        .then((value) => {
+          catalogCache.set(key, { at: Date.now(), value });
+          catalogInflight.delete(key);
+          return value;
+        })
+        .catch((error: unknown) => {
+          catalogInflight.delete(key);
+          throw error;
+        });
+      catalogInflight.set(key, request);
+      return request;
     },
     async write(next) {
+      catalogCache.delete(key);
+      catalogInflight.delete(key);
       if (remote) {
         await remote.write(next);
         return;
