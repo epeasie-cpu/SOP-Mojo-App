@@ -159,6 +159,32 @@ describe("catalog, price, and checkout session", () => {
     });
     expect(skipped).toEqual({ ok: true, skipped: true, reason: "unconfigured" });
     expect(CHECKOUT_LEAD_TAG).toBe("checkout");
+
+    const calls: { url: string; method: string; body: unknown }[] = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      calls.push({
+        url: String(input),
+        method: init?.method ?? "GET",
+        body: init?.body ? JSON.parse(String(init.body)) : null,
+      });
+      return new Response("{}", { status: 200 });
+    };
+    const tagged = await captureCheckoutLead({
+      email: "Buyer@Example.com",
+      products: ["builder_pro", "flowchart_plus", "unknown_product", "builder_pro"],
+      env: { MAILCHIMP_API_KEY: "key-us21", MAILCHIMP_AUDIENCE_ID: "aud" } as unknown as NodeJS.ProcessEnv,
+      fetchImpl,
+    });
+    expect(tagged).toEqual({ ok: true });
+    const tagPosts = calls.filter((call) => call.method === "POST" && call.url.endsWith("/tags"));
+    expect(tagPosts).toHaveLength(1);
+    expect(tagPosts[0]?.body).toEqual({
+      tags: [
+        { name: "checkout", status: "active" },
+        { name: "builder-pro", status: "active" },
+        { name: "flowchart-plus", status: "active" },
+      ],
+    });
   });
 
   it("verifies the Stripe webhook signature", () => {

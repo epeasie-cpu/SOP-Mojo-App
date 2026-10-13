@@ -97,6 +97,34 @@ function recordExistingBuyer(signInUrl = "https://builder.sopmojo.com") {
 }
 
 describe("idempotent stripe webhook", () => {
+  it("tags the granted products on the same Mailchimp request as checkout", async () => {
+    const store = memoryEventStore();
+    const tagBodies: unknown[] = [];
+    const fetchImpl: typeof fetch = async (input, init) => {
+      const url = String(input);
+      if (url.includes("api.mailchimp.com") && url.endsWith("/tags")) {
+        tagBodies.push(JSON.parse(String(init?.body)));
+      }
+      if (url.includes("/api/webhooks/entitlements")) return json({ ok: true, created_user: false });
+      return json({});
+    };
+    const env = {
+      ENTITLEMENT_WEBHOOK_SECRET: "secret",
+      MAILCHIMP_API_KEY: "key-us21",
+      MAILCHIMP_AUDIENCE_ID: "aud",
+    } as unknown as NodeJS.ProcessEnv;
+    await processStripeEvent(paid("evt_mailchimp_tags", "builder_pro,flowchart_plus"), { env, fetchImpl, store });
+    expect(tagBodies).toEqual([
+      {
+        tags: [
+          { name: "checkout", status: "active" },
+          { name: "builder-pro", status: "active" },
+          { name: "flowchart-plus", status: "active" },
+        ],
+      },
+    ]);
+  });
+
   it("ignores a second delivery of the same event id", async () => {
     const store = memoryEventStore();
     let entitlementPosts = 0;

@@ -42,7 +42,12 @@ export async function processStripeEvent(
       fetchImpl: deps.fetchImpl,
       store: deps.store,
     });
-    await captureCheckoutLead({ email: action.email, env: deps.env, fetchImpl: deps.fetchImpl });
+    await captureCheckoutLead({
+      email: action.email,
+      products: action.products,
+      env: deps.env,
+      fetchImpl: deps.fetchImpl,
+    });
   } else if (action.kind === "revoke") {
     await revokeAccess({
       email: action.email,

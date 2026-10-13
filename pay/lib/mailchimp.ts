@@ -4,6 +4,24 @@ import { DEFAULT_MAILCHIMP_AUDIENCE_ID } from "./site";
 /** Tag applied on the existing Mojo Business Solutions LLC audience. Not a new list. */
 export const CHECKOUT_LEAD_TAG = "checkout";
 
+/** Granted product id → Mailchimp tag. Unknown ids are left untagged. */
+const PRODUCT_LEAD_TAGS: Record<string, string> = {
+  builder_pro: "builder-pro",
+  flowchart_plus: "flowchart-plus",
+};
+
+function checkoutLeadTags(products: readonly string[]): { name: string; status: "active" }[] {
+  const tags: { name: string; status: "active" }[] = [{ name: CHECKOUT_LEAD_TAG, status: "active" }];
+  const seen = new Set<string>();
+  for (const id of products) {
+    const name = PRODUCT_LEAD_TAGS[id];
+    if (!name || seen.has(name)) continue;
+    seen.add(name);
+    tags.push({ name, status: "active" });
+  }
+  return tags;
+}
+
 export type MailchimpSettings = {
   apiKey: string;
   server: string;
@@ -51,6 +69,7 @@ async function mailchimpFetch(
 
 export async function captureCheckoutLead(input: {
   email: string;
+  products?: readonly string[];
   env: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<CaptureResult> {
@@ -77,7 +96,7 @@ export async function captureCheckoutLead(input: {
       `/lists/${listId}/members/${hash}/tags`,
       {
         method: "POST",
-        body: JSON.stringify({ tags: [{ name: CHECKOUT_LEAD_TAG, status: "active" }] }),
+        body: JSON.stringify({ tags: checkoutLeadTags(input.products ?? []) }),
       },
       fetchImpl,
     );
