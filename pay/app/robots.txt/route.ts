@@ -5,6 +5,8 @@ export const dynamic = "force-static";
 export function GET() {
   const body = `User-agent: *
 Allow: /
+Allow: /acceptable-use-policy-generator
+Allow: /free/aup-generator
 Disallow: /checkout
 Disallow: /go
 Disallow: /admin

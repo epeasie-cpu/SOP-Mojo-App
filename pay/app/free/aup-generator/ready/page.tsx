@@ -1,10 +1,7 @@
-import type { Metadata } from "next";
 import { AUP_FREE_EMAIL_LEAD, AUP_FREE_SPAM, AUP_FREE_UPSELL, BUILDER_PRO_GO } from "@/lib/aup-free";
+import { privateMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
-  title: "Your AUP Generator access link is on its way | SOP Mojo",
-  description: AUP_FREE_EMAIL_LEAD,
-};
+export const metadata = privateMetadata("Your AUP Generator access link is on its way | SOP Mojo");
 
 export default function FreeAupReadyPage() {
   return (

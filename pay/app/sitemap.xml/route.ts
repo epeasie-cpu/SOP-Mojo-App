@@ -1,12 +1,22 @@
 import { createCatalogStore } from "@/lib/catalog-store";
+import { AUP_CANONICAL_PATH } from "@/lib/aup-landing";
 import { productPath } from "@/lib/links";
+import { isFreeAupSlug } from "@/lib/library";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const catalog = await createCatalogStore().read();
-  const paths = ["/", "/legal/terms", "/legal/refunds", ...catalog.products.filter((product) => product.active).map((product) => productPath(product.id))];
+  const paths = [
+    "/",
+    "/legal/terms",
+    "/legal/refunds",
+    AUP_CANONICAL_PATH,
+    ...catalog.products
+      .filter((product) => product.active && !isFreeAupSlug(product.id))
+      .map((product) => productPath(product.id)),
+  ];
   const urls = paths
     .map(
       (path) => `  <url><loc>${absoluteUrl(path)}</loc></url>`,

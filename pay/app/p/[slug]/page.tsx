@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { productJsonLd } from "@/lib/catalog";
 import { productPath, stablePath } from "@/lib/links";
 import { findProduct } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
+import { AUP_CANONICAL_PATH, aupLandingMetadata } from "@/lib/aup-landing";
+import { isFreeAupSlug } from "@/lib/library";
 import { productMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 
@@ -17,6 +19,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  if (isFreeAupSlug(decodeURIComponent(slug))) return aupLandingMetadata();
   const { product } = await findProduct(createCatalogStore(), decodeURIComponent(slug));
   if (!product) return productMetadata({ path: "/p", title: "Product | SOP Mojo", description: "" });
   return productMetadata({
@@ -28,7 +31,9 @@ export async function generateMetadata({
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { product } = await findProduct(createCatalogStore(), decodeURIComponent(slug));
+  const id = decodeURIComponent(slug);
+  if (isFreeAupSlug(id)) redirect(AUP_CANONICAL_PATH);
+  const { product } = await findProduct(createCatalogStore(), id);
   if (!product || !product.active) notFound();
   const quote = quoteProduct(product, { annual: false, bump: false });
   const jsonLd = productJsonLd(product, absoluteUrl(productPath(product.id)));

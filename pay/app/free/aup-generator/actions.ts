@@ -2,7 +2,8 @@
 
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { clientIpFromHeaders, FREE_AUP_PATH, FREE_AUP_READY_PATH, submitFreeAup } from "@/lib/aup-free";
+import { aupFormReturnPath } from "@/lib/aup-landing";
+import { clientIpFromHeaders, FREE_AUP_READY_PATH, submitFreeAup } from "@/lib/aup-free";
 
 export async function requestFreeAup(formData: FormData) {
   const headerList = await headers();
@@ -13,6 +14,7 @@ export async function requestFreeAup(formData: FormData) {
     ip: clientIpFromHeaders(headerList),
     env: process.env,
   });
-  if (!result.ok) redirect(`${FREE_AUP_PATH}?error=${result.code}`);
+  const returnPath = aupFormReturnPath(formData.get("return"));
+  if (!result.ok) redirect(`${returnPath}?error=${result.code}`);
   redirect(FREE_AUP_READY_PATH);
 }

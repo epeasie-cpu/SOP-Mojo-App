@@ -21,5 +21,6 @@ export const config = {
     "/admin/:path*",
     "/account/:path*",
     "/api/:path*",
+    "/free/aup-generator/ready",
   ],
 };

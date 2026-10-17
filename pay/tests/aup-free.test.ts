@@ -371,11 +371,12 @@ describe("free AUP gate", () => {
       }),
     ).rejects.toThrow(/Stripe/);
 
-    const form = readFileSync(path.join(process.cwd(), "app/free/aup-generator/page.tsx"), "utf8");
+    const form = readFileSync(path.join(process.cwd(), "components/AupLanding.tsx"), "utf8");
     const ready = readFileSync(path.join(process.cwd(), "app/free/aup-generator/ready/page.tsx"), "utf8");
     const source = readFileSync(path.join(process.cwd(), "lib/aup-free.ts"), "utf8");
     expect(AUP_FREE_HEADLINE).toBe("Get the free AUP Generator");
     expect(form).toContain("<h1");
+    expect(form).toContain("{AUP_SEO_H1}");
     expect(form).toContain("{AUP_FREE_HEADLINE}");
     expect(form).toContain('name="email"');
     expect(form).toContain('name="firstName"');
