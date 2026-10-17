@@ -8,6 +8,9 @@ import { fileCatalogStore, memoryCatalogStore, supabaseCatalogStore } from "@/li
 import { memoryEventStore } from "@/lib/event-store";
 import { deliveryEmailContent, deliverySendKey, sendDeliveryEmail } from "@/lib/fulfillment";
 import {
+  BLUEPRINT_BUMP_READY,
+  BLUEPRINT_FILENAME,
+  BLUEPRINT_STORAGE_PATH,
   NOT_AVAILABLE_YET,
   PROTECTED_CATALOG_IDS,
   checkoutErrorStatus,
@@ -73,13 +76,23 @@ describe("SOP Library delivery", () => {
       label: "Open the policy tool",
     });
     expect(isDeliveryUnavailable(products[0]!)).toBe(false);
-    for (const product of products.slice(1)) {
-      expect(product.delivery?.kind).toBe("email_link");
-      if (product.delivery?.kind === "email_link") expect(product.delivery.url).toBe("");
-      expect(isDeliveryUnavailable(product)).toBe(true);
-    }
-    expect(products[0]?.delivery?.label).toBe("Open the policy tool");
-    expect(products[1]?.delivery?.label).toBe("Download");
+    expect(products[1]?.delivery).toEqual({ kind: "email_link", url: "", label: "Download" });
+    expect(isDeliveryUnavailable(products[1]!)).toBe(true);
+    expect(products[2]?.delivery).toEqual({
+      kind: "secure_file",
+      storagePath: BLUEPRINT_STORAGE_PATH,
+      filename: BLUEPRINT_FILENAME,
+    });
+    expect(products[2]?.priceCents).toBe(2700);
+    expect(products[2]?.orderBump).toBeNull();
+    expect(isDeliveryUnavailable(products[2]!)).toBe(false);
+    expect(products[3]?.delivery).toEqual({ kind: "email_link", url: "", label: "Download" });
+    expect(isDeliveryUnavailable(products[3]!)).toBe(true);
+    expect(BLUEPRINT_BUMP_READY.priceCents).toBe(499);
+    expect(BLUEPRINT_BUMP_READY.title).toContain("Business OS Diagnostic Dashboard");
+    expect(BLUEPRINT_BUMP_READY.description).toBe("Add the Business OS Diagnostic Dashboard: $4.99");
+    expect(products[0]?.delivery?.kind === "make_webhook" ? products[0].delivery.label : "").toBe("Open the policy tool");
+    expect(products[1]?.delivery?.kind === "email_link" ? products[1].delivery.label : "").toBe("Download");
     const [flowchart, builder] = seedProducts();
     expect(flowchart?.priceCents).toBe(1900);
     expect(builder?.priceCents).toBe(3900);
@@ -199,7 +212,8 @@ describe("SOP Library delivery", () => {
     const checkout = readFileSync(path.join(process.cwd(), "app/checkout/[slug]/page.tsx"), "utf8");
     const go = readFileSync(path.join(process.cwd(), "app/go/[slug]/route.ts"), "utf8");
     expect(checkout).toContain("NOT_AVAILABLE_YET");
-    expect(checkout).toContain("isDeliveryUnavailable");
+    expect(checkout).toContain("deliveryIsBlocked");
+    expect(go).toContain("deliveryIsBlocked");
     expect(go).toContain("unavailableGoHtml");
   });
 

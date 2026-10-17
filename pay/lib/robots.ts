@@ -11,6 +11,8 @@ export function isNoIndexPath(pathname: string): boolean {
     pathname.startsWith("/account/") ||
     pathname === "/api" ||
     pathname.startsWith("/api/") ||
+    pathname === "/download" ||
+    pathname.startsWith("/download/") ||
     pathname === "/free/aup-generator/ready"
   );
 }

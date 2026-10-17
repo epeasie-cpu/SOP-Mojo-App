@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCatalogStore } from "@/lib/catalog-store";
-import { libraryProducts, syncAupDelivery } from "@/lib/library";
+import { libraryProducts, syncAupDelivery, syncBlueprintDelivery } from "@/lib/library";
 import { isResponse, requireAdmin } from "@/lib/require-admin";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +11,7 @@ export async function POST() {
   try {
     const store = createCatalogStore();
     const result = await store.insertIfAbsent(libraryProducts());
-    const updated = await syncAupDelivery(store);
+    const updated = [...(await syncAupDelivery(store)), ...(await syncBlueprintDelivery(store))];
     return NextResponse.json({ ...result, updated });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not add the library products.";

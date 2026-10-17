@@ -6,7 +6,7 @@ import { CheckoutExperience } from "@/components/CheckoutExperience";
 import { createCatalogStore } from "@/lib/catalog-store";
 import type { CatalogSnapshot, Product } from "@/lib/catalog";
 import { allowedReturnOrigin } from "@/lib/links";
-import { FREE_AUP_PATH, isDeliveryUnavailable, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
+import { deliveryIsBlocked, FREE_AUP_PATH, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
 import { findProduct, openCheckoutSession } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { checkoutMetadata } from "@/lib/seo";
@@ -118,7 +118,7 @@ export default async function CheckoutPage({
   const snapshot = loaded.snapshot;
   const product = loaded.product ? productForCheckout(loaded.product) : null;
   if (!product || !product.active) notFound();
-  if (isDeliveryUnavailable(product)) return <NotAvailable title={product.title} embed={embed} />;
+  if (await deliveryIsBlocked(product)) return <NotAvailable title={product.title} embed={embed} />;
   const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
   const session = (
     <CheckoutSessionBody

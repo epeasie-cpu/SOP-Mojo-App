@@ -5,6 +5,7 @@ import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { checkoutPath } from "@/lib/links";
 import { checkoutMetadata } from "@/lib/seo";
+import { BLUEPRINT_EMAILED_NOTE, BLUEPRINT_UPSELL, BLUEPRINT_UPSELL_URL, downloadUrl, ensureDownloadGrant } from "@/lib/downloads";
 import { productForCheckout } from "@/lib/library";
 import { accessFromMetadata } from "@/lib/make-delivery";
 import { otherProductLinks, paidDeliveryView, successHeadline } from "@/lib/success";
@@ -41,23 +42,46 @@ export default async function CompletePage({
   const product = storedProduct ? productForCheckout(storedProduct) : null;
   const sessionId = query.session_id?.trim() ?? "";
   let status = "open";
+  let paymentStatus = "";
   let buyerEmail: string | null = null;
   let accessUrl: string | null = null;
+  let downloadToken = "";
   if (sessionId) {
     const creds = stripeCredentials(process.env, snapshot.settings.stripeMode);
     if (creds.secretKey) {
       try {
         const session = await stripeClient(creds.secretKey).checkout.sessions.retrieve(sessionId);
         status = session.status ?? "open";
+        paymentStatus = session.payment_status ?? "";
         buyerEmail = normalizeEmail(session.customer_details?.email) || normalizeEmail(session.customer_email);
         const stored = accessFromMetadata(session.metadata);
         accessUrl = stored === "missing" || stored === "pending" ? null : stored;
+        downloadToken = session.metadata?.download_token?.trim() ?? "";
       } catch {
         status = "unknown";
       }
     }
   }
   const paid = status === "complete";
+  const settled = paid && (paymentStatus === "paid" || paymentStatus === "no_payment_required");
+  let downloadHref: string | null = null;
+  if (settled && product?.delivery?.kind === "secure_file" && buyerEmail && sessionId.startsWith("cs_")) {
+    let token = downloadToken;
+    if (!token) {
+      try {
+        token = await ensureDownloadGrant({
+          email: buyerEmail,
+          product,
+          sessionId,
+          env: process.env,
+          stripeMode: snapshot.settings.stripeMode,
+        });
+      } catch {
+        token = "";
+      }
+    }
+    if (token) downloadHref = downloadUrl(token);
+  }
   const delivery = paid ? paidDeliveryView(product, accessUrl) : null;
   const title = product?.title ?? "";
   const headerList = await headers();
@@ -81,7 +105,26 @@ export default async function CompletePage({
         <h1 className="font-display text-4xl font-semibold tracking-tight text-balance text-zinc-50">
           {paid ? successHeadline(title) : "Payment not finished"}
         </h1>
-        {delivery?.kind === "link" ? (
+        {settled && product?.delivery?.kind === "secure_file" ? (
+          <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
+            <p>{BLUEPRINT_EMAILED_NOTE}</p>
+            <p>Check your junk and spam folder too.</p>
+            {downloadHref ? (
+              <a
+                href={downloadHref}
+                className="inline-flex min-h-14 items-center justify-center rounded-sm bg-lime px-4 text-center text-base font-semibold text-lime-ink"
+              >
+                Download the Blueprint
+              </a>
+            ) : null}
+            <a
+              href={BLUEPRINT_UPSELL_URL}
+              className="inline-flex min-h-14 items-center justify-center rounded-sm border border-zinc-700 px-4 text-center text-base font-semibold text-zinc-50"
+            >
+              {BLUEPRINT_UPSELL}
+            </a>
+          </div>
+        ) : delivery?.kind === "link" ? (
           <div className="mt-4 grid gap-3 text-base leading-7 text-zinc-300">
             <p>We emailed your {title} link.</p>
             <p>Check your junk and spam folder too.</p>

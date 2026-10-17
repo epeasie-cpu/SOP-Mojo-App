@@ -7,7 +7,9 @@ export function GET() {
 Allow: /
 Allow: /acceptable-use-policy-generator
 Allow: /free/aup-generator
+Allow: /business-os-blueprint
 Disallow: /checkout
+Disallow: /download
 Disallow: /go
 Disallow: /admin
 Disallow: /account

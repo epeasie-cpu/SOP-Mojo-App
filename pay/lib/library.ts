@@ -1,5 +1,6 @@
 import { parseProduct, type Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
+import { deliverableExists } from "./deliverables";
 
 export const NOT_AVAILABLE_YET = "Not available yet";
 
@@ -8,6 +9,22 @@ export const PROTECTED_CATALOG_IDS = ["builder_pro", "flowchart_plus", "__settin
 
 export function isDeliveryUnavailable(product: Product): boolean {
   return product.delivery?.kind === "email_link" && product.delivery.url.trim() === "";
+}
+
+/** Empty email links, and secure files whose private object is not in storage yet. */
+export async function deliveryIsBlocked(
+  product: Product,
+  env: NodeJS.ProcessEnv = process.env,
+  fetchImpl?: typeof fetch,
+): Promise<boolean> {
+  if (isDeliveryUnavailable(product)) return true;
+  if (product.delivery?.kind !== "secure_file") return false;
+  const ready = await deliverableExists({
+    storagePath: product.delivery.storagePath,
+    env,
+    fetchImpl,
+  });
+  return !ready;
 }
 
 export function checkoutErrorStatus(message: string): number {
@@ -43,6 +60,26 @@ type LibrarySeed = {
 };
 
 export const AUP_PRODUCT_ID = "aup_generator";
+
+export const BLUEPRINT_PRODUCT_ID = "business_os_blueprint";
+
+export const DASHBOARD_PRODUCT_ID = "business_os_dashboard";
+
+/** Private bucket plus object key. The bucket name is the first segment. */
+export const BLUEPRINT_STORAGE_PATH = "deliverables/business-os-blueprint.pdf";
+
+export const BLUEPRINT_FILENAME = "Business-OS-Blueprint.pdf";
+
+/**
+ * Ready for the checkout bump UI, but not attached.
+ * The dashboard has no file yet, so selling it as a bump would take money for nothing.
+ */
+export const BLUEPRINT_BUMP_READY = {
+  title: "the Business OS Diagnostic Dashboard",
+  description: "Add the Business OS Diagnostic Dashboard: $4.99",
+  priceCents: 499,
+  entitlementProduct: null,
+} as const;
 
 /** Public free gate. Checkout and /go send every AUP visitor here. */
 export const FREE_AUP_PATH = "/free/aup-generator";
@@ -97,10 +134,13 @@ function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
   if (seed.id === AUP_PRODUCT_ID) {
     return { kind: "make_webhook", envVar: AUP_MAKE_ENV, label: seed.label };
   }
+  if (seed.id === BLUEPRINT_PRODUCT_ID) {
+    return { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME };
+  }
   return { kind: "email_link", url: "", label: seed.label };
 }
 
-/** Four SOP Library products. Download links stay empty until an admin pastes them. */
+/** Four SOP Library products. Blueprint is a private PDF. The other download links stay empty until an admin pastes them. */
 export function libraryProducts(): Product[] {
   return LIBRARY_SEEDS.map((seed) =>
     parseProduct({
@@ -132,6 +172,28 @@ export async function syncAupDelivery(store: CatalogStore): Promise<string[]> {
   return [AUP_PRODUCT_ID];
 }
 
+/** Point an existing blueprint row at the private PDF without rewriting other products or turning the bump on. */
+export async function syncBlueprintDelivery(store: CatalogStore): Promise<string[]> {
+  const snapshot = await store.read();
+  const current = snapshot.products.find((product) => product.id === BLUEPRINT_PRODUCT_ID);
+  if (!current) return [];
+  const delivery = current.delivery;
+  if (
+    delivery?.kind === "secure_file" &&
+    delivery.storagePath === BLUEPRINT_STORAGE_PATH &&
+    delivery.filename === BLUEPRINT_FILENAME
+  ) {
+    return [];
+  }
+  await store.updateProduct({
+    ...current,
+    entitlementProduct: null,
+    orderBump: current.orderBump,
+    delivery: { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME },
+  });
+  return [BLUEPRINT_PRODUCT_ID];
+}
+
 export function productForCheckout(product: Product): Product {
   if (product.id !== AUP_PRODUCT_ID) return product;
   if (product.delivery?.kind === "make_webhook") return product;
@@ -141,7 +203,10 @@ export function productForCheckout(product: Product): Product {
     delivery: {
       kind: "make_webhook",
       envVar: AUP_MAKE_ENV,
-      label: product.delivery?.label?.trim() || "Open the policy tool",
+      label:
+        product.delivery?.kind === "email_link"
+          ? product.delivery.label.trim() || "Open the policy tool"
+          : "Open the policy tool",
     },
   };
 }

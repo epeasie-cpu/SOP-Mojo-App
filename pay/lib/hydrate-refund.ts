@@ -94,4 +94,17 @@ export async function hydrateRefundPurchase(
     sources.push(invoice as unknown as Record<string, unknown>);
   }
   assignRefundEntitlements(object, sources);
+  attachCheckoutSessionId(object, sources);
+}
+
+/** Remember the Checkout Session so a library refund can revoke its download grant. */
+export function attachCheckoutSessionId(object: Record<string, unknown>, sources: Record<string, unknown>[]): void {
+  const current = stripeObjectMetadata(object);
+  if (current.checkout_session_id?.startsWith("cs_")) return;
+  for (const source of sources) {
+    const id = typeof source.id === "string" ? source.id : "";
+    if (!id.startsWith("cs_")) continue;
+    object.metadata = { ...stripeObjectMetadata(object), checkout_session_id: id };
+    return;
+  }
 }

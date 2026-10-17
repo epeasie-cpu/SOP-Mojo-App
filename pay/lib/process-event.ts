@@ -1,5 +1,6 @@
 import type { CatalogStore } from "./catalog-store";
 import { createCatalogStore } from "./catalog-store";
+import { createGrantStore, fulfillSecureDownload, type GrantStore } from "./downloads";
 import type { EventStore } from "./event-store";
 import { grantAccess, replayExistingAccountUnlock, revokeAccess, sendDeliveryEmail } from "./fulfillment";
 import { productForCheckout } from "./library";
@@ -12,6 +13,9 @@ type DeliveryDeps = {
   fetchImpl: typeof fetch;
   store: EventStore;
   catalog?: CatalogStore;
+  grants?: GrantStore;
+  saveDownloadToken?: (sessionId: string, token: string) => Promise<void>;
+  loadDownloadToken?: (sessionId: string) => Promise<string | null>;
   saveOrderAccess?: (order: { orderId: string; accessUrl: string | null }) => Promise<void>;
   loadOrderAccess?: (orderId: string) => Promise<StoredAccess>;
 };
@@ -59,6 +63,33 @@ async function maybeDeliverEmail(event: IncomingStripeEvent, deps: DeliveryDeps)
     });
     return;
   }
+  if (product.delivery?.kind === "secure_file") {
+    const sessionId = typeof object.id === "string" ? object.id : "";
+    await fulfillSecureDownload({
+      email,
+      eventId: event.id,
+      product,
+      sessionId,
+      env: deps.env,
+      fetchImpl: deps.fetchImpl,
+      store: deps.store,
+      grants: deps.grants,
+      stripeMode,
+      saveToken: deps.saveDownloadToken
+        ? (token) => {
+            const save = deps.saveDownloadToken;
+            return save ? save(sessionId, token) : Promise.resolve();
+          }
+        : undefined,
+      loadToken: deps.loadDownloadToken
+        ? () => {
+            const load = deps.loadDownloadToken;
+            return load ? load(sessionId) : Promise.resolve(null);
+          }
+        : undefined,
+    });
+    return;
+  }
   await sendDeliveryEmail({
     email,
     eventId: event.id,
@@ -67,6 +98,16 @@ async function maybeDeliverEmail(event: IncomingStripeEvent, deps: DeliveryDeps)
     fetchImpl: deps.fetchImpl,
     store: deps.store,
   });
+}
+
+async function maybeRevokeDownload(event: IncomingStripeEvent, deps: DeliveryDeps): Promise<void> {
+  if (event.type !== "charge.refunded") return;
+  const object = event.data?.object ?? {};
+  if (!Number(object.amount_refunded ?? 0)) return;
+  const sessionId = stripeObjectMetadata(object).checkout_session_id?.trim() ?? "";
+  if (!sessionId.startsWith("cs_")) return;
+  const grants = deps.grants ?? createGrantStore(deps.env, deps.fetchImpl);
+  await grants.revokeBySession(sessionId);
 }
 
 export async function processStripeEvent(event: IncomingStripeEvent, deps: DeliveryDeps): Promise<ProcessResult> {
@@ -111,6 +152,7 @@ export async function processStripeEvent(event: IncomingStripeEvent, deps: Deliv
     });
   }
   await maybeDeliverEmail(event, deps);
+  await maybeRevokeDownload(event, deps);
   await deps.store.mark(event.id, event.type);
   return { duplicate: false, action: action.kind };
 }

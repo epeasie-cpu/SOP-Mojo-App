@@ -39,9 +39,11 @@ type Draft = {
   bumpEntitlement: "" | EntitlementProduct;
   presentation: "page" | "panel";
   entitlementProduct: "" | EntitlementProduct;
-  deliveryKind: "" | "email_link" | "make_webhook";
+  deliveryKind: "" | "email_link" | "make_webhook" | "secure_file";
   deliveryUrl: string;
   deliveryEnvVar: string;
+  deliveryStoragePath: string;
+  deliveryFilename: string;
   deliveryLabel: string;
   seoTitle: string;
   seoDescription: string;
@@ -92,10 +94,19 @@ function toDraft(product: Product): Draft {
     presentation: product.presentation,
     entitlementProduct: product.entitlementProduct ?? "",
     deliveryKind:
-      product.delivery?.kind === "email_link" || product.delivery?.kind === "make_webhook" ? product.delivery.kind : "",
+      product.delivery?.kind === "email_link" ||
+      product.delivery?.kind === "make_webhook" ||
+      product.delivery?.kind === "secure_file"
+        ? product.delivery.kind
+        : "",
     deliveryUrl: product.delivery?.kind === "email_link" ? product.delivery.url : "",
     deliveryEnvVar: product.delivery?.kind === "make_webhook" ? product.delivery.envVar : "AUP_MAKE_WEBHOOK_URL",
-    deliveryLabel: product.delivery?.label ?? "Download",
+    deliveryStoragePath: product.delivery?.kind === "secure_file" ? product.delivery.storagePath : "",
+    deliveryFilename: product.delivery?.kind === "secure_file" ? product.delivery.filename : "",
+    deliveryLabel:
+      product.delivery?.kind === "email_link" || product.delivery?.kind === "make_webhook"
+        ? product.delivery.label
+        : "Download",
     seoTitle: product.seo.title || derivedSeoTitle(source),
     seoDescription: product.seo.description || derivedSeoDescription(source),
     active: product.active,
@@ -123,6 +134,8 @@ function blankDraft(): Draft {
     deliveryKind: "",
     deliveryUrl: "",
     deliveryEnvVar: "AUP_MAKE_WEBHOOK_URL",
+    deliveryStoragePath: "",
+    deliveryFilename: "",
     deliveryLabel: "Download",
     seoTitle: "",
     seoDescription: "",
@@ -164,6 +177,13 @@ function draftToProduct(draft: Draft): Product {
       kind: "make_webhook",
       envVar: draft.deliveryEnvVar.trim(),
       label: draft.deliveryLabel.trim() || "Open",
+    };
+  }
+  if (draft.billing === "once" && draft.deliveryKind === "secure_file") {
+    delivery = {
+      kind: "secure_file",
+      storagePath: draft.deliveryStoragePath.trim(),
+      filename: draft.deliveryFilename.trim(),
     };
   }
   return {
@@ -456,19 +476,24 @@ export function AdminDashboard({
             <select
               className={inputClass}
               value={draft.deliveryKind}
-              onChange={(event) =>
+              onChange={(event) => {
+                const deliveryKind =
+                  event.target.value === "email_link" ||
+                  event.target.value === "make_webhook" ||
+                  event.target.value === "secure_file"
+                    ? event.target.value
+                    : "";
                 setDraft({
                   ...draft,
-                  deliveryKind:
-                    event.target.value === "email_link" || event.target.value === "make_webhook" ? event.target.value : "",
-                  entitlementProduct:
-                    event.target.value === "email_link" || event.target.value === "make_webhook" ? "" : draft.entitlementProduct,
-                })
-              }
+                  deliveryKind,
+                  entitlementProduct: deliveryKind ? "" : draft.entitlementProduct,
+                });
+              }}
             >
               <option value="">None</option>
               <option value="email_link">Email a link</option>
               <option value="make_webhook">Make webhook</option>
+              <option value="secure_file">Secure file</option>
             </select>
           </Field>
         ) : null}
@@ -512,6 +537,29 @@ export function AdminDashboard({
             </Field>
             <p className="text-sm leading-6 text-zinc-400">
               Leave the link empty until the file is ready. Checkout then says Not available yet.
+            </p>
+          </>
+        ) : null}
+        {draft.billing === "once" && draft.deliveryKind === "secure_file" ? (
+          <>
+            <Field label="Storage path">
+              <input
+                className={inputClass}
+                value={draft.deliveryStoragePath}
+                placeholder="deliverables/file.pdf"
+                onChange={(event) => setDraft({ ...draft, deliveryStoragePath: event.target.value })}
+              />
+            </Field>
+            <Field label="Download filename">
+              <input
+                className={inputClass}
+                value={draft.deliveryFilename}
+                placeholder="File.pdf"
+                onChange={(event) => setDraft({ ...draft, deliveryFilename: event.target.value })}
+              />
+            </Field>
+            <p className="text-sm leading-6 text-zinc-400">
+              The PDF stays in a private bucket. Checkout stays closed until that object exists.
             </p>
           </>
         ) : null}

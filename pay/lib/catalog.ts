@@ -28,6 +28,12 @@ export type ProductDelivery =
       kind: "make_webhook";
       envVar: string;
       label: string;
+    }
+  | {
+      /** Private Storage object. Buyers receive a short-lived download grant, not this path. */
+      kind: "secure_file";
+      storagePath: string;
+      filename: string;
     };
 
 export type ProductSeo = {
@@ -189,7 +195,19 @@ function parseDelivery(value: unknown, billing: "once" | "month", id: string): P
     const label = typeof row.label === "string" && row.label.trim() ? row.label.trim() : "Open";
     return { kind: "make_webhook", envVar, label };
   }
-  if (row.kind !== "email_link") throw new Error(`${id}: delivery kind must be email_link or make_webhook.`);
+  if (row.kind === "secure_file") {
+    if (billing !== "once") throw new Error(`${id}: a secure file is only for a one-time purchase.`);
+    const storagePath = typeof row.storagePath === "string" ? row.storagePath.trim() : "";
+    const filename = typeof row.filename === "string" ? row.filename.trim() : "";
+    if (!/^(?!.*\.\.)[a-z0-9][a-z0-9./_-]{1,180}\.pdf$/i.test(storagePath)) {
+      throw new Error(`${id}: secure file storagePath must be a PDF path.`);
+    }
+    if (!/^[A-Za-z0-9][A-Za-z0-9._-]{1,120}\.pdf$/.test(filename)) {
+      throw new Error(`${id}: secure file filename must be a PDF name.`);
+    }
+    return { kind: "secure_file", storagePath, filename };
+  }
+  if (row.kind !== "email_link") throw new Error(`${id}: delivery kind must be email_link, make_webhook, or secure_file.`);
   if (billing !== "once") throw new Error(`${id}: an email link is only for a one-time purchase.`);
   const url = typeof row.url === "string" ? row.url.trim() : "";
   if (url && !/^https?:\/\//i.test(url)) throw new Error(`${id}: delivery url must be an http(s) link.`);
