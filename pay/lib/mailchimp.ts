@@ -17,7 +17,6 @@ const PRODUCT_LEAD_TAGS: Record<string, string> = {
   builder_pro: "builder-pro",
   flowchart_plus: "flowchart-plus",
   aup_generator: "aup-generator",
-  business_os_dashboard: "business-os-dashboard",
   business_os_blueprint: "business-os-blueprint",
   offers_guide: "offers-guide",
 };

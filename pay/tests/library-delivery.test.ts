@@ -7,18 +7,24 @@ import { parseProduct } from "@/lib/catalog";
 import { fileCatalogStore, memoryCatalogStore, supabaseCatalogStore } from "@/lib/catalog-store";
 import { memoryEventStore } from "@/lib/event-store";
 import { deliveryEmailContent, deliverySendKey, sendDeliveryEmail } from "@/lib/fulfillment";
+import { PATCH, POST } from "@/app/api/checkout/session/route";
+import { GET as goToCheckout } from "@/app/go/[slug]/route";
+import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
 import {
-  BLUEPRINT_BUMP_READY,
   BLUEPRINT_FILENAME,
   BLUEPRINT_STORAGE_PATH,
+  DASHBOARD_CHECKOUT_ERROR,
+  DASHBOARD_PRODUCT_ID,
   NOT_AVAILABLE_YET,
   PROTECTED_CATALOG_IDS,
   checkoutErrorStatus,
   ACCESS_LINK_ON_THE_WAY,
   AUP_MAKE_ENV,
   AUP_SAMCART_SLUG,
+  isDashboardSlug,
   isDeliveryUnavailable,
   libraryProducts,
+  retireDashboard,
   syncAupDelivery,
   unavailableGoHtml,
 } from "@/lib/library";
@@ -28,6 +34,25 @@ import { processStripeEvent } from "@/lib/process-event";
 import { seedCatalog, seedProducts } from "@/lib/seed";
 import { deliveryLink, paidDeliveryView } from "@/lib/success";
 import type { IncomingStripeEvent } from "@/lib/stripe-events";
+
+function emptyEmailProduct() {
+  return parseProduct({
+    id: "empty_link",
+    title: "Empty link",
+    description: "A download that is not ready.",
+    priceCents: 500,
+    currency: "usd",
+    imageUrl: "",
+    billing: "once",
+    annual: null,
+    orderBump: null,
+    presentation: "panel",
+    entitlementProduct: null,
+    leadMagnet: false,
+    delivery: { kind: "email_link", url: "", label: "Download" },
+    active: true,
+  });
+}
 
 function readyLibraryProduct() {
   const product = libraryProducts().find((item) => item.id === "offers_guide")!;
@@ -59,12 +84,12 @@ describe("SOP Library delivery", () => {
     const products = libraryProducts();
     expect(products.map((product) => product.id)).toEqual([
       "aup_generator",
-      "business_os_dashboard",
       "business_os_blueprint",
       "offers_guide",
       "founder_trap_guide",
     ]);
-    expect(products.map((product) => product.priceCents)).toEqual([9799, 499, 2700, 1999, 0]);
+    expect(products.map((product) => product.id)).not.toContain(DASHBOARD_PRODUCT_ID);
+    expect(products.map((product) => product.priceCents)).toEqual([9799, 2700, 1999, 0]);
     for (const product of products) {
       expect(product.billing).toBe("once");
       expect(product.presentation).toBe("panel");
@@ -77,35 +102,31 @@ describe("SOP Library delivery", () => {
       label: "Open the policy tool",
     });
     expect(isDeliveryUnavailable(products[0]!)).toBe(false);
-    expect(products[1]?.delivery).toEqual({ kind: "email_link", url: "", label: "Download" });
-    expect(isDeliveryUnavailable(products[1]!)).toBe(true);
-    expect(products[2]?.delivery).toEqual({
+    expect(products[1]?.delivery).toEqual({
       kind: "secure_file",
       storagePath: BLUEPRINT_STORAGE_PATH,
       filename: BLUEPRINT_FILENAME,
     });
-    expect(products[2]?.priceCents).toBe(2700);
-    expect(products[2]?.orderBump).toBeNull();
-    expect(isDeliveryUnavailable(products[2]!)).toBe(false);
-    expect(products[3]?.delivery).toEqual({
+    expect(products[1]?.priceCents).toBe(2700);
+    expect(products[1]?.orderBump).toBeNull();
+    expect(isDeliveryUnavailable(products[1]!)).toBe(false);
+    expect(products[2]?.delivery).toEqual({
       kind: "secure_file",
       storagePath: "deliverables/high-converting-offers-guide.pdf",
       filename: "High-Converting-Offers-Guide.pdf",
     });
-    expect(products[3]?.priceCents).toBe(1999);
-    expect(isDeliveryUnavailable(products[3]!)).toBe(false);
-    expect(products[4]?.leadMagnet).toBe(true);
-    expect(products[4]?.priceCents).toBe(0);
-    expect(products[4]?.delivery).toEqual({
+    expect(products[2]?.priceCents).toBe(1999);
+    expect(products[2]?.orderBump).toBeNull();
+    expect(isDeliveryUnavailable(products[2]!)).toBe(false);
+    expect(products[3]?.leadMagnet).toBe(true);
+    expect(products[3]?.priceCents).toBe(0);
+    expect(products[3]?.delivery).toEqual({
       kind: "secure_file",
       storagePath: "deliverables/escape-the-founder-trap.pdf",
       filename: "Escape-the-Founder-Trap.pdf",
     });
-    expect(BLUEPRINT_BUMP_READY.priceCents).toBe(499);
-    expect(BLUEPRINT_BUMP_READY.title).toContain("Business OS Diagnostic Dashboard");
-    expect(BLUEPRINT_BUMP_READY.description).toBe("Add the Business OS Diagnostic Dashboard: $4.99");
+    expect(readFileSync(path.join(process.cwd(), "lib/library.ts"), "utf8")).not.toContain("BLUEPRINT_BUMP_READY");
     expect(products[0]?.delivery?.kind === "make_webhook" ? products[0].delivery.label : "").toBe("Open the policy tool");
-    expect(products[1]?.delivery?.kind === "email_link" ? products[1].delivery.label : "").toBe("Download");
     const [flowchart, builder] = seedProducts();
     expect(flowchart?.priceCents).toBe(1900);
     expect(builder?.priceCents).toBe(3900);
@@ -129,7 +150,6 @@ describe("SOP Library delivery", () => {
     const first = await store.insertIfAbsent(libraryProducts());
     expect(first.inserted).toEqual([
       "aup_generator",
-      "business_os_dashboard",
       "business_os_blueprint",
       "offers_guide",
       "founder_trap_guide",
@@ -188,7 +208,6 @@ describe("SOP Library delivery", () => {
     expect(result.skipped).toEqual(["offers_guide"]);
     expect(result.inserted).toEqual([
       "aup_generator",
-      "business_os_dashboard",
       "business_os_blueprint",
       "founder_trap_guide",
     ]);
@@ -196,10 +215,10 @@ describe("SOP Library delivery", () => {
     const rows = post?.body as { id: string }[];
     expect(rows.map((row) => row.id)).toEqual([
       "aup_generator",
-      "business_os_dashboard",
       "business_os_blueprint",
       "founder_trap_guide",
     ]);
+    expect(JSON.stringify(post?.body)).not.toContain(DASHBOARD_PRODUCT_ID);
     expect(JSON.stringify(post?.body)).not.toContain("builder_pro");
     expect(JSON.stringify(post?.body)).not.toContain("flowchart_plus");
     expect(JSON.stringify(post?.body)).not.toContain("__settings");
@@ -219,7 +238,7 @@ describe("SOP Library delivery", () => {
   });
 
   it("refuses checkout and /go when the delivery link is empty", async () => {
-    const product = libraryProducts()[3]!;
+    const product = emptyEmailProduct();
     await expect(
       openCheckoutSession({
         product,
@@ -239,6 +258,105 @@ describe("SOP Library delivery", () => {
     expect(checkout).toContain("deliveryIsBlocked");
     expect(go).toContain("deliveryIsBlocked");
     expect(go).toContain("unavailableGoHtml");
+  });
+
+  it("retires a leftover dashboard row and redirects its checkout paths to the blueprint", async () => {
+    const store = memoryCatalogStore(seedCatalog());
+    expect(await retireDashboard(store)).toEqual([]);
+    expect((await store.read()).products.some((product) => product.id === DASHBOARD_PRODUCT_ID)).toBe(false);
+
+    const retired = parseProduct({
+      ...emptyEmailProduct(),
+      id: DASHBOARD_PRODUCT_ID,
+      title: "Business OS Dashboard",
+      description: "Downloadable Business OS dashboard.",
+      priceCents: 499,
+      delivery: { kind: "email_link", url: "https://files.example/dashboard", label: "Download" },
+      active: true,
+    });
+    const snapshot = await store.read();
+    await store.write({ ...snapshot, products: [...snapshot.products, retired] });
+    expect(await retireDashboard(store)).toEqual([DASHBOARD_PRODUCT_ID]);
+    expect(await retireDashboard(store)).toEqual([]);
+    await store.insertIfAbsent(libraryProducts());
+    const after = await store.read();
+    expect(after.products.find((product) => product.id === DASHBOARD_PRODUCT_ID)).toMatchObject({ active: false });
+    expect(after.products.filter((product) => product.id === DASHBOARD_PRODUCT_ID)).toHaveLength(1);
+    expect(after.products.find((product) => product.id === "builder_pro")?.priceCents).toBe(3900);
+
+    expect(isDashboardSlug("business-os-dashboard")).toBe(true);
+    expect(isDashboardSlug("business_os_blueprint")).toBe(false);
+    const underscore = await goToCheckout(new Request("https://pay.sopmojo.com/go/business_os_dashboard"), {
+      params: Promise.resolve({ slug: "business_os_dashboard" }),
+    });
+    expect(underscore.status).toBe(302);
+    expect(underscore.headers.get("location")).toBe(`https://pay.sopmojo.com${BLUEPRINT_PATH}`);
+    const hyphen = await goToCheckout(new Request("https://pay.sopmojo.com/go/business-os-dashboard"), {
+      params: Promise.resolve({ slug: "business-os-dashboard" }),
+    });
+    expect(hyphen.status).toBe(302);
+    expect(hyphen.headers.get("location")).toBe(`https://pay.sopmojo.com${BLUEPRINT_PATH}`);
+
+    const checkout = readFileSync(path.join(process.cwd(), "app/checkout/[slug]/page.tsx"), "utf8");
+    const pageFn = checkout.slice(checkout.indexOf("export default async function CheckoutPage"));
+    expect(pageFn.indexOf("isDashboardSlug")).toBeLessThan(pageFn.indexOf("findProduct"));
+    expect(pageFn).toContain("redirect(BLUEPRINT_PATH)");
+    const meta = checkout.slice(checkout.indexOf("export async function generateMetadata"), checkout.indexOf("function NotAvailable"));
+    expect(meta.indexOf("isDashboardSlug")).toBeLessThan(meta.indexOf("findProduct"));
+
+    const productPage = readFileSync(path.join(process.cwd(), "app/p/[slug]/page.tsx"), "utf8");
+    const productFn = productPage.slice(productPage.indexOf("export default async function ProductPage"));
+    expect(productFn.indexOf("isDashboardSlug")).toBeLessThan(productFn.indexOf("findProduct"));
+    expect(productFn).toContain("redirect(BLUEPRINT_PATH)");
+    expect(readFileSync(path.join(process.cwd(), "app/sitemap.xml/route.ts"), "utf8")).toContain("isDashboardSlug");
+    expect(readFileSync(path.join(process.cwd(), "app/api/admin/catalog/library/route.ts"), "utf8")).toContain("retireDashboard");
+    expect(readFileSync(path.join(process.cwd(), "lib/mailchimp.ts"), "utf8")).not.toContain("business-os-dashboard");
+
+    const session = await POST(
+      new Request("https://pay.sopmojo.com/api/checkout/session", {
+        method: "POST",
+        body: JSON.stringify({ slug: "business_os_dashboard", email: "buyer@example.com" }),
+      }),
+    );
+    expect(session.status).toBe(409);
+    expect(await session.json()).toEqual({ error: DASHBOARD_CHECKOUT_ERROR });
+    const patched = await PATCH(
+      new Request("https://pay.sopmojo.com/api/checkout/session", {
+        method: "PATCH",
+        body: JSON.stringify({ sessionId: "cs_test", slug: "business-os-dashboard", email: "buyer@example.com" }),
+      }),
+    );
+    expect(patched.status).toBe(409);
+    expect(checkoutErrorStatus(DASHBOARD_CHECKOUT_ERROR)).toBe(409);
+    await expect(
+      openCheckoutSession({
+        product: retired,
+        annual: false,
+        bump: false,
+        returnOrigin: "https://pay.sopmojo.com",
+        snapshot: seedCatalog(),
+        store: memoryCatalogStore(),
+        env: {
+          STRIPE_SECRET_KEY: "sk_test_unused",
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_unused",
+        } as unknown as NodeJS.ProcessEnv,
+      }),
+    ).rejects.toThrow(DASHBOARD_CHECKOUT_ERROR);
+
+    const sales = [
+      "components/BlueprintLanding.tsx",
+      "components/OffersLanding.tsx",
+      "components/FounderTrapLanding.tsx",
+      "lib/blueprint-page.ts",
+      "lib/offers-page.ts",
+      "lib/founder-trap-page.ts",
+      "components/YouMayAlsoLike.tsx",
+      "app/robots.txt/route.ts",
+    ];
+    for (const file of sales) {
+      const text = readFileSync(path.join(process.cwd(), file), "utf8");
+      expect(text, file).not.toMatch(/business_os_dashboard|business-os-dashboard|Business OS Dashboard|Diagnostic Dashboard/);
+    }
   });
 
   it("emails the link once per email and event, with no entitlement grant", async () => {
@@ -320,7 +438,7 @@ describe("SOP Library delivery", () => {
   });
 
   it("shows the emailed link on the thank-you page only after the session is complete", () => {
-    const empty = libraryProducts()[1]!;
+    const empty = emptyEmailProduct();
     expect(deliveryLink(empty)).toBeNull();
     const ready = readyLibraryProduct();
     expect(deliveryLink(ready)).toEqual({ url: "https://files.example/offers", label: "Download" });

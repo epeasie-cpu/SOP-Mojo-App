@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { createCatalogStore } from "@/lib/catalog-store";
+import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
 import { FOUNDER_TRAP_PATH } from "@/lib/founder-trap-page";
-import { deliveryIsBlocked, FREE_AUP_PATH, isFreeAupSlug, isFreeFounderTrapSlug, productForCheckout, unavailableGoHtml } from "@/lib/library";
+import { deliveryIsBlocked, FREE_AUP_PATH, isDashboardSlug, isFreeAupSlug, isFreeFounderTrapSlug, productForCheckout, unavailableGoHtml } from "@/lib/library";
 import { checkoutPath } from "@/lib/links";
 import { findProduct } from "@/lib/open-checkout";
 
@@ -15,6 +16,9 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   }
   if (isFreeFounderTrapSlug(id)) {
     return NextResponse.redirect(new URL(FOUNDER_TRAP_PATH, request.url), 302);
+  }
+  if (isDashboardSlug(id)) {
+    return NextResponse.redirect(new URL(BLUEPRINT_PATH, request.url), 302);
   }
   const loaded = await findProduct(createCatalogStore(), id);
   const product = loaded.product ? productForCheckout(loaded.product) : null;

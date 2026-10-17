@@ -4,7 +4,7 @@ import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
 import { FOUNDER_TRAP_PATH } from "@/lib/founder-trap-page";
 import { OFFERS_PATH } from "@/lib/offers-page";
 import { productPath } from "@/lib/links";
-import { isFreeAupSlug, isFreeFounderTrapSlug } from "@/lib/library";
+import { isDashboardSlug, isFreeAupSlug, isFreeFounderTrapSlug } from "@/lib/library";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +20,14 @@ export async function GET() {
     OFFERS_PATH,
     FOUNDER_TRAP_PATH,
     ...catalog.products
-      .filter((product) => product.active && !isFreeAupSlug(product.id) && !product.leadMagnet && !isFreeFounderTrapSlug(product.id))
+      .filter(
+        (product) =>
+          product.active &&
+          !isFreeAupSlug(product.id) &&
+          !product.leadMagnet &&
+          !isFreeFounderTrapSlug(product.id) &&
+          !isDashboardSlug(product.id),
+      )
       .map((product) => productPath(product.id)),
   ];
   const urls = paths

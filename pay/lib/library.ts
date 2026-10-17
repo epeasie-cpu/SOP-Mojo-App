@@ -30,7 +30,8 @@ export async function deliveryIsBlocked(
 export function checkoutErrorStatus(message: string): number {
   return message === NOT_AVAILABLE_YET ||
     message === FREE_AUP_CHECKOUT_ERROR ||
-    message === FREE_FOUNDER_TRAP_CHECKOUT_ERROR
+    message === FREE_FOUNDER_TRAP_CHECKOUT_ERROR ||
+    message === DASHBOARD_CHECKOUT_ERROR
     ? 409
     : 503;
 }
@@ -69,6 +70,9 @@ export const BLUEPRINT_PRODUCT_ID = "business_os_blueprint";
 
 export const DASHBOARD_PRODUCT_ID = "business_os_dashboard";
 
+/** Ryan removed this product. Checkout must not charge it. */
+export const DASHBOARD_CHECKOUT_ERROR = "The Business OS Dashboard is no longer available.";
+
 /** Private bucket plus object key. The bucket name is the first segment. */
 export const BLUEPRINT_STORAGE_PATH = "deliverables/business-os-blueprint.pdf";
 
@@ -102,17 +106,6 @@ export function secureFileLocation(productId: string): { storagePath: string; fi
   return null;
 }
 
-/**
- * Ready for the checkout bump UI, but not attached.
- * The dashboard has no file yet, so selling it as a bump would take money for nothing.
- */
-export const BLUEPRINT_BUMP_READY = {
-  title: "the Business OS Diagnostic Dashboard",
-  description: "Add the Business OS Diagnostic Dashboard: $4.99",
-  priceCents: 499,
-  entitlementProduct: null,
-} as const;
-
 /** Public free gate. Checkout and /go send every AUP visitor here. */
 export const FREE_AUP_PATH = "/free/aup-generator";
 
@@ -130,6 +123,11 @@ export function isFreeAupSlug(value: string): boolean {
   return id === AUP_PRODUCT_ID;
 }
 
+export function isDashboardSlug(value: string): boolean {
+  const id = value.trim().toLowerCase().replace(/-/g, "_");
+  return id === DASHBOARD_PRODUCT_ID;
+}
+
 /** SamCart product slug the existing Make scenario already maps. */
 export const AUP_SAMCART_SLUG = "acceptable-use-policy-generator";
 
@@ -145,13 +143,6 @@ const LIBRARY_SEEDS: LibrarySeed[] = [
     description: "Access to the acceptable use policy tool. The buyer's link is created after payment.",
     priceCents: 9799,
     label: "Open the policy tool",
-  },
-  {
-    id: "business_os_dashboard",
-    title: "Business OS Dashboard",
-    description: "Downloadable Business OS dashboard.",
-    priceCents: 499,
-    label: "Download",
   },
   {
     id: "business_os_blueprint",
@@ -192,7 +183,7 @@ function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
   return { kind: "email_link", url: "", label: seed.label };
 }
 
-/** SOP Library products. The two paid guides and the free founder-trap guide are private PDFs. The dashboard link stays empty until an admin pastes it. */
+/** SOP Library products. The two paid guides and the free founder-trap guide are private PDFs. */
 export function libraryProducts(): Product[] {
   return LIBRARY_SEEDS.map((seed) =>
     parseProduct({
@@ -225,13 +216,14 @@ export async function syncAupDelivery(store: CatalogStore): Promise<string[]> {
   return [AUP_PRODUCT_ID];
 }
 
-/** Point an existing blueprint row at the private PDF without rewriting other products or turning the bump on. */
+/** Point an existing blueprint row at the private PDF and clear any order bump. */
 export async function syncBlueprintDelivery(store: CatalogStore): Promise<string[]> {
   const snapshot = await store.read();
   const current = snapshot.products.find((product) => product.id === BLUEPRINT_PRODUCT_ID);
   if (!current) return [];
   const delivery = current.delivery;
   if (
+    current.orderBump == null &&
     delivery?.kind === "secure_file" &&
     delivery.storagePath === BLUEPRINT_STORAGE_PATH &&
     delivery.filename === BLUEPRINT_FILENAME
@@ -241,10 +233,25 @@ export async function syncBlueprintDelivery(store: CatalogStore): Promise<string
   await store.updateProduct({
     ...current,
     entitlementProduct: null,
-    orderBump: current.orderBump,
+    orderBump: null,
     delivery: { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME },
   });
   return [BLUEPRINT_PRODUCT_ID];
+}
+
+/**
+ * Mark a leftover Business OS Dashboard row inactive.
+ * A missing row is left missing. An inactive row is not rewritten or reactivated.
+ */
+export async function retireDashboard(store: CatalogStore): Promise<string[]> {
+  const snapshot = await store.read();
+  const current = snapshot.products.find((product) => product.id === DASHBOARD_PRODUCT_ID);
+  if (!current || !current.active) return [];
+  await store.updateProduct({
+    ...current,
+    active: false,
+  });
+  return [DASHBOARD_PRODUCT_ID];
 }
 
 /** Point an existing offers row at the private PDF and the confirmed $19.99 price. */

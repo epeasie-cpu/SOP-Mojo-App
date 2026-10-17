@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCatalogStore } from "@/lib/catalog-store";
-import { libraryProducts, syncAupDelivery, syncBlueprintDelivery, syncFounderTrapDelivery, syncOffersDelivery } from "@/lib/library";
+import { libraryProducts, retireDashboard, syncAupDelivery, syncBlueprintDelivery, syncFounderTrapDelivery, syncOffersDelivery } from "@/lib/library";
 import { isResponse, requireAdmin } from "@/lib/require-admin";
 
 export const dynamic = "force-dynamic";
@@ -16,6 +16,7 @@ export async function POST() {
       ...(await syncBlueprintDelivery(store)),
       ...(await syncOffersDelivery(store)),
       ...(await syncFounderTrapDelivery(store)),
+      ...(await retireDashboard(store)),
     ];
     return NextResponse.json({ ...result, updated });
   } catch (error) {

@@ -110,7 +110,7 @@ describe("Business OS Blueprint delivery", () => {
     expect(() => parseProduct({ ...product, entitlementProduct: "builder_pro" })).toThrow(/entitlement/);
   });
 
-  it("updates only the blueprint row to the private PDF and leaves the bump off", async () => {
+  it("updates only the blueprint row to the private PDF and clears any order bump", async () => {
     const store = memoryCatalogStore(seedCatalog());
     await store.insertIfAbsent(libraryProducts());
     const snapshot = await store.read();
@@ -136,9 +136,28 @@ describe("Business OS Blueprint delivery", () => {
     const after = await store.read();
     expect(after.products.find((product) => product.id === BLUEPRINT_PRODUCT_ID)).toMatchObject({
       priceCents: 2700,
-      orderBump: { title: "keep", priceCents: 499 },
+      orderBump: null,
       delivery: { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME },
     });
+    await store.write({
+      ...after,
+      products: after.products.map((product) =>
+        product.id === BLUEPRINT_PRODUCT_ID
+          ? {
+              ...product,
+              orderBump: {
+                title: "keep",
+                description: "Add the Business OS Diagnostic Dashboard: $4.99",
+                priceCents: 499,
+                entitlementProduct: null,
+              },
+            }
+          : product,
+      ),
+    });
+    expect(await syncBlueprintDelivery(store)).toEqual([BLUEPRINT_PRODUCT_ID]);
+    expect((await store.read()).products.find((product) => product.id === BLUEPRINT_PRODUCT_ID)?.orderBump).toBeNull();
+    expect(await syncBlueprintDelivery(store)).toEqual([]);
     expect(after.products.find((product) => product.id === "builder_pro")?.priceCents).toBe(3900);
     expect(after.products.find((product) => product.id === "offers_guide")).toMatchObject({
       priceCents: 1999,
@@ -187,11 +206,26 @@ describe("Business OS Blueprint delivery", () => {
       }),
     ).rejects.toThrow(/Stripe/);
 
-    const dashboard = libraryProducts().find((item) => item.id === "business_os_dashboard")!;
+    const emptyLink = parseProduct({
+      id: "empty_link",
+      title: "Empty link",
+      description: "A download that is not ready.",
+      priceCents: 500,
+      currency: "usd",
+      imageUrl: "",
+      billing: "once",
+      annual: null,
+      orderBump: null,
+      presentation: "panel",
+      entitlementProduct: null,
+      leadMagnet: false,
+      delivery: { kind: "email_link", url: "", label: "Download" },
+      active: true,
+    });
     called = false;
     await expect(
       openCheckoutSession({
-        product: dashboard,
+        product: emptyLink,
         annual: false,
         bump: false,
         returnOrigin: "https://pay.sopmojo.com",
@@ -502,6 +536,8 @@ describe("Business OS Blueprint delivery", () => {
     const listed = await (await sitemap()).text();
     expect(listed).toContain(`https://pay.sopmojo.com${BLUEPRINT_PATH}`);
     expect(listed).not.toContain("/checkout");
+    expect(listed).not.toContain("business_os_dashboard");
+    expect(listed).not.toContain("business-os-dashboard");
     const robotsBody = await (await robots()).text();
     expect(robotsBody).toContain("Allow: /business-os-blueprint");
     expect(robotsBody).toContain("Disallow: /download");

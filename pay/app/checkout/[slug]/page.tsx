@@ -6,8 +6,9 @@ import { CheckoutExperience } from "@/components/CheckoutExperience";
 import { createCatalogStore } from "@/lib/catalog-store";
 import type { CatalogSnapshot, Product } from "@/lib/catalog";
 import { allowedReturnOrigin } from "@/lib/links";
+import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
 import { FOUNDER_TRAP_PATH } from "@/lib/founder-trap-page";
-import { deliveryIsBlocked, FREE_AUP_PATH, isFreeAupSlug, isFreeFounderTrapSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
+import { deliveryIsBlocked, FREE_AUP_PATH, isDashboardSlug, isFreeAupSlug, isFreeFounderTrapSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
 import { findProduct, openCheckoutSession } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { checkoutMetadata } from "@/lib/seo";
@@ -21,6 +22,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
+  if (isDashboardSlug(decodeURIComponent(slug))) return checkoutMetadata("Checkout");
   const { product } = await findProduct(createCatalogStore(), decodeURIComponent(slug));
   return checkoutMetadata(product ? `${product.title} checkout` : "Checkout");
 }
@@ -113,6 +115,7 @@ export default async function CheckoutPage({
   const { slug } = await params;
   if (isFreeAupSlug(decodeURIComponent(slug))) redirect(FREE_AUP_PATH);
   if (isFreeFounderTrapSlug(decodeURIComponent(slug))) redirect(FOUNDER_TRAP_PATH);
+  if (isDashboardSlug(decodeURIComponent(slug))) redirect(BLUEPRINT_PATH);
   const query = await searchParams;
   const embed = query.embed === "1";
   const store = createCatalogStore();
