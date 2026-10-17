@@ -63,7 +63,7 @@ describe("SOP Library delivery", () => {
       "business_os_blueprint",
       "offers_guide",
     ]);
-    expect(products.map((product) => product.priceCents)).toEqual([9799, 499, 2700, 1998]);
+    expect(products.map((product) => product.priceCents)).toEqual([9799, 499, 2700, 1999]);
     for (const product of products) {
       expect(product.billing).toBe("once");
       expect(product.presentation).toBe("panel");
@@ -86,8 +86,13 @@ describe("SOP Library delivery", () => {
     expect(products[2]?.priceCents).toBe(2700);
     expect(products[2]?.orderBump).toBeNull();
     expect(isDeliveryUnavailable(products[2]!)).toBe(false);
-    expect(products[3]?.delivery).toEqual({ kind: "email_link", url: "", label: "Download" });
-    expect(isDeliveryUnavailable(products[3]!)).toBe(true);
+    expect(products[3]?.delivery).toEqual({
+      kind: "secure_file",
+      storagePath: "deliverables/high-converting-offers-guide.pdf",
+      filename: "High-Converting-Offers-Guide.pdf",
+    });
+    expect(products[3]?.priceCents).toBe(1999);
+    expect(isDeliveryUnavailable(products[3]!)).toBe(false);
     expect(BLUEPRINT_BUMP_READY.priceCents).toBe(499);
     expect(BLUEPRINT_BUMP_READY.title).toContain("Business OS Diagnostic Dashboard");
     expect(BLUEPRINT_BUMP_READY.description).toBe("Add the Business OS Diagnostic Dashboard: $4.99");
@@ -341,9 +346,9 @@ describe("SOP Library delivery", () => {
       delivery: { kind: "make_webhook", envVar: AUP_MAKE_ENV, label: "Open the policy tool" },
     });
     expect(after.products.find((product) => product.id === "builder_pro")?.priceCents).toBe(3900);
-    expect(after.products.find((product) => product.id === "offers_guide")?.delivery).toMatchObject({
-      kind: "email_link",
-      url: "",
+    expect(after.products.find((product) => product.id === "offers_guide")).toMatchObject({
+      priceCents: 1999,
+      delivery: { kind: "secure_file", storagePath: "deliverables/high-converting-offers-guide.pdf" },
     });
     const calls: { method: string; body: unknown }[] = [];
     const remote = supabaseCatalogStore({

@@ -1,6 +1,7 @@
 import { createCatalogStore } from "@/lib/catalog-store";
 import { AUP_CANONICAL_PATH } from "@/lib/aup-landing";
 import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
+import { OFFERS_PATH } from "@/lib/offers-page";
 import { productPath } from "@/lib/links";
 import { isFreeAupSlug } from "@/lib/library";
 import { absoluteUrl } from "@/lib/site";
@@ -15,6 +16,7 @@ export async function GET() {
     "/legal/refunds",
     AUP_CANONICAL_PATH,
     BLUEPRINT_PATH,
+    OFFERS_PATH,
     ...catalog.products
       .filter((product) => product.active && !isFreeAupSlug(product.id))
       .map((product) => productPath(product.id)),

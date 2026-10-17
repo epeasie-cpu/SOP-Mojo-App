@@ -1,4 +1,5 @@
 import Script from "next/script";
+import { YouMayAlsoLike } from "@/components/YouMayAlsoLike";
 import {
   BLUEPRINT_ABOUT,
   BLUEPRINT_BUY_LABEL,
@@ -20,6 +21,7 @@ import {
   blueprintProductJsonLd,
 } from "@/lib/blueprint-page";
 import { NOT_AVAILABLE_YET } from "@/lib/library";
+import { OFFERS_FULL_TITLE, OFFERS_PATH, OFFERS_PRICE_LABEL } from "@/lib/offers-page";
 import { SITE } from "@/lib/site";
 
 function Buy({ href, wide }: { href: string | null; wide?: boolean }) {
@@ -162,6 +164,8 @@ export function BlueprintLanding({ available }: { available: boolean }) {
           </div>
         </section>
       </article>
+
+      <YouMayAlsoLike href={OFFERS_PATH} title={OFFERS_FULL_TITLE} detail={OFFERS_PRICE_LABEL} />
 
       <div className="mt-12">
         <Buy href={href} />

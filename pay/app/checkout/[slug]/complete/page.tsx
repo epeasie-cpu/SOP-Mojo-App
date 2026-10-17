@@ -5,8 +5,16 @@ import { ShareProduct } from "@/components/ShareProduct";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { checkoutPath } from "@/lib/links";
 import { checkoutMetadata } from "@/lib/seo";
-import { BLUEPRINT_EMAILED_NOTE, BLUEPRINT_UPSELL, BLUEPRINT_UPSELL_URL, downloadUrl, ensureDownloadGrant } from "@/lib/downloads";
-import { productForCheckout } from "@/lib/library";
+import {
+  BLUEPRINT_EMAILED_NOTE,
+  BLUEPRINT_UPSELL,
+  BLUEPRINT_UPSELL_URL,
+  downloadUrl,
+  ensureDownloadGrant,
+  OFFERS_BLUEPRINT_UPSELL,
+  OFFERS_BLUEPRINT_UPSELL_URL,
+} from "@/lib/downloads";
+import { OFFERS_PRODUCT_ID, productForCheckout } from "@/lib/library";
 import { accessFromMetadata } from "@/lib/make-delivery";
 import { otherProductLinks, paidDeliveryView, successHeadline } from "@/lib/success";
 import { normalizeEmail } from "@/lib/stripe-events";
@@ -114,7 +122,15 @@ export default async function CompletePage({
                 href={downloadHref}
                 className="inline-flex min-h-14 items-center justify-center rounded-sm bg-lime px-4 text-center text-base font-semibold text-lime-ink"
               >
-                Download the Blueprint
+                {product.id === OFFERS_PRODUCT_ID ? "Download the guide" : "Download the Blueprint"}
+              </a>
+            ) : null}
+            {product.id === OFFERS_PRODUCT_ID ? (
+              <a
+                href={OFFERS_BLUEPRINT_UPSELL_URL}
+                className="inline-flex min-h-14 items-center justify-center rounded-sm border border-zinc-700 px-4 text-center text-base font-semibold text-zinc-50"
+              >
+                {OFFERS_BLUEPRINT_UPSELL}
               </a>
             ) : null}
             <a

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Product } from "./catalog";
 import type { EventStore } from "./event-store";
 import { readAdminConfig, sendResendEmail } from "./fulfillment";
-import { BLUEPRINT_FILENAME, BLUEPRINT_PRODUCT_ID, BLUEPRINT_STORAGE_PATH } from "./library";
+import { BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID, secureFileLocation } from "./library";
 import { absoluteUrl } from "./site";
 import { stripeClient } from "./stripe-client";
 import { normalizeEmail } from "./stripe-events";
@@ -14,6 +14,8 @@ export const DOWNLOAD_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export const BLUEPRINT_UPSELL = "Put the Blueprint to work: build your SOPs in Builder Pro. $39/mo";
 export const BLUEPRINT_UPSELL_URL = "https://pay.sopmojo.com/go/builder_pro";
 export const BLUEPRINT_EMAILED_NOTE = "We also emailed your download link.";
+export const OFFERS_BLUEPRINT_UPSELL = "The Business OS Blueprint — $27";
+export const OFFERS_BLUEPRINT_UPSELL_URL = "https://pay.sopmojo.com/go/business_os_blueprint";
 export const DOWNLOAD_RESEND_MESSAGE =
   "If that email has a purchase, a fresh download link is on its way. Check your junk and spam folder too.";
 
@@ -283,6 +285,38 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
+export function offersDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
+  const url = input.url.trim();
+  return {
+    subject: "Your High-Converting Offers Guide download",
+    text: [
+      "Your High-Converting Offers Guide is ready.",
+      "",
+      `Download: ${url}`,
+      "",
+      "Check your junk and spam folder too.",
+      "",
+      OFFERS_BLUEPRINT_UPSELL,
+      OFFERS_BLUEPRINT_UPSELL_URL,
+      "",
+      BLUEPRINT_UPSELL,
+      BLUEPRINT_UPSELL_URL,
+    ].join("\n"),
+    html: [
+      "<p>Your High-Converting Offers Guide is ready.</p>",
+      `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
+      "<p>Check your junk and spam folder too.</p>",
+      `<p><a href="${OFFERS_BLUEPRINT_UPSELL_URL}">${escapeHtml(OFFERS_BLUEPRINT_UPSELL)}</a></p>`,
+      `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
+    ].join(""),
+  };
+}
+
+export function secureDownloadEmail(productId: string, url: string): { subject: string; text: string; html: string } {
+  if (productId === OFFERS_PRODUCT_ID) return offersDownloadEmail({ url });
+  return blueprintDownloadEmail({ url });
+}
+
 export function blueprintDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
   const url = input.url.trim();
   return {
@@ -306,8 +340,13 @@ export function blueprintDownloadEmail(input: { url: string }): { subject: strin
   };
 }
 
-export function downloadRecoveryHtml(posted: boolean): string {
+export function downloadRecoveryHtml(posted: boolean, productId: string | null = BLUEPRINT_PRODUCT_ID): string {
   const note = posted ? `<p>${escapeHtml(DOWNLOAD_RESEND_MESSAGE)}</p>` : "";
+  const name =
+    productId === OFFERS_PRODUCT_ID
+      ? "The Ultimate Guide to Creating High-Converting Offers That Sell"
+      : "The Business OS Blueprint";
+  const hidden = productId === OFFERS_PRODUCT_ID || productId === BLUEPRINT_PRODUCT_ID ? productId : "";
   return `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -317,10 +356,10 @@ export function downloadRecoveryHtml(posted: boolean): string {
 <body style="margin:0;background:#09090b;color:#f4f4f5;font-family:sans-serif">
 <main style="max-width:32rem;margin:4rem auto;padding:0 1rem">
   <h1>This download link is no longer active.</h1>
-  <p>Request a fresh link for The Business OS Blueprint. It is emailed only when that address has a paid download.</p>
+  <p>Request a fresh link for ${escapeHtml(name)}. It is emailed only when that address has a paid download.</p>
   ${note}
   <form method="post">
-    <input type="hidden" name="product" value="${BLUEPRINT_PRODUCT_ID}">
+    <input type="hidden" name="product" value="${escapeHtml(hidden)}">
     <label>Email<br><input name="email" type="email" required autocomplete="email" style="min-height:3rem;width:100%;margin:0.5rem 0 1rem"></label>
     <button type="submit" style="min-height:3.5rem;width:100%;background:#b0ff56;color:#10140c;font-weight:600;border:0">Resend my link</button>
   </form>
@@ -456,7 +495,7 @@ export async function fulfillSecureDownload(input: {
   const claimed = await input.store.claimCredentialSend(key);
   if (!claimed) return "skipped";
   try {
-    const content = blueprintDownloadEmail({ url: downloadUrl(token, input.env) });
+    const content = secureDownloadEmail(input.product.id, downloadUrl(token, input.env));
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -490,10 +529,11 @@ export async function consumeDownload(input: {
   const now = input.now ?? Date.now();
   if (Date.parse(grant.expiresAt) <= now) return { ok: false, reason: "expired" };
   if (grant.downloadCount >= grant.maxDownloads) return { ok: false, reason: "used" };
-  if (grant.productId !== BLUEPRINT_PRODUCT_ID) return { ok: false, reason: "missing" };
+  const file = secureFileLocation(grant.productId);
+  if (!file) return { ok: false, reason: "missing" };
   const counted = await input.grants.compareAndIncrement(grant.id, grant.downloadCount);
   if (!counted) return { ok: false, reason: "used" };
-  return { ok: true, storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME };
+  return { ok: true, storagePath: file.storagePath, filename: file.filename };
 }
 
 export async function openDownload(input: {
@@ -502,9 +542,12 @@ export async function openDownload(input: {
   env: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
   now?: number;
-}): Promise<{ redirect: string } | { unavailable: true }> {
+}): Promise<{ redirect: string } | { unavailable: true; productId: string | null }> {
   const decision = await consumeDownload(input);
-  if (!decision.ok) return { unavailable: true };
+  if (!decision.ok) {
+    const grant = await input.grants.findByHash(hashDownloadToken(input.token));
+    return { unavailable: true, productId: grant?.productId ?? null };
+  }
   const redirect = await signedDeliverableUrl({
     storagePath: decision.storagePath,
     filename: decision.filename,
@@ -526,14 +569,33 @@ export async function resendDownloadLink(input: {
   if (downloadResendLimited(input.ip, input.now)) return;
   const email = normalizeEmail(input.email);
   const productId = input.productId.trim();
-  if (!email || productId !== BLUEPRINT_PRODUCT_ID) return;
+  const productIds =
+    productId === BLUEPRINT_PRODUCT_ID || productId === OFFERS_PRODUCT_ID
+      ? [productId]
+      : productId === ""
+        ? [BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID]
+        : [];
+  if (!email || productIds.length === 0) return;
   const grants = input.grants ?? createGrantStore(input.env, input.fetchImpl);
-  const sessionId = await grants.findPaidSession(email, productId);
+  for (const id of productIds) {
+    await sendFreshDownload({ email, productId: id, env: input.env, fetchImpl: input.fetchImpl, grants, now: input.now });
+  }
+}
+
+async function sendFreshDownload(input: {
+  email: string;
+  productId: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl: typeof fetch;
+  grants: GrantStore;
+  now?: number;
+}): Promise<void> {
+  const sessionId = await input.grants.findPaidSession(input.email, input.productId);
   if (!sessionId) return;
   const token = newDownloadToken();
-  const content = blueprintDownloadEmail({ url: downloadUrl(token, input.env) });
+  const content = secureDownloadEmail(input.productId, downloadUrl(token, input.env));
   const sent = await sendResendEmail({
-    email,
+    email: input.email,
     subject: content.subject,
     text: content.text,
     html: content.html,
@@ -541,5 +603,9 @@ export async function resendDownloadLink(input: {
     fetchImpl: input.fetchImpl,
   });
   if (!sent) return;
-  await grants.replaceToken(sessionId, hashDownloadToken(token), new Date((input.now ?? Date.now()) + DOWNLOAD_TTL_MS).toISOString());
+  await input.grants.replaceToken(
+    sessionId,
+    hashDownloadToken(token),
+    new Date((input.now ?? Date.now()) + DOWNLOAD_TTL_MS).toISOString(),
+  );
 }

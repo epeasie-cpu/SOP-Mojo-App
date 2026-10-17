@@ -70,6 +70,25 @@ export const BLUEPRINT_STORAGE_PATH = "deliverables/business-os-blueprint.pdf";
 
 export const BLUEPRINT_FILENAME = "Business-OS-Blueprint.pdf";
 
+export const OFFERS_PRODUCT_ID = "offers_guide";
+
+/** Ryan confirmed $19.99. The earlier seed was $19.98. */
+export const OFFERS_PRICE_CENTS = 1999;
+
+export const OFFERS_STORAGE_PATH = "deliverables/high-converting-offers-guide.pdf";
+
+export const OFFERS_FILENAME = "High-Converting-Offers-Guide.pdf";
+
+export function secureFileLocation(productId: string): { storagePath: string; filename: string } | null {
+  if (productId === BLUEPRINT_PRODUCT_ID) {
+    return { storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME };
+  }
+  if (productId === OFFERS_PRODUCT_ID) {
+    return { storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME };
+  }
+  return null;
+}
+
 /**
  * Ready for the checkout bump UI, but not attached.
  * The dashboard has no file yet, so selling it as a bump would take money for nothing.
@@ -122,10 +141,10 @@ const LIBRARY_SEEDS: LibrarySeed[] = [
     label: "Download",
   },
   {
-    id: "offers_guide",
+    id: OFFERS_PRODUCT_ID,
     title: "The Ultimate Guide to Creating High-Converting Offers That Sell",
     description: "Downloadable guide to creating offers that sell.",
-    priceCents: 1998,
+    priceCents: OFFERS_PRICE_CENTS,
     label: "Download",
   },
 ];
@@ -137,10 +156,13 @@ function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
   if (seed.id === BLUEPRINT_PRODUCT_ID) {
     return { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME };
   }
+  if (seed.id === OFFERS_PRODUCT_ID) {
+    return { kind: "secure_file", storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME };
+  }
   return { kind: "email_link", url: "", label: seed.label };
 }
 
-/** Four SOP Library products. Blueprint is a private PDF. The other download links stay empty until an admin pastes them. */
+/** Four SOP Library products. Blueprint and the offers guide are private PDFs. The dashboard link stays empty until an admin pastes it. */
 export function libraryProducts(): Product[] {
   return LIBRARY_SEEDS.map((seed) =>
     parseProduct({
@@ -192,6 +214,30 @@ export async function syncBlueprintDelivery(store: CatalogStore): Promise<string
     delivery: { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME },
   });
   return [BLUEPRINT_PRODUCT_ID];
+}
+
+/** Point an existing offers row at the private PDF and the confirmed $19.99 price. */
+export async function syncOffersDelivery(store: CatalogStore): Promise<string[]> {
+  const snapshot = await store.read();
+  const current = snapshot.products.find((product) => product.id === OFFERS_PRODUCT_ID);
+  if (!current) return [];
+  const delivery = current.delivery;
+  if (
+    current.priceCents === OFFERS_PRICE_CENTS &&
+    delivery?.kind === "secure_file" &&
+    delivery.storagePath === OFFERS_STORAGE_PATH &&
+    delivery.filename === OFFERS_FILENAME
+  ) {
+    return [];
+  }
+  await store.updateProduct({
+    ...current,
+    priceCents: OFFERS_PRICE_CENTS,
+    entitlementProduct: null,
+    orderBump: current.orderBump,
+    delivery: { kind: "secure_file", storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME },
+  });
+  return [OFFERS_PRODUCT_ID];
 }
 
 export function productForCheckout(product: Product): Product {

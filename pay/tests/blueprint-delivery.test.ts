@@ -140,9 +140,13 @@ describe("Business OS Blueprint delivery", () => {
       delivery: { kind: "secure_file", storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME },
     });
     expect(after.products.find((product) => product.id === "builder_pro")?.priceCents).toBe(3900);
-    expect(after.products.find((product) => product.id === "offers_guide")?.delivery).toMatchObject({
-      kind: "email_link",
-      url: "",
+    expect(after.products.find((product) => product.id === "offers_guide")).toMatchObject({
+      priceCents: 1999,
+      delivery: {
+        kind: "secure_file",
+        storagePath: "deliverables/high-converting-offers-guide.pdf",
+        filename: "High-Converting-Offers-Guide.pdf",
+      },
     });
     expect(seedProducts()[1]?.annual?.priceCents).toBe(39000);
   });
@@ -183,11 +187,11 @@ describe("Business OS Blueprint delivery", () => {
       }),
     ).rejects.toThrow(/Stripe/);
 
-    const offers = libraryProducts().find((item) => item.id === "offers_guide")!;
+    const dashboard = libraryProducts().find((item) => item.id === "business_os_dashboard")!;
     called = false;
     await expect(
       openCheckoutSession({
-        product: offers,
+        product: dashboard,
         annual: false,
         bump: false,
         returnOrigin: "https://pay.sopmojo.com",
