@@ -523,8 +523,11 @@ describe("SOP Library delivery", () => {
         returnOrigin: "https://pay.sopmojo.com",
         snapshot: seedCatalog(),
         store: memoryCatalogStore(),
-        env: {} as NodeJS.ProcessEnv,
+        env: {
+          STRIPE_SECRET_KEY: "sk_test_unused",
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: "pk_test_unused",
+        } as unknown as NodeJS.ProcessEnv,
       }),
-    ).rejects.toThrow(/Stripe/);
+    ).rejects.toThrow(/AUP Generator is free/);
   });
 });

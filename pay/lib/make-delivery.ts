@@ -52,10 +52,11 @@ export function makeOrderPayload(input: {
   created: unknown;
   product: Product;
   eventId: string;
+  free?: boolean;
 }): Record<string, unknown> {
   const { first_name, last_name } = splitBuyerName(input.name);
   const slug = input.product.id === AUP_PRODUCT_ID ? AUP_SAMCART_SLUG : input.product.id.replace(/_/g, "-");
-  const price = dollars(input.product.priceCents);
+  const price = input.free ? "0.00" : dollars(input.product.priceCents);
   const customer = {
     email: input.email,
     first_name,
@@ -73,7 +74,7 @@ export function makeOrderPayload(input: {
     customer,
     order: {
       id: input.orderId,
-      total: dollars(input.totalCents),
+      total: input.free ? "0.00" : dollars(input.totalCents),
       created_at: createdAt(input.created),
     },
     products: [product],
@@ -84,6 +85,7 @@ export function makeOrderPayload(input: {
     product_slug: slug,
     stripe_event_id: input.eventId,
     source: "pay.sopmojo.com",
+    ...(input.free ? { free: true } : {}),
   };
 }
 

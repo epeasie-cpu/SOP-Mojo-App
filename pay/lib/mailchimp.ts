@@ -4,6 +4,9 @@ import { DEFAULT_MAILCHIMP_AUDIENCE_ID } from "./site";
 /** Tag applied on the existing Mojo Business Solutions LLC audience. Not a new list. */
 export const CHECKOUT_LEAD_TAG = "checkout";
 
+/** Free AUP gate only. Never paired with the checkout tag. */
+export const AUP_FREE_LEAD_TAG = "aup-free";
+
 /** Granted product id → Mailchimp tag. Unknown ids are left untagged. */
 const PRODUCT_LEAD_TAGS: Record<string, string> = {
   builder_pro: "builder-pro",
@@ -101,6 +104,52 @@ export async function captureCheckoutLead(input: {
       {
         method: "POST",
         body: JSON.stringify({ tags: checkoutLeadTags(input.products ?? []) }),
+      },
+      fetchImpl,
+    );
+    if (!tagged.ok) return { ok: false, reason: "tag" };
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/** Free AUP gate. Always the Mojo audience, and only the aup-free tag. */
+export async function captureFreeAupLead(input: {
+  email: string;
+  firstName?: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<CaptureResult> {
+  const settings = mailchimpSettings(input.env);
+  if (!settings) return { ok: true, skipped: true, reason: "unconfigured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email.includes("@")) return { ok: false, reason: "email" };
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const firstName = input.firstName?.trim() ?? "";
+  try {
+    const hash = mailchimpSubscriberHash(email);
+    const listId = encodeURIComponent(DEFAULT_MAILCHIMP_AUDIENCE_ID);
+    const member = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          email_address: email,
+          status_if_new: "subscribed",
+          ...(firstName ? { merge_fields: { FNAME: firstName } } : {}),
+        }),
+      },
+      fetchImpl,
+    );
+    if (!member.ok) return { ok: false, reason: "member" };
+    const tagged = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}/tags`,
+      {
+        method: "POST",
+        body: JSON.stringify({ tags: [{ name: AUP_FREE_LEAD_TAG, status: "active" }] }),
       },
       fetchImpl,
     );

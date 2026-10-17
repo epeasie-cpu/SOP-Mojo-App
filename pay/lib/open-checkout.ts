@@ -2,7 +2,7 @@ import type Stripe from "stripe";
 import { checkoutLineItems, checkoutSessionParams, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
-import { isDeliveryUnavailable, NOT_AVAILABLE_YET, productForCheckout } from "./library";
+import { FREE_AUP_CHECKOUT_ERROR, isDeliveryUnavailable, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "./library";
 import { captureCheckoutLead } from "./mailchimp";
 import { stripeClient } from "./stripe-client";
 import { stripeCredentials } from "./stripe-mode";
@@ -50,6 +50,7 @@ export async function openCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<{ clientSecret: string; sessionId: string; taxApplied: boolean; publishableKey: string; mode: "test" | "live" }> {
+  if (isFreeAupSlug(input.product.id)) throw new Error(FREE_AUP_CHECKOUT_ERROR);
   const product = productForCheckout(input.product);
   if (isDeliveryUnavailable(product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;
@@ -99,6 +100,7 @@ export async function updateCheckoutSession(input: {
   env?: NodeJS.ProcessEnv;
   fetchImpl?: typeof fetch;
 }): Promise<void> {
+  if (isFreeAupSlug(input.product.id)) throw new Error(FREE_AUP_CHECKOUT_ERROR);
   const product = productForCheckout(input.product);
   if (isDeliveryUnavailable(product)) throw new Error(NOT_AVAILABLE_YET);
   const env = input.env ?? process.env;

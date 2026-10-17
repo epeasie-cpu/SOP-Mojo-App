@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Suspense } from "react";
 import { CheckoutExperience } from "@/components/CheckoutExperience";
 import { createCatalogStore } from "@/lib/catalog-store";
 import type { CatalogSnapshot, Product } from "@/lib/catalog";
 import { allowedReturnOrigin } from "@/lib/links";
-import { isDeliveryUnavailable, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
+import { FREE_AUP_PATH, isDeliveryUnavailable, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
 import { findProduct, openCheckoutSession } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { checkoutMetadata } from "@/lib/seo";
@@ -110,6 +110,7 @@ export default async function CheckoutPage({
   searchParams: Promise<{ embed?: string }>;
 }) {
   const { slug } = await params;
+  if (isFreeAupSlug(decodeURIComponent(slug))) redirect(FREE_AUP_PATH);
   const query = await searchParams;
   const embed = query.embed === "1";
   const store = createCatalogStore();

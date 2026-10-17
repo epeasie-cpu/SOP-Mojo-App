@@ -11,7 +11,7 @@ export function isDeliveryUnavailable(product: Product): boolean {
 }
 
 export function checkoutErrorStatus(message: string): number {
-  return message === NOT_AVAILABLE_YET ? 409 : 503;
+  return message === NOT_AVAILABLE_YET || message === FREE_AUP_CHECKOUT_ERROR ? 409 : 503;
 }
 
 export function unavailableGoHtml(title: string): string {
@@ -43,6 +43,16 @@ type LibrarySeed = {
 };
 
 export const AUP_PRODUCT_ID = "aup_generator";
+
+/** Public free gate. Checkout and /go send every AUP visitor here. */
+export const FREE_AUP_PATH = "/free/aup-generator";
+
+export const FREE_AUP_CHECKOUT_ERROR = "The AUP Generator is free.";
+
+export function isFreeAupSlug(value: string): boolean {
+  const id = value.trim().toLowerCase().replace(/-/g, "_");
+  return id === AUP_PRODUCT_ID;
+}
 
 /** SamCart product slug the existing Make scenario already maps. */
 export const AUP_SAMCART_SLUG = "acceptable-use-policy-generator";
