@@ -2,7 +2,15 @@ import type Stripe from "stripe";
 import { checkoutLineItems, checkoutSessionParams, sessionMetadata } from "./checkout-params";
 import type { CatalogSnapshot, Product } from "./catalog";
 import type { CatalogStore } from "./catalog-store";
-import { deliveryIsBlocked, FREE_AUP_CHECKOUT_ERROR, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "./library";
+import {
+  deliveryIsBlocked,
+  FREE_AUP_CHECKOUT_ERROR,
+  FREE_FOUNDER_TRAP_CHECKOUT_ERROR,
+  isFreeAupSlug,
+  isFreeFounderTrapSlug,
+  NOT_AVAILABLE_YET,
+  productForCheckout,
+} from "./library";
 import { captureCheckoutLead } from "./mailchimp";
 import { stripeClient } from "./stripe-client";
 import { stripeCredentials } from "./stripe-mode";
@@ -51,6 +59,7 @@ export async function openCheckoutSession(input: {
   fetchImpl?: typeof fetch;
 }): Promise<{ clientSecret: string; sessionId: string; taxApplied: boolean; publishableKey: string; mode: "test" | "live" }> {
   if (isFreeAupSlug(input.product.id)) throw new Error(FREE_AUP_CHECKOUT_ERROR);
+  if (input.product.leadMagnet || isFreeFounderTrapSlug(input.product.id)) throw new Error(FREE_FOUNDER_TRAP_CHECKOUT_ERROR);
   const product = productForCheckout(input.product);
   const env = input.env ?? process.env;
   if (await deliveryIsBlocked(product, env, input.fetchImpl)) throw new Error(NOT_AVAILABLE_YET);
@@ -101,6 +110,7 @@ export async function updateCheckoutSession(input: {
   fetchImpl?: typeof fetch;
 }): Promise<void> {
   if (isFreeAupSlug(input.product.id)) throw new Error(FREE_AUP_CHECKOUT_ERROR);
+  if (input.product.leadMagnet || isFreeFounderTrapSlug(input.product.id)) throw new Error(FREE_FOUNDER_TRAP_CHECKOUT_ERROR);
   const product = productForCheckout(input.product);
   const env = input.env ?? process.env;
   if (await deliveryIsBlocked(product, env, input.fetchImpl)) throw new Error(NOT_AVAILABLE_YET);

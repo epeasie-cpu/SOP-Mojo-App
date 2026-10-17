@@ -55,6 +55,8 @@ export type Product = {
   presentation: "page" | "panel";
   entitlementProduct: EntitlementProduct | null;
   delivery: ProductDelivery | null;
+  /** Free email-gated download. Price is zero and checkout must not charge it. */
+  leadMagnet: boolean;
   seo: ProductSeo;
   active: boolean;
 };
@@ -122,10 +124,14 @@ export function parseProduct(value: unknown): Product {
   if (!SLUG.test(id)) {
     throw new Error("Product id must be a slug like flowchart_plus (letters, numbers, underscores).");
   }
-  const priceCents = typeof row.priceCents === "number" ? Math.round(row.priceCents) : centsFromDollars(row.price);
-  if (!priceCents || priceCents < 50) throw new Error(`${id}: price must be at least $0.50.`);
+  const leadMagnet = row.leadMagnet === true;
+  const parsedCents = typeof row.priceCents === "number" ? Math.round(row.priceCents) : centsFromDollars(row.price);
+  if (!leadMagnet && (!parsedCents || parsedCents < 50)) throw new Error(`${id}: price must be at least $0.50.`);
+  const priceCents = leadMagnet ? 0 : parsedCents;
+  if (priceCents == null) throw new Error(`${id}: price must be at least $0.50.`);
   const billing = row.billing === "month" ? "month" : row.billing === "once" ? "once" : null;
   if (!billing) throw new Error(`${id}: billing must be once or month.`);
+  if (leadMagnet && billing !== "once") throw new Error(`${id}: a lead magnet is a one-time free download.`);
   const presentation = row.presentation === "panel" ? "panel" : row.presentation === "page" ? "page" : null;
   if (!presentation) throw new Error(`${id}: presentation must be page or panel.`);
   const entitlementRaw = typeof row.entitlementProduct === "string" ? row.entitlementProduct.trim() : "";
@@ -177,6 +183,7 @@ export function parseProduct(value: unknown): Product {
     presentation,
     entitlementProduct,
     delivery,
+    leadMagnet,
     seo,
     active: row.active !== false,
   };

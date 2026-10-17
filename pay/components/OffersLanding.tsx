@@ -1,6 +1,7 @@
 import Script from "next/script";
 import { YouMayAlsoLike } from "@/components/YouMayAlsoLike";
 import { BLUEPRINT_H1, BLUEPRINT_PATH, BLUEPRINT_PRICE_LABEL } from "@/lib/blueprint-page";
+import { FOUNDER_TRAP_H1, FOUNDER_TRAP_PATH, FOUNDER_TRAP_PRICE_LABEL } from "@/lib/founder-trap-page";
 import { NOT_AVAILABLE_YET } from "@/lib/library";
 import {
   OFFERS_ABOUT,
@@ -159,7 +160,12 @@ export function OffersLanding({ available }: { available: boolean }) {
         </section>
       </article>
 
-      <YouMayAlsoLike href={BLUEPRINT_PATH} title={BLUEPRINT_H1} detail={BLUEPRINT_PRICE_LABEL} />
+      <YouMayAlsoLike
+        items={[
+          { href: BLUEPRINT_PATH, title: BLUEPRINT_H1, detail: BLUEPRINT_PRICE_LABEL },
+          { href: FOUNDER_TRAP_PATH, title: FOUNDER_TRAP_H1, detail: FOUNDER_TRAP_PRICE_LABEL },
+        ]}
+      />
 
       <div className="mt-12">
         <Buy href={href} />

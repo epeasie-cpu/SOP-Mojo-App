@@ -45,6 +45,7 @@ type Draft = {
   deliveryStoragePath: string;
   deliveryFilename: string;
   deliveryLabel: string;
+  leadMagnet: boolean;
   seoTitle: string;
   seoDescription: string;
   active: boolean;
@@ -107,6 +108,7 @@ function toDraft(product: Product): Draft {
       product.delivery?.kind === "email_link" || product.delivery?.kind === "make_webhook"
         ? product.delivery.label
         : "Download",
+    leadMagnet: product.leadMagnet,
     seoTitle: product.seo.title || derivedSeoTitle(source),
     seoDescription: product.seo.description || derivedSeoDescription(source),
     active: product.active,
@@ -137,6 +139,7 @@ function blankDraft(): Draft {
     deliveryStoragePath: "",
     deliveryFilename: "",
     deliveryLabel: "Download",
+    leadMagnet: false,
     seoTitle: "",
     seoDescription: "",
     active: true,
@@ -144,8 +147,8 @@ function blankDraft(): Draft {
 }
 
 function draftToProduct(draft: Draft): Product {
-  const priceCents = centsFromDollars(draft.price);
-  if (!priceCents) throw new Error("Price must be at least $0.50.");
+  const priceCents = draft.leadMagnet ? 0 : centsFromDollars(draft.price);
+  if (priceCents == null) throw new Error("Price must be at least $0.50.");
   let annual: AnnualOption | null = null;
   if (draft.annualEnabled) {
     const annualCents = centsFromDollars(draft.annualPrice);
@@ -199,6 +202,7 @@ function draftToProduct(draft: Draft): Product {
     presentation: draft.presentation,
     entitlementProduct: delivery ? null : draft.entitlementProduct || null,
     delivery,
+    leadMagnet: draft.leadMagnet,
     seo: resolvedSeo(sourceOf(draft), { title: draft.seoTitle, description: draft.seoDescription }),
     active: draft.active,
   };

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Product } from "./catalog";
 import type { EventStore } from "./event-store";
 import { readAdminConfig, sendResendEmail } from "./fulfillment";
-import { BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID, secureFileLocation } from "./library";
+import { BLUEPRINT_PRODUCT_ID, FOUNDER_TRAP_PRODUCT_ID, OFFERS_PRODUCT_ID, secureFileLocation } from "./library";
 import { absoluteUrl } from "./site";
 import { stripeClient } from "./stripe-client";
 import { normalizeEmail } from "./stripe-events";
@@ -16,6 +16,9 @@ export const BLUEPRINT_UPSELL_URL = "https://pay.sopmojo.com/go/builder_pro";
 export const BLUEPRINT_EMAILED_NOTE = "We also emailed your download link.";
 export const OFFERS_BLUEPRINT_UPSELL = "The Business OS Blueprint — $27";
 export const OFFERS_BLUEPRINT_UPSELL_URL = "https://pay.sopmojo.com/go/business_os_blueprint";
+export const FOUNDER_TRAP_BLUEPRINT_UPSELL =
+  "Ready for the full blueprint? The 4-System Framework to scale from $1M to $10M.";
+export const FOUNDER_TRAP_BLUEPRINT_UPSELL_URL = "https://pay.sopmojo.com/go/business_os_blueprint";
 export const DOWNLOAD_RESEND_MESSAGE =
   "If that email has a purchase, a fresh download link is on its way. Check your junk and spam folder too.";
 
@@ -312,8 +315,36 @@ export function offersDownloadEmail(input: { url: string }): { subject: string; 
   };
 }
 
+export function founderTrapDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
+  const url = input.url.trim();
+  return {
+    subject: "Your Escape the Founder Trap download",
+    text: [
+      "Your Escape the Founder Trap guide is ready.",
+      "",
+      `Download: ${url}`,
+      "",
+      "Check your junk and spam folder too.",
+      "",
+      FOUNDER_TRAP_BLUEPRINT_UPSELL,
+      FOUNDER_TRAP_BLUEPRINT_UPSELL_URL,
+      "",
+      BLUEPRINT_UPSELL,
+      BLUEPRINT_UPSELL_URL,
+    ].join("\n"),
+    html: [
+      "<p>Your Escape the Founder Trap guide is ready.</p>",
+      `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
+      "<p>Check your junk and spam folder too.</p>",
+      `<p><a href="${FOUNDER_TRAP_BLUEPRINT_UPSELL_URL}">${escapeHtml(FOUNDER_TRAP_BLUEPRINT_UPSELL)}</a></p>`,
+      `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
+    ].join(""),
+  };
+}
+
 export function secureDownloadEmail(productId: string, url: string): { subject: string; text: string; html: string } {
   if (productId === OFFERS_PRODUCT_ID) return offersDownloadEmail({ url });
+  if (productId === FOUNDER_TRAP_PRODUCT_ID) return founderTrapDownloadEmail({ url });
   return blueprintDownloadEmail({ url });
 }
 
@@ -345,8 +376,13 @@ export function downloadRecoveryHtml(posted: boolean, productId: string | null =
   const name =
     productId === OFFERS_PRODUCT_ID
       ? "The Ultimate Guide to Creating High-Converting Offers That Sell"
-      : "The Business OS Blueprint";
-  const hidden = productId === OFFERS_PRODUCT_ID || productId === BLUEPRINT_PRODUCT_ID ? productId : "";
+      : productId === FOUNDER_TRAP_PRODUCT_ID
+        ? "Escape the Founder Trap"
+        : "The Business OS Blueprint";
+  const hidden =
+    productId === OFFERS_PRODUCT_ID || productId === BLUEPRINT_PRODUCT_ID || productId === FOUNDER_TRAP_PRODUCT_ID
+      ? productId
+      : "";
   return `<!doctype html>
 <html lang="en">
 <meta charset="utf-8">
@@ -438,6 +474,33 @@ async function issueToken(input: {
   const loaded = await input.loadToken();
   if (!loaded) throw new Error("Download link is still being stored.");
   return loaded;
+}
+
+/** Free lead magnet. The session id is not a Stripe Checkout Session. Does not send email. */
+export async function issueFreeDownloadGrant(input: {
+  email: string;
+  productId: string;
+  grants: GrantStore;
+  now?: number;
+}): Promise<{ token: string; sessionId: string }> {
+  const email = input.email.trim().toLowerCase();
+  const token = newDownloadToken();
+  const sessionId = `free_${crypto.randomUUID()}`;
+  const timing = grantTiming(input.now ?? Date.now());
+  const created = await input.grants.insert({
+    id: crypto.randomUUID(),
+    tokenHash: hashDownloadToken(token),
+    email,
+    productId: input.productId,
+    sessionId,
+    createdAt: timing.createdAt,
+    expiresAt: timing.expiresAt,
+    downloadCount: 0,
+    maxDownloads: DOWNLOAD_MAX,
+    revokedAt: null,
+  });
+  if (!created) throw new Error("Download link is still being stored.");
+  return { token, sessionId };
 }
 
 /** Create the grant if this Checkout Session does not have one yet. Does not send email. */
@@ -569,12 +632,8 @@ export async function resendDownloadLink(input: {
   if (downloadResendLimited(input.ip, input.now)) return;
   const email = normalizeEmail(input.email);
   const productId = input.productId.trim();
-  const productIds =
-    productId === BLUEPRINT_PRODUCT_ID || productId === OFFERS_PRODUCT_ID
-      ? [productId]
-      : productId === ""
-        ? [BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID]
-        : [];
+  const known = [BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID, FOUNDER_TRAP_PRODUCT_ID];
+  const productIds = known.includes(productId) ? [productId] : productId === "" ? known : [];
   if (!email || productIds.length === 0) return;
   const grants = input.grants ?? createGrantStore(input.env, input.fetchImpl);
   for (const id of productIds) {

@@ -23,5 +23,6 @@ export const config = {
     "/api/:path*",
     "/download/:path*",
     "/free/aup-generator/ready",
+    "/escape-the-founder-trap/ready",
   ],
 };

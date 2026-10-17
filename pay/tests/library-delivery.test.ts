@@ -55,15 +55,16 @@ function paidLibrary(id: string, productId = "offers_guide"): IncomingStripeEven
 }
 
 describe("SOP Library delivery", () => {
-  it("seeds four one-time slide-out products with empty links and no app entitlement", () => {
+  it("seeds the library products with empty links and no app entitlement", () => {
     const products = libraryProducts();
     expect(products.map((product) => product.id)).toEqual([
       "aup_generator",
       "business_os_dashboard",
       "business_os_blueprint",
       "offers_guide",
+      "founder_trap_guide",
     ]);
-    expect(products.map((product) => product.priceCents)).toEqual([9799, 499, 2700, 1999]);
+    expect(products.map((product) => product.priceCents)).toEqual([9799, 499, 2700, 1999, 0]);
     for (const product of products) {
       expect(product.billing).toBe("once");
       expect(product.presentation).toBe("panel");
@@ -93,6 +94,13 @@ describe("SOP Library delivery", () => {
     });
     expect(products[3]?.priceCents).toBe(1999);
     expect(isDeliveryUnavailable(products[3]!)).toBe(false);
+    expect(products[4]?.leadMagnet).toBe(true);
+    expect(products[4]?.priceCents).toBe(0);
+    expect(products[4]?.delivery).toEqual({
+      kind: "secure_file",
+      storagePath: "deliverables/escape-the-founder-trap.pdf",
+      filename: "Escape-the-Founder-Trap.pdf",
+    });
     expect(BLUEPRINT_BUMP_READY.priceCents).toBe(499);
     expect(BLUEPRINT_BUMP_READY.title).toContain("Business OS Diagnostic Dashboard");
     expect(BLUEPRINT_BUMP_READY.description).toBe("Add the Business OS Diagnostic Dashboard: $4.99");
@@ -124,6 +132,7 @@ describe("SOP Library delivery", () => {
       "business_os_dashboard",
       "business_os_blueprint",
       "offers_guide",
+      "founder_trap_guide",
     ]);
     const snapshot = await store.read();
     const aup = snapshot.products.find((product) => product.id === "aup_generator")!;
@@ -177,10 +186,20 @@ describe("SOP Library delivery", () => {
     });
     const result = await store.insertIfAbsent(libraryProducts());
     expect(result.skipped).toEqual(["offers_guide"]);
-    expect(result.inserted).toEqual(["aup_generator", "business_os_dashboard", "business_os_blueprint"]);
+    expect(result.inserted).toEqual([
+      "aup_generator",
+      "business_os_dashboard",
+      "business_os_blueprint",
+      "founder_trap_guide",
+    ]);
     const post = calls.find((call) => call.method === "POST");
     const rows = post?.body as { id: string }[];
-    expect(rows.map((row) => row.id)).toEqual(["aup_generator", "business_os_dashboard", "business_os_blueprint"]);
+    expect(rows.map((row) => row.id)).toEqual([
+      "aup_generator",
+      "business_os_dashboard",
+      "business_os_blueprint",
+      "founder_trap_guide",
+    ]);
     expect(JSON.stringify(post?.body)).not.toContain("builder_pro");
     expect(JSON.stringify(post?.body)).not.toContain("flowchart_plus");
     expect(JSON.stringify(post?.body)).not.toContain("__settings");

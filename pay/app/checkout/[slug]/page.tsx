@@ -6,7 +6,8 @@ import { CheckoutExperience } from "@/components/CheckoutExperience";
 import { createCatalogStore } from "@/lib/catalog-store";
 import type { CatalogSnapshot, Product } from "@/lib/catalog";
 import { allowedReturnOrigin } from "@/lib/links";
-import { deliveryIsBlocked, FREE_AUP_PATH, isFreeAupSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
+import { FOUNDER_TRAP_PATH } from "@/lib/founder-trap-page";
+import { deliveryIsBlocked, FREE_AUP_PATH, isFreeAupSlug, isFreeFounderTrapSlug, NOT_AVAILABLE_YET, productForCheckout } from "@/lib/library";
 import { findProduct, openCheckoutSession } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { checkoutMetadata } from "@/lib/seo";
@@ -111,6 +112,7 @@ export default async function CheckoutPage({
 }) {
   const { slug } = await params;
   if (isFreeAupSlug(decodeURIComponent(slug))) redirect(FREE_AUP_PATH);
+  if (isFreeFounderTrapSlug(decodeURIComponent(slug))) redirect(FOUNDER_TRAP_PATH);
   const query = await searchParams;
   const embed = query.embed === "1";
   const store = createCatalogStore();

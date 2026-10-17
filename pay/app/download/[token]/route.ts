@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createGrantStore, downloadRecoveryHtml, openDownload, resendDownloadLink } from "@/lib/downloads";
-import { BLUEPRINT_PRODUCT_ID, OFFERS_PRODUCT_ID } from "@/lib/library";
+import { BLUEPRINT_PRODUCT_ID, FOUNDER_TRAP_PRODUCT_ID, OFFERS_PRODUCT_ID } from "@/lib/library";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +39,12 @@ export async function POST(request: Request) {
   const form = await request.formData().catch(() => null);
   const email = String(form?.get("email") ?? "");
   const productId = String(form?.get("product") ?? "");
-  if (productId === BLUEPRINT_PRODUCT_ID || productId === OFFERS_PRODUCT_ID || productId === "") {
+  if (
+    productId === BLUEPRINT_PRODUCT_ID ||
+    productId === OFFERS_PRODUCT_ID ||
+    productId === FOUNDER_TRAP_PRODUCT_ID ||
+    productId === ""
+  ) {
     await resendDownloadLink({
       email,
       productId,

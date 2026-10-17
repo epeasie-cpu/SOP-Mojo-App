@@ -28,7 +28,11 @@ export async function deliveryIsBlocked(
 }
 
 export function checkoutErrorStatus(message: string): number {
-  return message === NOT_AVAILABLE_YET || message === FREE_AUP_CHECKOUT_ERROR ? 409 : 503;
+  return message === NOT_AVAILABLE_YET ||
+    message === FREE_AUP_CHECKOUT_ERROR ||
+    message === FREE_FOUNDER_TRAP_CHECKOUT_ERROR
+    ? 409
+    : 503;
 }
 
 export function unavailableGoHtml(title: string): string {
@@ -79,12 +83,21 @@ export const OFFERS_STORAGE_PATH = "deliverables/high-converting-offers-guide.pd
 
 export const OFFERS_FILENAME = "High-Converting-Offers-Guide.pdf";
 
+export const FOUNDER_TRAP_PRODUCT_ID = "founder_trap_guide";
+
+export const FOUNDER_TRAP_STORAGE_PATH = "deliverables/escape-the-founder-trap.pdf";
+
+export const FOUNDER_TRAP_FILENAME = "Escape-the-Founder-Trap.pdf";
+
 export function secureFileLocation(productId: string): { storagePath: string; filename: string } | null {
   if (productId === BLUEPRINT_PRODUCT_ID) {
     return { storagePath: BLUEPRINT_STORAGE_PATH, filename: BLUEPRINT_FILENAME };
   }
   if (productId === OFFERS_PRODUCT_ID) {
     return { storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME };
+  }
+  if (productId === FOUNDER_TRAP_PRODUCT_ID) {
+    return { storagePath: FOUNDER_TRAP_STORAGE_PATH, filename: FOUNDER_TRAP_FILENAME };
   }
   return null;
 }
@@ -104,6 +117,13 @@ export const BLUEPRINT_BUMP_READY = {
 export const FREE_AUP_PATH = "/free/aup-generator";
 
 export const FREE_AUP_CHECKOUT_ERROR = "The AUP Generator is free.";
+
+export const FREE_FOUNDER_TRAP_CHECKOUT_ERROR = "Escape the Founder Trap is free.";
+
+export function isFreeFounderTrapSlug(value: string): boolean {
+  const id = value.trim().toLowerCase().replace(/-/g, "_");
+  return id === FOUNDER_TRAP_PRODUCT_ID;
+}
 
 export function isFreeAupSlug(value: string): boolean {
   const id = value.trim().toLowerCase().replace(/-/g, "_");
@@ -147,6 +167,13 @@ const LIBRARY_SEEDS: LibrarySeed[] = [
     priceCents: OFFERS_PRICE_CENTS,
     label: "Download",
   },
+  {
+    id: FOUNDER_TRAP_PRODUCT_ID,
+    title: "Escape the Founder Trap",
+    description: "Free guide to escaping the founder trap.",
+    priceCents: 0,
+    label: "Download",
+  },
 ];
 
 function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
@@ -159,10 +186,13 @@ function libraryDelivery(seed: LibrarySeed): Product["delivery"] {
   if (seed.id === OFFERS_PRODUCT_ID) {
     return { kind: "secure_file", storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME };
   }
+  if (seed.id === FOUNDER_TRAP_PRODUCT_ID) {
+    return { kind: "secure_file", storagePath: FOUNDER_TRAP_STORAGE_PATH, filename: FOUNDER_TRAP_FILENAME };
+  }
   return { kind: "email_link", url: "", label: seed.label };
 }
 
-/** Four SOP Library products. Blueprint and the offers guide are private PDFs. The dashboard link stays empty until an admin pastes it. */
+/** SOP Library products. The two paid guides and the free founder-trap guide are private PDFs. The dashboard link stays empty until an admin pastes it. */
 export function libraryProducts(): Product[] {
   return LIBRARY_SEEDS.map((seed) =>
     parseProduct({
@@ -177,6 +207,7 @@ export function libraryProducts(): Product[] {
       orderBump: null,
       presentation: "panel",
       entitlementProduct: null,
+      leadMagnet: seed.id === FOUNDER_TRAP_PRODUCT_ID,
       delivery: libraryDelivery(seed),
       active: true,
     }),
@@ -238,6 +269,36 @@ export async function syncOffersDelivery(store: CatalogStore): Promise<string[]>
     delivery: { kind: "secure_file", storagePath: OFFERS_STORAGE_PATH, filename: OFFERS_FILENAME },
   });
   return [OFFERS_PRODUCT_ID];
+}
+
+/** Point an existing founder-trap row at the free private PDF without rewriting other products. */
+export async function syncFounderTrapDelivery(store: CatalogStore): Promise<string[]> {
+  const snapshot = await store.read();
+  const current = snapshot.products.find((product) => product.id === FOUNDER_TRAP_PRODUCT_ID);
+  if (!current) return [];
+  const delivery = current.delivery;
+  if (
+    current.leadMagnet &&
+    current.priceCents === 0 &&
+    delivery?.kind === "secure_file" &&
+    delivery.storagePath === FOUNDER_TRAP_STORAGE_PATH &&
+    delivery.filename === FOUNDER_TRAP_FILENAME
+  ) {
+    return [];
+  }
+  await store.updateProduct({
+    ...current,
+    priceCents: 0,
+    leadMagnet: true,
+    entitlementProduct: null,
+    orderBump: current.orderBump,
+    delivery: {
+      kind: "secure_file",
+      storagePath: FOUNDER_TRAP_STORAGE_PATH,
+      filename: FOUNDER_TRAP_FILENAME,
+    },
+  });
+  return [FOUNDER_TRAP_PRODUCT_ID];
 }
 
 export function productForCheckout(product: Product): Product {

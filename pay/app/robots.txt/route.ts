@@ -9,6 +9,7 @@ Allow: /acceptable-use-policy-generator
 Allow: /free/aup-generator
 Allow: /business-os-blueprint
 Allow: /high-converting-offers-guide
+Allow: /escape-the-founder-trap
 Disallow: /checkout
 Disallow: /download
 Disallow: /go

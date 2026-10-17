@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createCatalogStore } from "@/lib/catalog-store";
-import { checkoutErrorStatus, FREE_AUP_CHECKOUT_ERROR, isFreeAupSlug } from "@/lib/library";
+import { checkoutErrorStatus, FREE_AUP_CHECKOUT_ERROR, FREE_FOUNDER_TRAP_CHECKOUT_ERROR, isFreeAupSlug, isFreeFounderTrapSlug } from "@/lib/library";
 import { allowedReturnOrigin } from "@/lib/links";
 import { findProduct, normalizeBuyerEmail, openCheckoutSession, updateCheckoutSession } from "@/lib/open-checkout";
 
@@ -28,6 +28,9 @@ export async function POST(request: Request) {
   }
   if (isFreeAupSlug(slug)) {
     return NextResponse.json({ error: FREE_AUP_CHECKOUT_ERROR }, { status: 409 });
+  }
+  if (isFreeFounderTrapSlug(slug)) {
+    return NextResponse.json({ error: FREE_FOUNDER_TRAP_CHECKOUT_ERROR }, { status: 409 });
   }
   const store = createCatalogStore();
   const { snapshot, product } = await findProduct(store, slug);
@@ -69,6 +72,9 @@ export async function PATCH(request: Request) {
   }
   if (isFreeAupSlug(slug)) {
     return NextResponse.json({ error: FREE_AUP_CHECKOUT_ERROR }, { status: 409 });
+  }
+  if (isFreeFounderTrapSlug(slug)) {
+    return NextResponse.json({ error: FREE_FOUNDER_TRAP_CHECKOUT_ERROR }, { status: 409 });
   }
   const store = createCatalogStore();
   const { snapshot, product } = await findProduct(store, slug);

@@ -7,7 +7,8 @@ import { productPath, stablePath } from "@/lib/links";
 import { findProduct } from "@/lib/open-checkout";
 import { quoteProduct } from "@/lib/pricing";
 import { AUP_CANONICAL_PATH, aupLandingMetadata } from "@/lib/aup-landing";
-import { isFreeAupSlug } from "@/lib/library";
+import { FOUNDER_TRAP_PATH, founderTrapLandingMetadata } from "@/lib/founder-trap-page";
+import { isFreeAupSlug, isFreeFounderTrapSlug } from "@/lib/library";
 import { productMetadata } from "@/lib/seo";
 import { absoluteUrl } from "@/lib/site";
 
@@ -20,6 +21,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params;
   if (isFreeAupSlug(decodeURIComponent(slug))) return aupLandingMetadata();
+  if (isFreeFounderTrapSlug(decodeURIComponent(slug))) return founderTrapLandingMetadata();
   const { product } = await findProduct(createCatalogStore(), decodeURIComponent(slug));
   if (!product) return productMetadata({ path: "/p", title: "Product | SOP Mojo", description: "" });
   return productMetadata({
@@ -33,6 +35,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   const { slug } = await params;
   const id = decodeURIComponent(slug);
   if (isFreeAupSlug(id)) redirect(AUP_CANONICAL_PATH);
+  if (isFreeFounderTrapSlug(id)) redirect(FOUNDER_TRAP_PATH);
   const { product } = await findProduct(createCatalogStore(), id);
   if (!product || !product.active) notFound();
   const quote = quoteProduct(product, { annual: false, bump: false });

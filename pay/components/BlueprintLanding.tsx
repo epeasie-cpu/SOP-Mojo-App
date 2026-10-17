@@ -21,6 +21,7 @@ import {
   blueprintProductJsonLd,
 } from "@/lib/blueprint-page";
 import { NOT_AVAILABLE_YET } from "@/lib/library";
+import { FOUNDER_TRAP_H1, FOUNDER_TRAP_PATH, FOUNDER_TRAP_PRICE_LABEL } from "@/lib/founder-trap-page";
 import { OFFERS_FULL_TITLE, OFFERS_PATH, OFFERS_PRICE_LABEL } from "@/lib/offers-page";
 import { SITE } from "@/lib/site";
 
@@ -165,7 +166,12 @@ export function BlueprintLanding({ available }: { available: boolean }) {
         </section>
       </article>
 
-      <YouMayAlsoLike href={OFFERS_PATH} title={OFFERS_FULL_TITLE} detail={OFFERS_PRICE_LABEL} />
+      <YouMayAlsoLike
+        items={[
+          { href: OFFERS_PATH, title: OFFERS_FULL_TITLE, detail: OFFERS_PRICE_LABEL },
+          { href: FOUNDER_TRAP_PATH, title: FOUNDER_TRAP_H1, detail: FOUNDER_TRAP_PRICE_LABEL },
+        ]}
+      />
 
       <div className="mt-12">
         <Buy href={href} />
