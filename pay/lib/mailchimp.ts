@@ -12,6 +12,9 @@ export const FOUNDER_TRAP_FREE_TAG = "founder-trap-free";
 
 export const LEAD_MAGNET_TAG = "lead-magnet";
 
+/** Quality System Fit Check. Never paired with the checkout tag. */
+export const QMS_LEAD_TAG = "qms";
+
 /** Granted product id → Mailchimp tag. Unknown ids are left untagged. */
 const PRODUCT_LEAD_TAGS: Record<string, string> = {
   builder_pro: "builder-pro",
@@ -202,6 +205,57 @@ export async function captureFreeFounderTrapLead(input: {
         body: JSON.stringify({
           tags: [
             { name: FOUNDER_TRAP_FREE_TAG, status: "active" },
+            { name: LEAD_MAGNET_TAG, status: "active" },
+          ],
+        }),
+      },
+      fetchImpl,
+    );
+    if (!tagged.ok) return { ok: false, reason: "tag" };
+    return { ok: true };
+  } catch {
+    return { ok: false, reason: "network" };
+  }
+}
+
+/** Quality System Fit Check. Always the Mojo audience, with `qms` and `lead-magnet`, never checkout. */
+export async function captureFreeQmsLead(input: {
+  email: string;
+  name?: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<CaptureResult> {
+  const settings = mailchimpSettings(input.env);
+  if (!settings) return { ok: true, skipped: true, reason: "unconfigured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email.includes("@")) return { ok: false, reason: "email" };
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const name = input.name?.trim() ?? "";
+  try {
+    const hash = mailchimpSubscriberHash(email);
+    const listId = encodeURIComponent(DEFAULT_MAILCHIMP_AUDIENCE_ID);
+    const member = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          email_address: email,
+          status_if_new: "subscribed",
+          ...(name ? { merge_fields: { FNAME: name } } : {}),
+        }),
+      },
+      fetchImpl,
+    );
+    if (!member.ok) return { ok: false, reason: "member" };
+    const tagged = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}/tags`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          tags: [
+            { name: QMS_LEAD_TAG, status: "active" },
             { name: LEAD_MAGNET_TAG, status: "active" },
           ],
         }),

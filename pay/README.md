@@ -41,6 +41,7 @@ Copy `.env.example` to `.env.local`. Do not put live Stripe keys in the repo. Th
 | `MAKE_CREDENTIALS_WEBHOOK_URL` | To send the username/password email through Make | See fulfillment below. |
 | `MAKE_CREDENTIALS_WEBHOOK_SECRET` | No | Sent as `x-make-secret` when set. |
 | `MAILCHIMP_API_KEY` | No | Fail-soft. Same audience as the other apps (`7c2226f741`, tag `checkout`). Override with `MAILCHIMP_AUDIENCE_ID`. |
+| `QMS_STARTER_PACK_URL` | No | Optional https link in the Quality System Fit Check email. Hidden when unset. |
 | `NEXT_PUBLIC_PAY_ORIGIN` | No | Public links default to `https://pay.sopmojo.com`. Do not point this at `*.vercel.app`. |
 
 Apply [`supabase/pay.sql`](supabase/pay.sql) on the shared Builder project before production catalog edits or live webhooks. Without those tables, the two built-in products still load from code, but Vercel cannot store catalog edits, and a Stripe retry that lands on another instance can send a second credential email.

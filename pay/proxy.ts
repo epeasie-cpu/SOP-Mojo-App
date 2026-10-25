@@ -23,6 +23,7 @@ export const config = {
     "/api/:path*",
     "/download/:path*",
     "/free/aup-generator/ready",
+    "/free/qms-check/ready",
     "/escape-the-founder-trap/ready",
   ],
 };

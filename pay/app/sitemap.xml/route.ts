@@ -3,6 +3,7 @@ import { AUP_CANONICAL_PATH } from "@/lib/aup-landing";
 import { BLUEPRINT_PATH } from "@/lib/blueprint-page";
 import { FOUNDER_TRAP_PATH } from "@/lib/founder-trap-page";
 import { OFFERS_PATH } from "@/lib/offers-page";
+import { QMS_CANONICAL_PATH } from "@/lib/qms-page";
 import { productPath } from "@/lib/links";
 import { isDashboardSlug, isFreeAupSlug, isFreeFounderTrapSlug } from "@/lib/library";
 import { absoluteUrl } from "@/lib/site";
@@ -19,6 +20,7 @@ export async function GET() {
     BLUEPRINT_PATH,
     OFFERS_PATH,
     FOUNDER_TRAP_PATH,
+    QMS_CANONICAL_PATH,
     ...catalog.products
       .filter(
         (product) =>
