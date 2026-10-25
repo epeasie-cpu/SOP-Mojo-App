@@ -1,9 +1,10 @@
+import { logResendSent } from "./delivery-log";
 import { createEventStore, type EventStore } from "./event-store";
 import { sendResendEmail } from "./fulfillment";
 import { captureFreeQmsLead } from "./mailchimp";
 import { normalizeBuyerEmail } from "./open-checkout";
 import { QMS_BUILDER_PRO_GO } from "./qms-page";
-import { parseQmsAnswers, qmsActionPlan, scoreQms, type QmsAnswers, type QmsResult } from "./qms-score";
+import { parseQmsAnswers, qmsActionPlan, qmsGapHeading, scoreQms, type QmsAnswers, type QmsResult } from "./qms-score";
 
 export const QMS_STARTER_PACK_ENV = "QMS_STARTER_PACK_URL";
 
@@ -60,6 +61,8 @@ export function qmsPlanEmail(input: {
 }): { subject: string; text: string; html: string } {
   const plan = qmsActionPlan(input.answers, input.result);
   const gaps = input.result.gaps.map((gap) => `${gap.title} (${gap.missed} points short)`);
+  const heading = qmsGapHeading(gaps.length);
+  const gapLines = heading ? [heading, ...gaps.map((gap) => `- ${gap}`)] : ["None of the five documentation answers left points on the table."];
   const pack = input.starterPackUrl;
   const text = [
     QMS_EMAIL_LEAD,
@@ -69,8 +72,7 @@ export function qmsPlanEmail(input: {
     "",
     `Process documentation score: ${input.result.score} / 100`,
     "",
-    "Largest gaps:",
-    ...(gaps.length > 0 ? gaps.map((gap) => `- ${gap}`) : ["- None of the five documentation answers left points on the table."]),
+    ...gapLines,
     "",
     "30-day action plan",
     ...plan.flatMap((step) => [step.label, step.text, ""]),
@@ -85,10 +87,10 @@ export function qmsPlanEmail(input: {
     `<p><strong>${escapeHtml(`Result: ${input.result.category}. ${input.result.categoryTitle}`)}</strong></p>`,
     `<p>${escapeHtml(input.result.summary)}</p>`,
     `<p>Process documentation score: ${input.result.score} / 100</p>`,
-    "<p>Largest gaps:</p>",
-    `<ul>${(gaps.length > 0 ? gaps : ["None of the five documentation answers left points on the table."])
-      .map((gap) => `<li>${escapeHtml(gap)}</li>`)
-      .join("")}</ul>`,
+    heading ? `<p>${escapeHtml(heading)}</p>` : "",
+    heading
+      ? `<ul>${gaps.map((gap) => `<li>${escapeHtml(gap)}</li>`).join("")}</ul>`
+      : "<p>None of the five documentation answers left points on the table.</p>",
     "<p>30-day action plan</p>",
     ...plan.map((step) => `<p><strong>${escapeHtml(step.label)}</strong><br/>${escapeHtml(step.text)}</p>`),
     pack ? `<p><a href="${escapeHtml(pack)}">Quality Control Starter Pack</a></p>` : "",
@@ -102,7 +104,8 @@ export type QmsSubmitResult = { ok: true } | { ok: false; code: "email" | "name"
 
 /**
  * Honeypot, then Mailchimp tags `qms` and `lead-magnet`, then one Resend email per address.
- * A filled honeypot looks successful and calls nothing. There is no Make webhook.
+ * A Mailchimp failure is logged and does not block the email. A filled honeypot looks successful and calls nothing.
+ * There is no Make webhook.
  */
 export async function submitQmsCheck(input: {
   email: string;
@@ -143,6 +146,7 @@ export async function submitQmsCheck(input: {
       fetchImpl,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the action plan can be emailed.");
+    logResendSent({ source: "qms-check", id: sent.id, email });
     return { ok: true };
   } catch {
     await store.releaseCredentialSend(claim);

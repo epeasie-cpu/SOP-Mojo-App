@@ -1,11 +1,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { NextRequest } from "next/server";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { GET as robots } from "@/app/robots.txt/route";
 import { GET as sitemap } from "@/app/sitemap.xml/route";
 import { proxy } from "@/proxy";
 import { BUILDER_PRO_GO } from "@/lib/aup-free";
+import { emailDomain, logResendSent } from "@/lib/delivery-log";
+import { hidesAccountHeaderLink } from "@/lib/lead-pages";
 import { credentialSendKey, memoryEventStore } from "@/lib/event-store";
 import { QMS_LEAD_TAG, LEAD_MAGNET_TAG } from "@/lib/mailchimp";
 import {
@@ -38,6 +40,7 @@ import {
   QMS_QUESTIONS,
   parseQmsAnswers,
   qmsActionPlan,
+  qmsGapHeading,
   scoreQms,
   type QmsAnswers,
 } from "@/lib/qms-score";
@@ -94,6 +97,9 @@ describe("Quality System Fit Check", () => {
     );
     expect(full.score).toBe(100);
     expect(full.gaps).toEqual([]);
+    expect(qmsGapHeading(empty.gaps.length)).toBe("Your biggest gaps");
+    expect(qmsGapHeading(1)).toBe("Your biggest gap");
+    expect(qmsGapHeading(0)).toBeNull();
     expect(full.category).toBe("A");
     expect(parseQmsAnswers({ ...blank, regulated: "maybe" })).toBeNull();
   });
@@ -133,9 +139,30 @@ describe("Quality System Fit Check", () => {
     expect(hidden.text).not.toContain("Quality Control Starter Pack");
     expect(hidden.text).toContain("Result: A. Simple SOP and checklist system");
     expect(hidden.text).toContain("Process documentation score: 0 / 100");
+    expect(hidden.text).toContain("Your biggest gaps");
+    expect(hidden.text).not.toMatch(/Your biggest gap(?!s)/);
+    expect(hidden.text).not.toContain("two or three");
+    expect(hidden.html).toContain("Your biggest gaps");
+    expect(hidden.html).not.toContain("two or three");
     expect(hidden.text).toContain(QMS_UPSELL);
     expect(hidden.text).toContain(QMS_BUILDER_PRO_GO);
     expect(hidden.html).toContain(`href="${QMS_BUILDER_PRO_GO}"`);
+
+    const oneAnswers = answers({ written: "all", home: "system", review: "yes", corrective: "system", training: "written" });
+    const oneResult = scoreQms(oneAnswers);
+    expect(oneResult.gaps).toHaveLength(1);
+    const one = qmsPlanEmail({ result: oneResult, answers: oneAnswers, starterPackUrl: null });
+    expect(one.text).toContain("Your biggest gap");
+    expect(one.text).not.toContain("Your biggest gaps");
+    expect(one.text).not.toContain("two or three");
+    expect(one.html).toContain("Your biggest gap");
+    expect(one.html).not.toContain("Your biggest gaps");
+
+    const fullAnswers = answers({ written: "all", home: "system", review: "yes", corrective: "system", training: "record" });
+    const none = qmsPlanEmail({ result: scoreQms(fullAnswers), answers: fullAnswers, starterPackUrl: null });
+    expect(none.text).not.toContain("Your biggest gap");
+    expect(none.text).toContain("None of the five documentation answers left points on the table.");
+    expect(none.html).not.toContain("Your biggest gap");
 
     const shown = qmsPlanEmail({
       result: scoreQms(answers({ regulated: "yes" })),
@@ -156,8 +183,16 @@ describe("Quality System Fit Check", () => {
       if (url.includes("api.mailchimp.com")) mail.push({ url, body });
       if (url.includes("api.resend.com")) resend.push(body as { text?: string; html?: string });
       if (url.includes("api.mailchimp.com") && url.endsWith("/tags") && mail.length === 2) return new Response("no", { status: 500 });
+      if (url.includes("api.resend.com")) return Response.json({ id: "re_msg_123" });
       return Response.json({ id: "ok" });
     };
+    const deliveryLogs: string[] = [];
+    const errorSpy = vi.spyOn(console, "error").mockImplementation((message) => {
+      deliveryLogs.push(String(message));
+    });
+    const infoSpy = vi.spyOn(console, "info").mockImplementation((message) => {
+      deliveryLogs.push(String(message));
+    });
     const env = {
       RESEND_API_KEY: "re_test",
       MAILCHIMP_API_KEY: "key-us21",
@@ -178,6 +213,19 @@ describe("Quality System Fit Check", () => {
     expect(await submitQmsCheck(input)).toEqual({ ok: true });
     expect(await submitQmsCheck({ ...input, name: "Again" })).toEqual({ ok: true });
     expect(resend).toHaveLength(1);
+    const tagFailure = deliveryLogs.find((line) => line.includes('"step":"tag"'));
+    expect(tagFailure).toContain('"provider":"mailchimp"');
+    expect(tagFailure).toContain('"ok":false');
+    expect(tagFailure).toContain('"status":500');
+    expect(tagFailure).toContain('"domain":"example.com"');
+    expect(tagFailure).not.toContain("buyer");
+    expect(tagFailure).not.toContain("Ryan");
+    const sentLog = deliveryLogs.filter((line) => line.includes('"provider":"resend"'));
+    expect(sentLog).toEqual([expect.stringContaining('"id":"re_msg_123"')]);
+    expect(sentLog[0]).toContain('"domain":"example.com"');
+    expect(sentLog[0]).not.toContain("buyer");
+    errorSpy.mockRestore();
+    infoSpy.mockRestore();
     expect(resend[0]?.text).toContain(pack);
     expect(credentialSendKey(qmsClaimKey("Buyer@Example.com"))).toBe("buyer@example.com|qms-check");
     expect(mail.map((call) => call.url).some((url) => url.includes(DEFAULT_MAILCHIMP_AUDIENCE_ID))).toBe(true);
@@ -229,6 +277,44 @@ describe("Quality System Fit Check", () => {
       }),
     ).toEqual({ ok: false, code: "send" });
     expect(await failing.claimCredentialSend(qmsClaimKey("retry@example.com"))).toBe(true);
+
+    const memberLogs: string[] = [];
+    const memberError = vi.spyOn(console, "error").mockImplementation((message) => {
+      memberLogs.push(String(message));
+    });
+    const memberInfo = vi.spyOn(console, "info").mockImplementation((message) => {
+      memberLogs.push(String(message));
+    });
+    expect(
+      await submitQmsCheck({
+        ...input,
+        email: "Blocked@Shop.example",
+        ip: "203.0.113.30",
+        store: memoryEventStore(),
+        fetchImpl: async (inputUrl) => {
+          const url = String(inputUrl);
+          if (url.includes("api.mailchimp.com") && !url.endsWith("/tags")) return new Response("no", { status: 400 });
+          if (url.includes("api.resend.com")) return Response.json({ id: "re_member_fail" });
+          return Response.json({});
+        },
+      }),
+    ).toEqual({ ok: true });
+    expect(memberLogs.some((line) => line.includes('"step":"member"') && line.includes('"status":400') && line.includes('"domain":"shop.example"'))).toBe(true);
+    expect(memberLogs.some((line) => line.includes('"id":"re_member_fail"'))).toBe(true);
+    expect(memberLogs.join("\n")).not.toContain("blocked");
+    memberError.mockRestore();
+    memberInfo.mockRestore();
+
+    expect(emailDomain("Buyer@Example.com")).toBe("example.com");
+    const redacted: string[] = [];
+    const redactSpy = vi.spyOn(console, "info").mockImplementation((message) => {
+      redacted.push(String(message));
+    });
+    logResendSent({ source: "qms-check", id: "secret@example.com", email: "Buyer@Example.com" });
+    expect(redacted[0]).toContain('"id":"missing"');
+    expect(redacted[0]).not.toContain("secret");
+    expect(redacted[0]).not.toContain("buyer");
+    redactSpy.mockRestore();
 
     for (let index = 0; index < 5; index += 1) {
       expect(
@@ -300,6 +386,26 @@ describe("Quality System Fit Check", () => {
     expect(tool).toContain('name="email"');
     expect(tool).toContain('name="name"');
     expect(tool).toContain('name="company"');
+    expect(tool).toContain("qmsGapHeading");
+    expect(tool).not.toContain("two or three");
+    expect(tool).not.toContain("Largest gaps");
+    expect(landing).not.toContain("two or three");
+    expect(landing).toContain("up to three");
+    const header = readFileSync(path.join(process.cwd(), "components/SiteHeader.tsx"), "utf8");
+    expect(header).toContain("hidesAccountHeaderLink");
+    expect(header).toContain('href="/account"');
+    expect(hidesAccountHeaderLink("/quality-management-software-fit-check")).toBe(true);
+    expect(hidesAccountHeaderLink("/free/qms-check")).toBe(true);
+    expect(hidesAccountHeaderLink("/free/qms-check/ready")).toBe(true);
+    expect(hidesAccountHeaderLink("/acceptable-use-policy-generator")).toBe(true);
+    expect(hidesAccountHeaderLink("/free/aup-generator")).toBe(true);
+    expect(hidesAccountHeaderLink("/free/aup-generator/ready")).toBe(true);
+    expect(hidesAccountHeaderLink("/escape-the-founder-trap")).toBe(true);
+    expect(hidesAccountHeaderLink("/escape-the-founder-trap/ready")).toBe(true);
+    expect(hidesAccountHeaderLink("/free/founder-trap")).toBe(true);
+    expect(hidesAccountHeaderLink("/")).toBe(false);
+    expect(hidesAccountHeaderLink("/checkout/builder_pro")).toBe(false);
+    expect(hidesAccountHeaderLink("/business-os-blueprint")).toBe(false);
     expect(tool).toContain('result.nextStep === "builder_pro"');
     expect(frame).toContain("Space_Grotesk");
     expect(frame).toContain("Open_Sans");

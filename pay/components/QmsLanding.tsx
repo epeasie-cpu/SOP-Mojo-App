@@ -63,7 +63,7 @@ export function QmsLanding({ error }: { error: string | null }) {
                 </li>
               ))}
             </ul>
-            <p className="mt-3">The largest gaps are the two or three answers that left the most points unused.</p>
+            <p className="mt-3">The result lists the answers that left the most points unused, up to three.</p>
           </section>
           <section>
             <h2 className="text-2xl font-semibold text-zinc-50">Questions</h2>

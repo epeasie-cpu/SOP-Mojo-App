@@ -220,7 +220,7 @@ export async function sendResendEmail(input: {
   html?: string;
   env: NodeJS.ProcessEnv;
   fetchImpl: typeof fetch;
-}): Promise<boolean> {
+}): Promise<false | { id: string }> {
   const resendKey = input.env.RESEND_API_KEY?.trim();
   if (!resendKey) return false;
   const from = input.env.EMAIL_FROM?.trim() || "SOP Mojo <onboarding@resend.dev>";
@@ -239,7 +239,9 @@ export async function sendResendEmail(input: {
     }),
   });
   if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
-  return true;
+  const payload = (await response.json().catch(() => null)) as { id?: unknown } | null;
+  const id = payload && typeof payload.id === "string" ? payload.id : "";
+  return { id };
 }
 
 export function deliverySendKey(email: string, eventId: string): string {

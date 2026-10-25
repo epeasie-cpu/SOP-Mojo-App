@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { logMailchimpFailure } from "./delivery-log";
 import { DEFAULT_MAILCHIMP_AUDIENCE_ID } from "./site";
 
 /** Tag applied on the existing Mojo Business Solutions LLC audience. Not a new list. */
@@ -247,7 +248,10 @@ export async function captureFreeQmsLead(input: {
       },
       fetchImpl,
     );
-    if (!member.ok) return { ok: false, reason: "member" };
+    if (!member.ok) {
+      logMailchimpFailure({ source: "qms-check", step: "member", status: member.status, email });
+      return { ok: false, reason: "member" };
+    }
     const tagged = await mailchimpFetch(
       settings,
       `/lists/${listId}/members/${hash}/tags`,
@@ -262,9 +266,13 @@ export async function captureFreeQmsLead(input: {
       },
       fetchImpl,
     );
-    if (!tagged.ok) return { ok: false, reason: "tag" };
+    if (!tagged.ok) {
+      logMailchimpFailure({ source: "qms-check", step: "tag", status: tagged.status, email });
+      return { ok: false, reason: "tag" };
+    }
     return { ok: true };
   } catch {
+    logMailchimpFailure({ source: "qms-check", step: "network", email });
     return { ok: false, reason: "network" };
   }
 }

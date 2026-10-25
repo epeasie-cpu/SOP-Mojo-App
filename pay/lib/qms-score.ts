@@ -9,7 +9,7 @@
  *
  * Process documentation score is the sum of five answers. Max 100.
  * written 25, home 20, review 20, corrective 20, training 15.
- * The top gaps are the two or three of those answers with the most points left, ties broken
+ * The result lists up to three answers with the most points left, ties broken
  * by written, home, review, corrective, training.
  */
 
@@ -215,6 +215,13 @@ export function qmsGaps(answers: QmsAnswers): QmsGap[] {
     .filter((gap) => gap.missed > 0)
     .sort((a, b) => b.missed - a.missed || QMS_GAP_ORDER.indexOf(a.id) - QMS_GAP_ORDER.indexOf(b.id))
     .slice(0, 3);
+}
+
+/** Heading matches the number of gaps on screen and in the email. */
+export function qmsGapHeading(count: number): string | null {
+  if (count === 1) return "Your biggest gap";
+  if (count > 1) return "Your biggest gaps";
+  return null;
 }
 
 function categorySummary(answers: QmsAnswers, category: QmsCategory): string {

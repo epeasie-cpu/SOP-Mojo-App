@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { requestQmsPlan } from "@/app/free/qms-check/actions";
 import { QMS_BUILDER_PRO_GO, qmsErrorMessage } from "@/lib/qms-page";
-import { QMS_QUESTIONS, parseQmsAnswers, scoreQms } from "@/lib/qms-score";
+import { QMS_QUESTIONS, parseQmsAnswers, qmsGapHeading, scoreQms } from "@/lib/qms-score";
 
 const buttonClass =
   "inline-flex min-h-14 items-center justify-center rounded-sm bg-[#C1FF72] px-4 text-center text-base font-semibold text-[#0C0E0C] disabled:opacity-50";
@@ -65,6 +65,7 @@ export function QmsTool({ initialError }: { initialError: string | null }) {
   }
 
   if (!result) return null;
+  const gapHeading = qmsGapHeading(result.gaps.length);
 
   return (
     <section className="mt-6 max-w-lg rounded-lg border border-zinc-800 bg-zinc-950 p-4 sm:p-6" aria-live="polite">
@@ -77,7 +78,7 @@ export function QmsTool({ initialError }: { initialError: string | null }) {
         Process documentation score: {result.score}
         <span className="text-lg font-normal text-zinc-400"> / 100</span>
       </p>
-      <h3 className="mt-6 text-lg font-semibold text-zinc-50">Largest gaps</h3>
+      {gapHeading ? <h3 className="mt-6 text-lg font-semibold text-zinc-50">{gapHeading}</h3> : null}
       {result.gaps.length > 0 ? (
         <ul className="mt-2 list-disc space-y-2 pl-5 text-zinc-200">
           {result.gaps.map((gap) => (
@@ -87,7 +88,7 @@ export function QmsTool({ initialError }: { initialError: string | null }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-2 text-zinc-200">None of the five documentation answers left points on the table.</p>
+        <p className="mt-6 text-zinc-200">None of the five documentation answers left points on the table.</p>
       )}
       {result.nextStep === "builder_pro" ? (
         <a href={QMS_BUILDER_PRO_GO} className={`${buttonClass} mt-6 w-full`}>
