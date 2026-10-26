@@ -15,7 +15,8 @@ export function isNoIndexPath(pathname: string): boolean {
     pathname.startsWith("/download/") ||
     pathname === "/free/aup-generator/ready" ||
     pathname === "/free/qms-check/ready" ||
-    pathname === "/escape-the-founder-trap/ready"
+    pathname === "/escape-the-founder-trap/ready" ||
+    pathname === "/quality-control-starter-pack/ready"
   );
 }
 

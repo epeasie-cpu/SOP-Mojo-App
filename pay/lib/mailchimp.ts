@@ -16,6 +16,12 @@ export const LEAD_MAGNET_TAG = "lead-magnet";
 /** Quality System Fit Check. Never paired with the checkout tag. */
 export const QMS_LEAD_TAG = "qms";
 
+/** Quality Control Starter Pack. Added beside qms and lead-magnet. */
+export const QC_PACK_TAG = "qc-pack";
+
+/** Article popup only. Measures that the signup came from the embed. */
+export const POPUP_LEAD_TAG = "popup";
+
 /** Granted product id → Mailchimp tag. Unknown ids are left untagged. */
 const PRODUCT_LEAD_TAGS: Record<string, string> = {
   builder_pro: "builder-pro",
@@ -273,6 +279,67 @@ export async function captureFreeQmsLead(input: {
     return { ok: true };
   } catch {
     logMailchimpFailure({ source: "qms-check", step: "network", email });
+    return { ok: false, reason: "network" };
+  }
+}
+
+/** Quality Control Starter Pack. Always the Mojo audience. Page tags omit `popup`. */
+export async function captureQcPackLead(input: {
+  email: string;
+  name?: string;
+  popup?: boolean;
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<CaptureResult> {
+  const settings = mailchimpSettings(input.env);
+  if (!settings) return { ok: true, skipped: true, reason: "unconfigured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email.includes("@")) return { ok: false, reason: "email" };
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const name = input.name?.trim() ?? "";
+  const source = input.popup ? "qc-pack-popup" : "qc-pack";
+  const tags = [
+    { name: QMS_LEAD_TAG, status: "active" as const },
+    { name: LEAD_MAGNET_TAG, status: "active" as const },
+    { name: QC_PACK_TAG, status: "active" as const },
+    ...(input.popup ? [{ name: POPUP_LEAD_TAG, status: "active" as const }] : []),
+  ];
+  try {
+    const hash = mailchimpSubscriberHash(email);
+    const listId = encodeURIComponent(DEFAULT_MAILCHIMP_AUDIENCE_ID);
+    const member = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          email_address: email,
+          status_if_new: "subscribed",
+          ...(name ? { merge_fields: { FNAME: name } } : {}),
+        }),
+      },
+      fetchImpl,
+    );
+    if (!member.ok) {
+      logMailchimpFailure({ source, step: "member", status: member.status, email });
+      return { ok: false, reason: "member" };
+    }
+    const tagged = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}/tags`,
+      {
+        method: "POST",
+        body: JSON.stringify({ tags }),
+      },
+      fetchImpl,
+    );
+    if (!tagged.ok) {
+      logMailchimpFailure({ source, step: "tag", status: tagged.status, email });
+      return { ok: false, reason: "tag" };
+    }
+    return { ok: true };
+  } catch {
+    logMailchimpFailure({ source, step: "network", email });
     return { ok: false, reason: "network" };
   }
 }

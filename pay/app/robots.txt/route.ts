@@ -12,6 +12,7 @@ Allow: /high-converting-offers-guide
 Allow: /escape-the-founder-trap
 Allow: /quality-management-software-fit-check
 Allow: /free/qms-check
+Allow: /quality-control-starter-pack
 Disallow: /checkout
 Disallow: /download
 Disallow: /go
