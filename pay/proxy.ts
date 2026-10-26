@@ -26,5 +26,7 @@ export const config = {
     "/free/qms-check/ready",
     "/escape-the-founder-trap/ready",
     "/quality-control-starter-pack/ready",
+    "/embed/demo",
+    "/embed/demo/:path*",
   ],
 };

@@ -9,6 +9,7 @@ const LEAD_MAGNET_PATHS = [
   "/escape-the-founder-trap",
   "/free/founder-trap",
   "/quality-control-starter-pack",
+  "/embed/demo",
 ] as const;
 
 function cleanPath(pathname: string): string {

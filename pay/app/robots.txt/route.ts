@@ -19,6 +19,7 @@ Disallow: /go
 Disallow: /admin
 Disallow: /account
 Disallow: /api
+Disallow: /embed/demo
 
 Sitemap: ${SITE.host}/sitemap.xml
 `;
