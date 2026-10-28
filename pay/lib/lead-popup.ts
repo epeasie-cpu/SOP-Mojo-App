@@ -1,5 +1,6 @@
 import { CPT_KIT_PAGE_URL } from "./cpt-kit-page";
 import { QC_PACK_CHECK_URL } from "./qc-pack-page";
+import { SITE } from "./site";
 
 export const LEAD_POPUP_SNIPPET =
   '<script src="https://pay.sopmojo.com/embed/lead-popup.js" data-offer="qc-pack" data-paths="/articles/quality-management-software" defer></script>';
@@ -29,6 +30,30 @@ export const LEAD_POPUP_OFFERS = {
 
 const EXACT_ORIGINS = new Set(["https://www.sopmojo.com", "https://sopmojo.com"]);
 
+const DEFAULT_PAY_ORIGIN = SITE.host;
+
+function exactHttpsOrigin(value: string): string | null {
+  const trimmed = value.trim().replace(/\/$/, "");
+  if (!trimmed) return null;
+  try {
+    const url = new URL(trimmed);
+    if (url.protocol !== "https:" || url.origin !== trimmed) return null;
+    return url.origin;
+  } catch {
+    return null;
+  }
+}
+
+/** This app, plus the host Vercel assigned to the deployment that is running now. */
+function ownOrigins(env: NodeJS.ProcessEnv): Set<string> {
+  const origins = new Set<string>([DEFAULT_PAY_ORIGIN]);
+  const configured = exactHttpsOrigin(env.PAY_ORIGIN ?? "");
+  if (configured) origins.add(configured);
+  const host = (env.VERCEL_URL ?? "").trim();
+  if (host && !/[\s:/\\]/.test(host)) origins.add(`https://${host}`);
+  return origins;
+}
+
 /** Exact path, or a prefix when the pattern ends in *. A lone * matches every path. */
 export function leadPopupPathMatches(pathname: string, patterns: string): boolean {
   const clean = (value: string): string => {
@@ -53,9 +78,9 @@ export function leadPopupPathMatches(pathname: string, patterns: string): boolea
 }
 
 /** Browser Origin values allowed to call the lead API. */
-export function leadPopupAllowedOrigin(origin: string): string | null {
+export function leadPopupAllowedOrigin(origin: string, env: NodeJS.ProcessEnv = process.env): string | null {
   const value = origin.trim();
-  if (EXACT_ORIGINS.has(value)) return value;
+  if (EXACT_ORIGINS.has(value) || ownOrigins(env).has(value)) return value;
   let url: URL;
   try {
     url = new URL(value);

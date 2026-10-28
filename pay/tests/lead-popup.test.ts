@@ -45,6 +45,36 @@ describe("lead popup", () => {
     expect(leadPopupAllowedOrigin("https://sopmojo.com/path")).toBeNull();
   });
 
+  it("allows this app and the current Vercel deployment", async () => {
+    const empty = {} as unknown as NodeJS.ProcessEnv;
+    expect(leadPopupAllowedOrigin("https://pay.sopmojo.com", empty)).toBe("https://pay.sopmojo.com");
+    expect(leadPopupAllowedOrigin("http://pay.sopmojo.com", empty)).toBeNull();
+    expect(leadPopupAllowedOrigin("https://pay.sopmojo.com.evil.com", empty)).toBeNull();
+    expect(leadPopupAllowedOrigin("https://pay.sopmojo.com/path", empty)).toBeNull();
+
+    const custom = { PAY_ORIGIN: "https://checkout.example.com/" } as unknown as NodeJS.ProcessEnv;
+    expect(leadPopupAllowedOrigin("https://checkout.example.com", custom)).toBe("https://checkout.example.com");
+    expect(leadPopupAllowedOrigin("https://pay.sopmojo.com", custom)).toBe("https://pay.sopmojo.com");
+    expect(leadPopupAllowedOrigin("http://checkout.example.com", custom)).toBeNull();
+    expect(leadPopupAllowedOrigin("https://checkout.example.com.evil.com", custom)).toBeNull();
+
+    const preview = { VERCEL_URL: "sop-mojo-git-preview.vercel.app" } as unknown as NodeJS.ProcessEnv;
+    expect(leadPopupAllowedOrigin("https://sop-mojo-git-preview.vercel.app", preview)).toBe(
+      "https://sop-mojo-git-preview.vercel.app",
+    );
+    expect(leadPopupAllowedOrigin("https://other.vercel.app", preview)).toBeNull();
+    expect(leadPopupAllowedOrigin("https://sop-mojo-git-preview.vercel.app.evil.com", preview)).toBeNull();
+
+    const same = await OPTIONS(
+      new Request("https://pay.sopmojo.com/api/lead/qc-pack", {
+        method: "OPTIONS",
+        headers: { Origin: "https://pay.sopmojo.com" },
+      }),
+    );
+    expect(same.status).toBe(204);
+    expect(same.headers.get("access-control-allow-origin")).toBe("https://pay.sopmojo.com");
+  });
+
   it("sets CORS only for an allowed origin and keeps the pack link out of the response", async () => {
     const allowed = await OPTIONS(new Request("https://pay.sopmojo.com/api/lead/qc-pack", { method: "OPTIONS", headers: { Origin: "https://www.sopmojo.com" } }));
     expect(allowed.status).toBe(204);

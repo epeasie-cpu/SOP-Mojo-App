@@ -7,9 +7,9 @@ export const CPT_KIT_PATH = "/2027-slp-cpt-kit";
 
 export const CPT_KIT_READY_PATH = "/2027-slp-cpt-kit/ready";
 
-export const CPT_KIT_SEO_TITLE = "2027 SLP CPT Code Transition Kit (Free)";
+export const CPT_KIT_SEO_TITLE = "2027 SLP CPT Code Transition Kit (Free) | SOP Mojo";
 
-export const CPT_KIT_SEO_H1 = CPT_KIT_SEO_TITLE;
+export const CPT_KIT_SEO_H1 = "2027 SLP CPT Code Transition Kit (Free)";
 
 export const CPT_KIT_SEO_DESCRIPTION =
   "Free kit for small pediatric speech, OT, and PT practices. CPT 92507 is deleted after 12/31/2026. Job aid and a minutes-to-units calculator.";

@@ -280,8 +280,8 @@ describe("2027 SLP CPT kit", () => {
   });
 
   it("publishes the kit page, keeps the file link out of the HTML, and registers the popup offer", async () => {
-    expect(CPT_KIT_SEO_TITLE).toBe("2027 SLP CPT Code Transition Kit (Free)");
-    expect(CPT_KIT_SEO_H1).toBe(CPT_KIT_SEO_TITLE);
+    expect(CPT_KIT_SEO_TITLE).toBe("2027 SLP CPT Code Transition Kit (Free) | SOP Mojo");
+    expect(CPT_KIT_SEO_H1).toBe("2027 SLP CPT Code Transition Kit (Free)");
     const meta = cptKitLandingMetadata();
     expect(meta.alternates).toEqual({ canonical: `https://pay.sopmojo.com${CPT_KIT_PATH}` });
     expect(meta.robots).toMatchObject({ index: true, follow: true });

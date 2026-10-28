@@ -45,6 +45,7 @@ Copy `.env.example` to `.env.local`. Do not put live Stripe keys in the repo. Th
 | `CPT_KIT_URL` | To email the 2027 SLP CPT kit | https link. The kit form does not send when this is unset or not https. The page never shows the URL. |
 | `LEAD_QA_EMAILS` | No | Comma-separated emails. On the CPT kit only, a match skips the `{email}\|cpt-kit` claim and adds the Mailchimp tag `qa`, so preview can sign up again. The honeypot, the 5-per-10-minutes IP limit, and `CPT_KIT_URL` still apply. |
 | `NEXT_PUBLIC_PAY_ORIGIN` | No | Public links default to `https://pay.sopmojo.com`. Do not point this at `*.vercel.app`. |
+| `PAY_ORIGIN` | No | Extra https origin for the lead popup API. `https://pay.sopmojo.com` is always allowed. The current deployment's `VERCEL_URL` is allowed too. |
 
 Apply [`supabase/pay.sql`](supabase/pay.sql) on the shared Builder project before production catalog edits or live webhooks. Without those tables, the two built-in products still load from code, but Vercel cannot store catalog edits, and a Stripe retry that lands on another instance can send a second credential email.
 
