@@ -1,3 +1,4 @@
+import { CPT_KIT_PAGE_URL } from "./cpt-kit-page";
 import { QC_PACK_CHECK_URL } from "./qc-pack-page";
 
 export const LEAD_POPUP_SNIPPET =
@@ -12,6 +13,17 @@ export const LEAD_POPUP_OFFERS = {
     secondaryHref: QC_PACK_CHECK_URL,
     endpoint: "https://pay.sopmojo.com/api/lead/qc-pack",
     success: "Check your inbox",
+    error: "We could not send the pack. Try again in a minute.",
+  },
+  "cpt-kit": {
+    headline: "Free 2027 SLP CPT Kit",
+    body: "CPT 92507 is deleted after 12/31/2026. Job aid and a calculator for your own rates.",
+    button: "Email me the kit",
+    secondary: "Educational, not billing advice",
+    secondaryHref: CPT_KIT_PAGE_URL,
+    endpoint: "https://pay.sopmojo.com/api/lead/cpt-kit",
+    success: "Check your inbox",
+    error: "We could not send the kit. Try again in a minute.",
   },
 } as const;
 
@@ -223,7 +235,7 @@ export function leadPopupScript(): string {
       }).then(function (result) {
         button.disabled = false;
         if (!result.ok) {
-          error.textContent = "We could not send the pack. Try again in a minute.";
+          error.textContent = offer.error;
           return;
         }
         submitted = true;
@@ -234,7 +246,7 @@ export function leadPopupScript(): string {
         success.focus();
       }).catch(function () {
         button.disabled = false;
-        error.textContent = "We could not send the pack. Try again in a minute.";
+        error.textContent = offer.error;
       });
     });
   }

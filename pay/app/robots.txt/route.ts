@@ -13,6 +13,7 @@ Allow: /escape-the-founder-trap
 Allow: /quality-management-software-fit-check
 Allow: /free/qms-check
 Allow: /quality-control-starter-pack
+Allow: /2027-slp-cpt-kit
 Disallow: /checkout
 Disallow: /download
 Disallow: /go

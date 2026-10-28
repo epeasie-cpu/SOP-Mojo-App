@@ -26,6 +26,7 @@ export const config = {
     "/free/qms-check/ready",
     "/escape-the-founder-trap/ready",
     "/quality-control-starter-pack/ready",
+    "/2027-slp-cpt-kit/ready",
     "/embed/demo",
     "/embed/demo/:path*",
   ],

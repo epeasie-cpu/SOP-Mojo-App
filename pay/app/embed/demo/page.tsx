@@ -16,6 +16,7 @@ export default async function LeadPopupDemoPage({
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-10">
       <h1 className="font-display text-3xl font-semibold text-zinc-50">Lead popup demo</h1>
+      <p className="mt-2 text-sm text-zinc-400">Loaded offer: {offer}</p>
       <p className="mt-3 max-w-xl text-base leading-7 text-zinc-300">
         This page loads the popup for every path. Scroll halfway down, or on a desktop move the pointer out through the top of the window. Add ?force=1 to open it immediately.
       </p>

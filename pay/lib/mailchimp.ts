@@ -19,6 +19,15 @@ export const QMS_LEAD_TAG = "qms";
 /** Quality Control Starter Pack. Added beside qms and lead-magnet. */
 export const QC_PACK_TAG = "qc-pack";
 
+/** 2027 SLP CPT kit. Added beside lead-magnet and therapy. */
+export const CPT_KIT_TAG = "cpt-kit";
+
+/** Pediatric therapy practices. Used by the CPT kit. */
+export const THERAPY_LEAD_TAG = "therapy";
+
+/** Preview QA addresses from LEAD_QA_EMAILS. Added beside the offer tags. */
+export const LEAD_QA_TAG = "qa";
+
 /** Article popup only. Measures that the signup came from the embed. */
 export const POPUP_LEAD_TAG = "popup";
 
@@ -303,6 +312,69 @@ export async function captureQcPackLead(input: {
     { name: LEAD_MAGNET_TAG, status: "active" as const },
     { name: QC_PACK_TAG, status: "active" as const },
     ...(input.popup ? [{ name: POPUP_LEAD_TAG, status: "active" as const }] : []),
+  ];
+  try {
+    const hash = mailchimpSubscriberHash(email);
+    const listId = encodeURIComponent(DEFAULT_MAILCHIMP_AUDIENCE_ID);
+    const member = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}`,
+      {
+        method: "PUT",
+        body: JSON.stringify({
+          email_address: email,
+          status_if_new: "subscribed",
+          ...(name ? { merge_fields: { FNAME: name } } : {}),
+        }),
+      },
+      fetchImpl,
+    );
+    if (!member.ok) {
+      logMailchimpFailure({ source, step: "member", status: member.status, email });
+      return { ok: false, reason: "member" };
+    }
+    const tagged = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}/tags`,
+      {
+        method: "POST",
+        body: JSON.stringify({ tags }),
+      },
+      fetchImpl,
+    );
+    if (!tagged.ok) {
+      logMailchimpFailure({ source, step: "tag", status: tagged.status, email });
+      return { ok: false, reason: "tag" };
+    }
+    return { ok: true };
+  } catch {
+    logMailchimpFailure({ source, step: "network", email });
+    return { ok: false, reason: "network" };
+  }
+}
+
+/** 2027 SLP CPT kit. Always the Mojo audience. Page tags omit `popup`. QA adds `qa`. */
+export async function captureCptKitLead(input: {
+  email: string;
+  name?: string;
+  popup?: boolean;
+  qa?: boolean;
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<CaptureResult> {
+  const settings = mailchimpSettings(input.env);
+  if (!settings) return { ok: true, skipped: true, reason: "unconfigured" };
+  const email = input.email.trim().toLowerCase();
+  if (!email.includes("@")) return { ok: false, reason: "email" };
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const name = input.name?.trim() ?? "";
+  const source = input.popup ? "cpt-kit-popup" : "cpt-kit";
+  const tags = [
+    { name: CPT_KIT_TAG, status: "active" as const },
+    { name: LEAD_MAGNET_TAG, status: "active" as const },
+    { name: THERAPY_LEAD_TAG, status: "active" as const },
+    ...(input.popup ? [{ name: POPUP_LEAD_TAG, status: "active" as const }] : []),
+    ...(input.qa ? [{ name: LEAD_QA_TAG, status: "active" as const }] : []),
   ];
   try {
     const hash = mailchimpSubscriberHash(email);
