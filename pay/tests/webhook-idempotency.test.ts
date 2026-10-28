@@ -236,7 +236,8 @@ describe("idempotent stripe webhook", () => {
     ]);
     expect(seen.resend).toHaveLength(1);
     expect(seen.resend[0]).toMatchObject({
-      from: "SOP Mojo <orders@sopmojo.com>",
+      from: "Ryan Pease | SOP Mojo <orders@sopmojo.com>",
+      reply_to: "ryan@sopmojo.com",
       to: ["buyer@example.com"],
       subject: "Builder Pro is unlocked",
     });

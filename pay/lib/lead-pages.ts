@@ -10,6 +10,7 @@ const LEAD_MAGNET_PATHS = [
   "/free/founder-trap",
   "/quality-control-starter-pack",
   "/2027-slp-cpt-kit",
+  "/unsubscribe",
   "/embed/demo",
 ] as const;
 

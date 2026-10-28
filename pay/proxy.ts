@@ -29,5 +29,7 @@ export const config = {
     "/2027-slp-cpt-kit/ready",
     "/embed/demo",
     "/embed/demo/:path*",
+    "/unsubscribe",
+    "/unsubscribe/:path*",
   ],
 };

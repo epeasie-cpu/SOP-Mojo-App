@@ -19,7 +19,9 @@ export function isNoIndexPath(pathname: string): boolean {
     pathname === "/quality-control-starter-pack/ready" ||
     pathname === "/2027-slp-cpt-kit/ready" ||
     pathname === "/embed/demo" ||
-    pathname.startsWith("/embed/demo/")
+    pathname.startsWith("/embed/demo/") ||
+    pathname === "/unsubscribe" ||
+    pathname.startsWith("/unsubscribe/")
   );
 }
 

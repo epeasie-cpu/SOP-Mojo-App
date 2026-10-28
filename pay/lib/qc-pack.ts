@@ -1,3 +1,4 @@
+import { withCanSpam } from "./can-spam";
 import { logResendSent } from "./delivery-log";
 import { createEventStore, type EventStore } from "./event-store";
 import { sendResendEmail } from "./fulfillment";
@@ -5,7 +6,7 @@ import { captureQcPackLead } from "./mailchimp";
 import { normalizeBuyerEmail } from "./open-checkout";
 import { QC_PACK_CHECK_URL } from "./qc-pack-page";
 import { QMS_BUILDER_PRO_GO } from "./qms-page";
-import { QMS_SPAM, QMS_UPSELL, qmsStarterPackUrl } from "./qms-check";
+import { QMS_UPSELL, qmsStarterPackUrl } from "./qms-check";
 
 export const QC_PACK_EMAIL_LEAD = "Your Quality Control Starter Pack";
 
@@ -43,7 +44,7 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function qcPackEmail(packUrl: string): { subject: string; text: string; html: string } {
+export function qcPackEmail(packUrl: string, options?: { to?: string; env?: NodeJS.ProcessEnv }): { subject: string; text: string; html: string } {
   const text = [
     QC_PACK_EMAIL_LEAD,
     "",
@@ -61,8 +62,6 @@ export function qcPackEmail(packUrl: string): { subject: string; text: string; h
     "",
     QMS_UPSELL,
     QMS_BUILDER_PRO_GO,
-    "",
-    QMS_SPAM,
   ].join("\n");
   const html = [
     `<p>${escapeHtml(QC_PACK_EMAIL_LEAD)}</p>`,
@@ -71,9 +70,11 @@ export function qcPackEmail(packUrl: string): { subject: string; text: string; h
     `<p><a href="${escapeHtml(packUrl)}">Open the Quality Control Starter Pack</a></p>`,
     `<p><a href="${QC_PACK_CHECK_URL}">Or take the 2-minute QMS check</a></p>`,
     `<p><a href="${QMS_BUILDER_PRO_GO}">${escapeHtml(QMS_UPSELL)}</a></p>`,
-    `<p>${escapeHtml(QMS_SPAM)}</p>`,
   ].join("");
-  return { subject: QC_PACK_EMAIL_LEAD, text, html };
+  return withCanSpam(
+    { subject: QC_PACK_EMAIL_LEAD, text, html },
+    { to: options?.to, resource: "Quality Control Starter Pack", reason: "requested", marketing: true, env: options?.env },
+  );
 }
 
 export type QcPackSubmitResult = { ok: true } | { ok: false; code: "email" | "name" | "rate" | "send" };
@@ -116,7 +117,7 @@ export async function submitQcPack(input: {
   const claimed = await store.claimCredentialSend(claim);
   if (!claimed) return { ok: true };
   try {
-    const content = qcPackEmail(packUrl);
+    const content = qcPackEmail(packUrl, { to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -124,6 +125,9 @@ export async function submitQcPack(input: {
       html: content.html,
       env: input.env,
       fetchImpl,
+      marketing: true,
+      explicitRequest: true,
+      store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the pack can be emailed.");
     logResendSent({ source, id: sent.id, email });

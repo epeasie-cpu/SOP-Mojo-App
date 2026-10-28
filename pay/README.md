@@ -32,7 +32,8 @@ Copy `.env.example` to `.env.local`. Do not put live Stripe keys in the repo. Th
 | `ADMIN_EMAILS` | No | Comma-separated allowlist. Defaults to `ryan@sopmojo.com`. |
 | `ADMIN_SESSION_SECRET` | No | Signs the session cookie. Falls back to `ADMIN_ACCESS_CODE`. |
 | `RESEND_API_KEY` | For the magic link, and for credential email if Make is unset | Same pattern as AI SOP Writer. |
-| `EMAIL_FROM` | No | Defaults to `SOP Mojo <onboarding@resend.dev>`, which only delivers to the Resend account address until a domain is verified. |
+| `EMAIL_FROM` | No | Display name is `Ryan Pease \| SOP Mojo`. If this is already a `@sopmojo.com` address, that address is kept. Otherwise mail is sent from `writer@sopmojo.com`. Reply-To is `ryan@sopmojo.com`. |
+| `UNSUBSCRIBE_SECRET` | To sign unsubscribe links | HMAC secret. Falls back to `ADMIN_SESSION_SECRET`, then `ADMIN_ACCESS_CODE`. |
 | `NEXT_PUBLIC_SUPABASE_URL` | For unlock + credential email | Shared Builder Supabase project (same one as Flowchart Studio). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | With the URL | Anon key. |
 | `SUPABASE_SERVICE_ROLE_KEY` | For unlock + credential email | Server only. Never `NEXT_PUBLIC_`. |

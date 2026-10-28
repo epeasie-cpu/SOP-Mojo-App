@@ -415,3 +415,36 @@ export async function captureCptKitLead(input: {
     return { ok: false, reason: "network" };
   }
 }
+
+/** Mark a member unsubscribed on the Mojo audience. Missing and archived members are fine. */
+export async function unsubscribeMailchimpMember(input: {
+  email: string;
+  env: NodeJS.ProcessEnv;
+  fetchImpl?: typeof fetch;
+}): Promise<{ ok: true; missing?: boolean }> {
+  const settings = mailchimpSettings(input.env);
+  if (!settings) return { ok: true, missing: true };
+  const email = input.email.trim().toLowerCase();
+  const fetchImpl = input.fetchImpl ?? fetch;
+  const hash = mailchimpSubscriberHash(email);
+  const listId = encodeURIComponent(DEFAULT_MAILCHIMP_AUDIENCE_ID);
+  try {
+    const response = await mailchimpFetch(
+      settings,
+      `/lists/${listId}/members/${hash}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ status: "unsubscribed" }),
+      },
+      fetchImpl,
+    );
+    if (response.ok || response.status === 404) return { ok: true, missing: response.status === 404 };
+    const detail = await response.text().catch(() => "");
+    if (/compliance|archived|forgotten|cleaned/i.test(detail)) return { ok: true };
+    logMailchimpFailure({ source: "unsubscribe", step: "member", status: response.status, email });
+    return { ok: true };
+  } catch {
+    logMailchimpFailure({ source: "unsubscribe", step: "network", email });
+    return { ok: true };
+  }
+}

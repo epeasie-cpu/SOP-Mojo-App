@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { fromHeader, listUnsubscribeHeaders, REPLY_TO_ADDRESS, suppressionKey, withCanSpam } from "./can-spam";
 import { isEntitlementProduct, type EntitlementProduct, type Product } from "./catalog";
 import type { EventStore } from "./event-store";
 import { captureCheckoutLead } from "./mailchimp";
@@ -50,6 +51,48 @@ export function credentialEmailText(input: { email: string; password: string; pr
 
 export function existingAccountUnlockKey(email: string, eventId: string): string {
   return `${email.trim().toLowerCase()}|${eventId.trim()}`;
+}
+
+function purchasedLabel(product: string): string {
+  const names = product
+    .split(",")
+    .map((id) => {
+      const trimmed = id.trim();
+      if (trimmed === "builder_pro") return "Builder Pro";
+      if (trimmed === "flowchart_plus") return "Flowchart Plus";
+      return trimmed;
+    })
+    .filter(Boolean);
+  return names.join(" and ") || "your product";
+}
+
+function paragraphs(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => (line ? `<p>${escapeHtml(line)}</p>` : ""))
+    .join("");
+}
+
+function credentialMessage(input: { email: string; password: string; product: string; env: NodeJS.ProcessEnv }) {
+  const text = credentialEmailText(input);
+  return withCanSpam(
+    { subject: "Your SOP Mojo sign-in", text, html: paragraphs(text) },
+    { to: input.email, resource: purchasedLabel(input.product), reason: "purchased", marketing: false, env: input.env },
+  );
+}
+
+function unlockMessage(input: {
+  email: string;
+  access: { title: string; url: string }[];
+  resetLink: string;
+  title: string;
+  env: NodeJS.ProcessEnv;
+}) {
+  const text = unlockEmailText(input);
+  return withCanSpam(
+    { subject: `${input.title} is unlocked`, text, html: paragraphs(text) },
+    { to: input.email, resource: input.title, reason: "purchased", marketing: false, env: input.env },
+  );
 }
 
 export function unlockEmailText(input: {
@@ -220,10 +263,16 @@ export async function sendResendEmail(input: {
   html?: string;
   env: NodeJS.ProcessEnv;
   fetchImpl: typeof fetch;
+  marketing?: boolean;
+  explicitRequest?: boolean;
+  store?: EventStore;
 }): Promise<false | { id: string }> {
   const resendKey = input.env.RESEND_API_KEY?.trim();
   if (!resendKey) return false;
-  const from = input.env.EMAIL_FROM?.trim() || "SOP Mojo <onboarding@resend.dev>";
+  if (input.marketing && !input.explicitRequest && input.store) {
+    if (await input.store.hasCredentialSend(suppressionKey(input.email))) return { id: "suppressed" };
+  }
+  const headers = input.marketing ? listUnsubscribeHeaders(input.email, input.env) : null;
   const response = await input.fetchImpl("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -231,11 +280,13 @@ export async function sendResendEmail(input: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      from,
+      from: fromHeader(input.env),
+      reply_to: REPLY_TO_ADDRESS,
       to: [input.email],
       subject: input.subject,
       text: input.text,
       ...(input.html ? { html: input.html } : {}),
+      ...(headers ? { headers } : {}),
     }),
   });
   if (!response.ok) throw new Error(`Resend returned ${response.status}.`);
@@ -256,7 +307,13 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function deliveryEmailContent(input: { title: string; url: string; label: string }): {
+export function deliveryEmailContent(input: {
+  title: string;
+  url: string;
+  label: string;
+  to?: string;
+  env?: NodeJS.ProcessEnv;
+}): {
   subject: string;
   text: string;
   html: string;
@@ -264,15 +321,17 @@ export function deliveryEmailContent(input: { title: string; url: string; label:
   const title = input.title.trim() || "Your SOP Mojo download";
   const label = input.label.trim() || "Download";
   const url = input.url.trim();
-  return {
-    subject: `${title} is ready`,
-    text: [`Your ${title} is ready.`, "", `${label}: ${url}`, "", "Check your junk and spam folder too."].join("\n"),
-    html: [
-      `<p>Your ${escapeHtml(title)} is ready.</p>`,
-      `<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;background:#b0ff56;color:#10140c;font-weight:600;text-decoration:none;">${escapeHtml(label)}</a></p>`,
-      "<p>Check your junk and spam folder too.</p>",
-    ].join(""),
-  };
+  return withCanSpam(
+    {
+      subject: `${title} is ready`,
+      text: [`Your ${title} is ready.`, "", `${label}: ${url}`].join("\n"),
+      html: [
+        `<p>Your ${escapeHtml(title)} is ready.</p>`,
+        `<p><a href="${escapeHtml(url)}" style="display:inline-block;padding:12px 18px;background:#b0ff56;color:#10140c;font-weight:600;text-decoration:none;">${escapeHtml(label)}</a></p>`,
+      ].join(""),
+    },
+    { to: input.to, resource: title, reason: "purchased", marketing: false, env: input.env },
+  );
 }
 
 /** Email the download or access link. No app entitlement and no password. */
@@ -297,6 +356,8 @@ export async function sendDeliveryEmail(input: {
       title: input.product.title,
       url: delivery.url.trim(),
       label: delivery.label,
+      to: email,
+      env: input.env,
     });
     const sent = await sendResendEmail({
       email,
@@ -305,6 +366,8 @@ export async function sendDeliveryEmail(input: {
       html: content.html,
       env: input.env,
       fetchImpl: input.fetchImpl,
+      marketing: false,
+      store: input.store,
     });
     if (!sent) {
       throw new Error("Set RESEND_API_KEY so the buyer receives the download link.");
@@ -355,12 +418,15 @@ export async function deliverCredentials(input: {
     if (!response.ok) throw new Error(`Make credentials webhook returned ${response.status}.`);
     return "make";
   }
+  const credential = credentialMessage({ email: input.email, password: input.password, product: input.product, env: input.env });
   const sent = await sendResendEmail({
     email: input.email,
-    subject: "Your SOP Mojo sign-in",
-    text: credentialEmailText({ email: input.email, password: input.password, product: input.product }),
+    subject: credential.subject,
+    text: credential.text,
+    html: credential.html,
     env: input.env,
     fetchImpl: input.fetchImpl,
+    marketing: false,
   });
   return sent ? "resend" : "unconfigured";
 }
@@ -397,12 +463,16 @@ async function sendExistingUnlock(input: {
     }
     const resetLink = await createRecoveryLink(admin, email, primary.url, input.fetchImpl);
     const title = access.length === 1 ? primary.title : "Your SOP Mojo products";
+    const unlocked = unlockMessage({ email, access, resetLink, title: title ?? "Your SOP Mojo products", env: input.env });
     const sent = await sendResendEmail({
       email,
-      subject: `${title} is unlocked`,
-      text: unlockEmailText({ email, access, resetLink }),
+      subject: unlocked.subject,
+      text: unlocked.text,
+      html: unlocked.html,
       env: input.env,
       fetchImpl: input.fetchImpl,
+      marketing: false,
+      store: input.store,
     });
     if (!sent) {
       throw new Error("Set RESEND_API_KEY so an existing buyer receives the unlock email.");

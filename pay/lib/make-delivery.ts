@@ -1,3 +1,4 @@
+import { withCanSpam } from "./can-spam";
 import type { Product } from "./catalog";
 import type { EventStore } from "./event-store";
 import { deliveryEmailContent, deliverySendKey, sendResendEmail } from "./fulfillment";
@@ -153,13 +154,19 @@ export function webhookBodyShape(value: unknown): unknown {
   return typeof value;
 }
 
-export function pendingAccessEmail(title: string): { subject: string; text: string; html: string } {
+export function pendingAccessEmail(
+  title: string,
+  options?: { to?: string; env?: NodeJS.ProcessEnv },
+): { subject: string; text: string; html: string } {
   const name = title.trim() || "Your purchase";
-  return {
-    subject: `${name} is on its way`,
-    text: [ACCESS_LINK_ON_THE_WAY, "", "Check your junk and spam folder too."].join("\n"),
-    html: `<p>${ACCESS_LINK_ON_THE_WAY}</p><p>Check your junk and spam folder too.</p>`,
-  };
+  return withCanSpam(
+    {
+      subject: `${name} is on its way`,
+      text: ACCESS_LINK_ON_THE_WAY,
+      html: `<p>${ACCESS_LINK_ON_THE_WAY}</p>`,
+    },
+    { to: options?.to, resource: name, reason: "purchased", marketing: false, env: options?.env },
+  );
 }
 
 function webhookUrl(env: NodeJS.ProcessEnv, envVar: string): string {
@@ -311,8 +318,8 @@ export async function deliverMakeWebhook(input: {
   if (!emailClaimed) return "skipped";
   try {
     const content = accessUrl
-      ? deliveryEmailContent({ title: input.product.title, url: accessUrl, label: delivery.label })
-      : pendingAccessEmail(input.product.title);
+      ? deliveryEmailContent({ title: input.product.title, url: accessUrl, label: delivery.label, to: email, env: input.env })
+      : pendingAccessEmail(input.product.title, { to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -320,6 +327,8 @@ export async function deliverMakeWebhook(input: {
       html: content.html,
       env: input.env,
       fetchImpl: input.fetchImpl,
+      marketing: false,
+      store: input.store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the buyer receives the access email.");
     await captureCheckoutLead({

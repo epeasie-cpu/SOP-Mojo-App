@@ -8,6 +8,8 @@ import {
   signSession,
   signingKey,
 } from "@/lib/admin-session";
+import { withCanSpam } from "@/lib/can-spam";
+import { sendResendEmail } from "@/lib/fulfillment";
 import { absoluteUrl } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
@@ -44,18 +46,24 @@ export async function POST(request: Request) {
     }
     const token = signMagicLink(email);
     const link = `${absoluteUrl("/admin/magic")}?token=${encodeURIComponent(token)}`;
-    const from = process.env.EMAIL_FROM?.trim() || "SOP Mojo <onboarding@resend.dev>";
-    const sent = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from,
-        to: [email],
+    const content = withCanSpam(
+      {
         subject: "Your SOP Mojo Pay sign-in link",
         text: `Sign in to the catalog:\n\n${link}\n\nThis link expires in 30 minutes.`,
-      }),
+        html: `<p>Sign in to the catalog:</p><p><a href="${link}">Open the catalog</a></p><p>This link expires in 30 minutes.</p>`,
+      },
+      { to: email, resource: "a catalog sign-in", reason: "requested", marketing: false, env: process.env },
+    );
+    const sent = await sendResendEmail({
+      email,
+      subject: content.subject,
+      text: content.text,
+      html: content.html,
+      env: process.env,
+      fetchImpl: fetch,
+      marketing: false,
     });
-    if (!sent.ok) return NextResponse.json({ error: "Could not send the sign-in email." }, { status: 502 });
+    if (!sent) return NextResponse.json({ error: "Could not send the sign-in email." }, { status: 502 });
     return NextResponse.json({ ok: true });
   }
   if (!process.env.ADMIN_ACCESS_CODE?.trim()) {

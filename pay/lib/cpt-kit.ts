@@ -4,8 +4,8 @@ import { sendResendEmail } from "./fulfillment";
 import { isLeadQaEmail } from "./lead-qa";
 import { captureCptKitLead } from "./mailchimp";
 import { normalizeBuyerEmail } from "./open-checkout";
+import { withCanSpam } from "./can-spam";
 import { CPT_KIT_BUILDER_PRO_GO } from "./cpt-kit-page";
-import { QMS_SPAM } from "./qms-check";
 import { SITE } from "./site";
 
 export const CPT_KIT_URL_ENV = "CPT_KIT_URL";
@@ -85,7 +85,11 @@ function bulletproofButton(input: { href: string; label: string; outline?: boole
   ].join("");
 }
 
-export function cptKitEmail(kitUrl: string, name = ""): { subject: string; text: string; html: string } {
+export function cptKitEmail(
+  kitUrl: string,
+  name = "",
+  options?: { to?: string; env?: NodeJS.ProcessEnv },
+): { subject: string; text: string; html: string } {
   const first = cptKitFirstName(name);
   const greeting = first ? `Hi ${first},` : "Hi there,";
   const safeGreeting = escapeHtml(greeting);
@@ -103,8 +107,6 @@ export function cptKitEmail(kitUrl: string, name = ""): { subject: string; text:
     "",
     "Ryan Pease",
     "SOP Mojo",
-    "",
-    QMS_SPAM,
   ].join("\n");
   const cell = "padding:0 24px 24px 24px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#0C0E0C;";
   const html = [
@@ -124,10 +126,18 @@ export function cptKitEmail(kitUrl: string, name = ""): { subject: string; text:
     `<tr><td style="${cell}">${escapeHtml(CPT_KIT_EMAIL_BUILDER)}</td></tr>`,
     `<tr><td style="${cell}">${bulletproofButton({ href: CPT_KIT_BUILDER_PRO_GO, label: CPT_KIT_EMAIL_BUILDER_LABEL, outline: true })}</td></tr>`,
     `<tr><td style="${cell}">Ryan Pease<br>SOP Mojo</td></tr>`,
-    `<tr><td style="padding:0 24px 24px 24px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#3f3f46;">${escapeHtml(QMS_SPAM)}</td></tr>`,
     `</table></td></tr></table></body></html>`,
   ].join("");
-  return { subject: CPT_KIT_EMAIL_LEAD, text, html };
+  return withCanSpam(
+    { subject: CPT_KIT_EMAIL_LEAD, text, html },
+    {
+      to: options?.to,
+      resource: "2027 SLP CPT Code Transition Kit",
+      reason: "requested",
+      marketing: true,
+      env: options?.env,
+    },
+  );
 }
 
 export type CptKitSubmitResult = { ok: true } | { ok: false; code: "email" | "name" | "rate" | "send" };
@@ -174,7 +184,7 @@ export async function submitCptKit(input: {
     if (!claimed) return { ok: true };
   }
   try {
-    const content = cptKitEmail(kitUrl, name);
+    const content = cptKitEmail(kitUrl, name, { to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -182,6 +192,9 @@ export async function submitCptKit(input: {
       html: content.html,
       env: input.env,
       fetchImpl,
+      marketing: true,
+      explicitRequest: true,
+      store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the kit can be emailed.");
     logResendSent({ source, id: sent.id, email });

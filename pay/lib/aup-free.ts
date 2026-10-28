@@ -1,3 +1,4 @@
+import { withCanSpam } from "./can-spam";
 import { createEventStore, type EventStore } from "./event-store";
 import { sendResendEmail } from "./fulfillment";
 import { AUP_MAKE_ENV, FREE_AUP_PATH, libraryProducts } from "./library";
@@ -77,24 +78,21 @@ function aupWebhookUrl(env: NodeJS.ProcessEnv): string {
   return url;
 }
 
-export function freeAupEmail(accessUrl: string | null): { subject: string; text: string; html: string } {
+export function freeAupEmail(
+  accessUrl: string | null,
+  options?: { to?: string; env?: NodeJS.ProcessEnv },
+): { subject: string; text: string; html: string } {
   const link = accessUrl?.trim() ?? "";
-  const text = [
-    AUP_FREE_EMAIL_LEAD,
-    ...(link ? ["", link] : []),
-    "",
-    AUP_FREE_SPAM,
-    "",
-    AUP_FREE_UPSELL,
-    BUILDER_PRO_GO,
-  ].join("\n");
+  const text = [AUP_FREE_EMAIL_LEAD, ...(link ? ["", link] : []), "", AUP_FREE_UPSELL, BUILDER_PRO_GO].join("\n");
   const html = [
     `<p>${escapeHtml(AUP_FREE_EMAIL_LEAD)}</p>`,
     link ? `<p><a href="${escapeHtml(link)}">${escapeHtml(link)}</a></p>` : "",
-    `<p>${escapeHtml(AUP_FREE_SPAM)}</p>`,
     `<p><a href="${BUILDER_PRO_GO}">${escapeHtml(AUP_FREE_UPSELL)}</a></p>`,
   ].join("");
-  return { subject: AUP_FREE_EMAIL_LEAD, text, html };
+  return withCanSpam(
+    { subject: AUP_FREE_EMAIL_LEAD, text, html },
+    { to: options?.to, resource: "Acceptable Use Policy Generator", reason: "requested", marketing: true, env: options?.env },
+  );
 }
 
 export function freeAupErrorMessage(code: string | undefined): string | null {
@@ -189,7 +187,7 @@ export async function submitFreeAup(input: {
   const emailClaimed = await store.claimCredentialSend(emailKey);
   if (!emailClaimed) return { ok: true };
   try {
-    const content = freeAupEmail(accessUrl);
+    const content = freeAupEmail(accessUrl, { to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -197,6 +195,9 @@ export async function submitFreeAup(input: {
       html: content.html,
       env: input.env,
       fetchImpl,
+      marketing: true,
+      explicitRequest: true,
+      store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the buyer receives the access email.");
     return { ok: true };

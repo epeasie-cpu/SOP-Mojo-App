@@ -8,6 +8,7 @@ export type EventStore = {
   /** True when this caller should send the credential email. */
   claimCredentialSend(email: string): Promise<boolean>;
   releaseCredentialSend(email: string): Promise<void>;
+  hasCredentialSend(email: string): Promise<boolean>;
 };
 
 /**
@@ -43,6 +44,9 @@ export function memoryEventStore(): EventStore {
     },
     async releaseCredentialSend(email) {
       sends.delete(credentialSendKey(email));
+    },
+    async hasCredentialSend(email) {
+      return sends.has(credentialSendKey(email));
     },
   };
 }
@@ -96,6 +100,10 @@ export function fileEventStore(filePath: string): EventStore {
       await update((state) => {
         state.sends = state.sends.filter((value) => value !== key);
       });
+    },
+    async hasCredentialSend(email) {
+      const state = await readState(filePath);
+      return state.sends.includes(credentialSendKey(email));
     },
   };
 }
@@ -162,6 +170,15 @@ export function supabaseEventStore(input: {
         headers: restHeaders(input.serviceRoleKey),
       });
       if (!response.ok) throw new Error(`Credential release failed (${response.status}).`);
+    },
+    async hasCredentialSend(email) {
+      const key = credentialSendKey(email);
+      const response = await fetchImpl(`${sendsUrl}?email=eq.${encodeURIComponent(key)}&select=email`, {
+        headers: restHeaders(input.serviceRoleKey),
+      });
+      if (!response.ok) throw new Error(`Credential lookup failed (${response.status}).`);
+      const rows = (await response.json()) as unknown[];
+      return Array.isArray(rows) && rows.length > 0;
     },
   };
 }

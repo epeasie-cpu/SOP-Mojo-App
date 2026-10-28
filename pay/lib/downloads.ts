@@ -1,4 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
+import { withCanSpam } from "./can-spam";
 import type { Product } from "./catalog";
 import type { EventStore } from "./event-store";
 import { readAdminConfig, sendResendEmail } from "./fulfillment";
@@ -288,87 +289,90 @@ function escapeHtml(value: string): string {
     .replace(/"/g, "&quot;");
 }
 
-export function offersDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
+export function offersDownloadEmail(input: { url: string; to?: string; env?: NodeJS.ProcessEnv }): { subject: string; text: string; html: string } {
   const url = input.url.trim();
-  return {
-    subject: "Your High-Converting Offers Guide download",
-    text: [
-      "Your High-Converting Offers Guide is ready.",
-      "",
-      `Download: ${url}`,
-      "",
-      "Check your junk and spam folder too.",
-      "",
-      OFFERS_BLUEPRINT_UPSELL,
-      OFFERS_BLUEPRINT_UPSELL_URL,
-      "",
-      BLUEPRINT_UPSELL,
-      BLUEPRINT_UPSELL_URL,
-    ].join("\n"),
-    html: [
-      "<p>Your High-Converting Offers Guide is ready.</p>",
-      `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
-      "<p>Check your junk and spam folder too.</p>",
-      `<p><a href="${OFFERS_BLUEPRINT_UPSELL_URL}">${escapeHtml(OFFERS_BLUEPRINT_UPSELL)}</a></p>`,
-      `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
-    ].join(""),
-  };
+  return withCanSpam(
+    {
+      subject: "Your High-Converting Offers Guide download",
+      text: [
+        "Your High-Converting Offers Guide is ready.",
+        "",
+        `Download: ${url}`,
+        "",
+        OFFERS_BLUEPRINT_UPSELL,
+        OFFERS_BLUEPRINT_UPSELL_URL,
+        "",
+        BLUEPRINT_UPSELL,
+        BLUEPRINT_UPSELL_URL,
+      ].join("\n"),
+      html: [
+        "<p>Your High-Converting Offers Guide is ready.</p>",
+        `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
+        `<p><a href="${OFFERS_BLUEPRINT_UPSELL_URL}">${escapeHtml(OFFERS_BLUEPRINT_UPSELL)}</a></p>`,
+        `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
+      ].join(""),
+    },
+    {
+      to: input.to,
+      resource: "The Ultimate Guide to Creating High-Converting Offers That Sell",
+      reason: "purchased",
+      marketing: false,
+      env: input.env,
+    },
+  );
 }
 
-export function founderTrapDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
+export function founderTrapDownloadEmail(input: { url: string; to?: string; env?: NodeJS.ProcessEnv }): { subject: string; text: string; html: string } {
   const url = input.url.trim();
-  return {
-    subject: "Your Escape the Founder Trap download",
-    text: [
-      "Your Escape the Founder Trap guide is ready.",
-      "",
-      `Download: ${url}`,
-      "",
-      "Check your junk and spam folder too.",
-      "",
-      FOUNDER_TRAP_BLUEPRINT_UPSELL,
-      FOUNDER_TRAP_BLUEPRINT_UPSELL_URL,
-      "",
-      BLUEPRINT_UPSELL,
-      BLUEPRINT_UPSELL_URL,
-    ].join("\n"),
-    html: [
-      "<p>Your Escape the Founder Trap guide is ready.</p>",
-      `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
-      "<p>Check your junk and spam folder too.</p>",
-      `<p><a href="${FOUNDER_TRAP_BLUEPRINT_UPSELL_URL}">${escapeHtml(FOUNDER_TRAP_BLUEPRINT_UPSELL)}</a></p>`,
-      `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
-    ].join(""),
-  };
+  return withCanSpam(
+    {
+      subject: "Your Escape the Founder Trap download",
+      text: [
+        "Your Escape the Founder Trap guide is ready.",
+        "",
+        `Download: ${url}`,
+        "",
+        FOUNDER_TRAP_BLUEPRINT_UPSELL,
+        FOUNDER_TRAP_BLUEPRINT_UPSELL_URL,
+        "",
+        BLUEPRINT_UPSELL,
+        BLUEPRINT_UPSELL_URL,
+      ].join("\n"),
+      html: [
+        "<p>Your Escape the Founder Trap guide is ready.</p>",
+        `<p><a href="${escapeHtml(url)}">Download the guide</a></p>`,
+        `<p><a href="${FOUNDER_TRAP_BLUEPRINT_UPSELL_URL}">${escapeHtml(FOUNDER_TRAP_BLUEPRINT_UPSELL)}</a></p>`,
+        `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
+      ].join(""),
+    },
+    { to: input.to, resource: "Escape the Founder Trap", reason: "requested", marketing: true, env: input.env },
+  );
 }
 
-export function secureDownloadEmail(productId: string, url: string): { subject: string; text: string; html: string } {
-  if (productId === OFFERS_PRODUCT_ID) return offersDownloadEmail({ url });
-  if (productId === FOUNDER_TRAP_PRODUCT_ID) return founderTrapDownloadEmail({ url });
-  return blueprintDownloadEmail({ url });
+export function secureDownloadEmail(
+  productId: string,
+  url: string,
+  options?: { to?: string; env?: NodeJS.ProcessEnv },
+): { subject: string; text: string; html: string } {
+  if (productId === OFFERS_PRODUCT_ID) return offersDownloadEmail({ url, ...options });
+  if (productId === FOUNDER_TRAP_PRODUCT_ID) return founderTrapDownloadEmail({ url, ...options });
+  return blueprintDownloadEmail({ url, ...options });
 }
 
-export function blueprintDownloadEmail(input: { url: string }): { subject: string; text: string; html: string } {
+export function blueprintDownloadEmail(input: { url: string; to?: string; env?: NodeJS.ProcessEnv }): { subject: string; text: string; html: string } {
   const url = input.url.trim();
-  return {
-    subject: "Your Business OS Blueprint download",
-    text: [
-      "Your Business OS Blueprint is ready.",
-      "",
-      `Download: ${url}`,
-      "",
-      "Check your junk and spam folder too.",
-      "",
-      BLUEPRINT_UPSELL,
-      BLUEPRINT_UPSELL_URL,
-    ].join("\n"),
-    html: [
-      "<p>Your Business OS Blueprint is ready.</p>",
-      `<p><a href="${escapeHtml(url)}">Download the Blueprint</a></p>`,
-      "<p>Check your junk and spam folder too.</p>",
-      `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
-    ].join(""),
-  };
+  return withCanSpam(
+    {
+      subject: "Your Business OS Blueprint download",
+      text: ["Your Business OS Blueprint is ready.", "", `Download: ${url}`, "", BLUEPRINT_UPSELL, BLUEPRINT_UPSELL_URL].join("\n"),
+      html: [
+        "<p>Your Business OS Blueprint is ready.</p>",
+        `<p><a href="${escapeHtml(url)}">Download the Blueprint</a></p>`,
+        `<p><a href="${BLUEPRINT_UPSELL_URL}">${escapeHtml(BLUEPRINT_UPSELL)}</a></p>`,
+      ].join(""),
+    },
+    { to: input.to, resource: "The Business OS Blueprint", reason: "purchased", marketing: false, env: input.env },
+  );
 }
 
 export function downloadRecoveryHtml(posted: boolean, productId: string | null = BLUEPRINT_PRODUCT_ID): string {
@@ -558,7 +562,7 @@ export async function fulfillSecureDownload(input: {
   const claimed = await input.store.claimCredentialSend(key);
   if (!claimed) return "skipped";
   try {
-    const content = secureDownloadEmail(input.product.id, downloadUrl(token, input.env));
+    const content = secureDownloadEmail(input.product.id, downloadUrl(token, input.env), { to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -566,6 +570,9 @@ export async function fulfillSecureDownload(input: {
       html: content.html,
       env: input.env,
       fetchImpl: input.fetchImpl,
+      marketing: input.product.id === FOUNDER_TRAP_PRODUCT_ID,
+      explicitRequest: true,
+      store: input.store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the buyer receives the download link.");
     return "sent";
@@ -652,7 +659,7 @@ async function sendFreshDownload(input: {
   const sessionId = await input.grants.findPaidSession(input.email, input.productId);
   if (!sessionId) return;
   const token = newDownloadToken();
-  const content = secureDownloadEmail(input.productId, downloadUrl(token, input.env));
+  const content = secureDownloadEmail(input.productId, downloadUrl(token, input.env), { to: input.email, env: input.env });
   const sent = await sendResendEmail({
     email: input.email,
     subject: content.subject,
@@ -660,6 +667,8 @@ async function sendFreshDownload(input: {
     html: content.html,
     env: input.env,
     fetchImpl: input.fetchImpl,
+    marketing: input.productId === FOUNDER_TRAP_PRODUCT_ID,
+    explicitRequest: true,
   });
   if (!sent) return;
   await input.grants.replaceToken(

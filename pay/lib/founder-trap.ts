@@ -129,7 +129,7 @@ export async function submitFreeFounderTrap(input: {
   }
 
   try {
-    const content = founderTrapDownloadEmail({ url: downloadUrl(issued.token, input.env) });
+    const content = founderTrapDownloadEmail({ url: downloadUrl(issued.token, input.env), to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -137,6 +137,9 @@ export async function submitFreeFounderTrap(input: {
       html: content.html,
       env: input.env,
       fetchImpl,
+      marketing: true,
+      explicitRequest: true,
+      store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the buyer receives the download link.");
     return { ok: true, downloadToken: issued.token };

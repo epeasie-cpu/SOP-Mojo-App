@@ -1,3 +1,4 @@
+import { withCanSpam } from "./can-spam";
 import { logResendSent } from "./delivery-log";
 import { createEventStore, type EventStore } from "./event-store";
 import { sendResendEmail } from "./fulfillment";
@@ -58,6 +59,8 @@ export function qmsPlanEmail(input: {
   result: QmsResult;
   answers: QmsAnswers;
   starterPackUrl: string | null;
+  to?: string;
+  env?: NodeJS.ProcessEnv;
 }): { subject: string; text: string; html: string } {
   const plan = qmsActionPlan(input.answers, input.result);
   const gaps = input.result.gaps.map((gap) => `${gap.title} (${gap.missed} points short)`);
@@ -79,8 +82,6 @@ export function qmsPlanEmail(input: {
     ...(pack ? ["Quality Control Starter Pack", pack, ""] : []),
     QMS_UPSELL,
     QMS_BUILDER_PRO_GO,
-    "",
-    QMS_SPAM,
   ].join("\n");
   const html = [
     `<p>${escapeHtml(QMS_EMAIL_LEAD)}</p>`,
@@ -95,9 +96,11 @@ export function qmsPlanEmail(input: {
     ...plan.map((step) => `<p><strong>${escapeHtml(step.label)}</strong><br/>${escapeHtml(step.text)}</p>`),
     pack ? `<p><a href="${escapeHtml(pack)}">Quality Control Starter Pack</a></p>` : "",
     `<p><a href="${QMS_BUILDER_PRO_GO}">${escapeHtml(QMS_UPSELL)}</a></p>`,
-    `<p>${escapeHtml(QMS_SPAM)}</p>`,
   ].join("");
-  return { subject: QMS_EMAIL_LEAD, text, html };
+  return withCanSpam(
+    { subject: QMS_EMAIL_LEAD, text, html },
+    { to: input.to, resource: "Quality System Fit Check", reason: "requested", marketing: true, env: input.env },
+  );
 }
 
 export type QmsSubmitResult = { ok: true } | { ok: false; code: "email" | "name" | "answers" | "rate" | "send" };
@@ -136,7 +139,7 @@ export async function submitQmsCheck(input: {
   if (!claimed) return { ok: true };
   try {
     const result = scoreQms(answers);
-    const content = qmsPlanEmail({ result, answers, starterPackUrl: qmsStarterPackUrl(input.env) });
+    const content = qmsPlanEmail({ result, answers, starterPackUrl: qmsStarterPackUrl(input.env), to: email, env: input.env });
     const sent = await sendResendEmail({
       email,
       subject: content.subject,
@@ -144,6 +147,9 @@ export async function submitQmsCheck(input: {
       html: content.html,
       env: input.env,
       fetchImpl,
+      marketing: true,
+      explicitRequest: true,
+      store,
     });
     if (!sent) throw new Error("Set RESEND_API_KEY so the action plan can be emailed.");
     logResendSent({ source: "qms-check", id: sent.id, email });

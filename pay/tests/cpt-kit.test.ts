@@ -35,7 +35,10 @@ beforeEach(() => {
 
 describe("2027 SLP CPT kit", () => {
   it("renders a plain CPT kit email with an escaped greeting", () => {
-    const letter = cptKitEmail(kit, "Alex Rivera");
+    const letter = cptKitEmail(kit, "Alex Rivera", {
+      to: "alex@example.com",
+      env: { UNSUBSCRIBE_SECRET: "test-secret" } as unknown as NodeJS.ProcessEnv,
+    });
     expect(letter.subject).toBe("Your 2027 SLP CPT Code Transition Kit");
     expect(letter.text.startsWith("Hi Alex,")).toBe(true);
     expect(letter.text).toContain("Open your kit: " + kit);
@@ -51,7 +54,8 @@ describe("2027 SLP CPT kit", () => {
     expect(letter.html).toContain("max-width:600px");
     expect(letter.html).toContain("#C1FF72");
     expect(letter.html).toContain("#0C0E0C");
-    expect(letter.html).not.toContain("unsubscribe");
+    expect(letter.html).toContain("Unsubscribe");
+    expect(letter.html).toContain("1846 E. Innovation Park Dr. Suite 100");
     expect(letter.text).not.toMatch(/\p{Extended_Pictographic}/u);
     expect(letter.html).not.toMatch(/\p{Extended_Pictographic}/u);
 
