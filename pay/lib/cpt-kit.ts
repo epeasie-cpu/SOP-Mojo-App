@@ -4,8 +4,9 @@ import { sendResendEmail } from "./fulfillment";
 import { isLeadQaEmail } from "./lead-qa";
 import { captureCptKitLead } from "./mailchimp";
 import { normalizeBuyerEmail } from "./open-checkout";
-import { CPT_KIT_BUILDER_PRO_GO, CPT_KIT_DISCLAIMER, CPT_KIT_UPSELL } from "./cpt-kit-page";
+import { CPT_KIT_BUILDER_PRO_GO } from "./cpt-kit-page";
 import { QMS_SPAM } from "./qms-check";
+import { SITE } from "./site";
 
 export const CPT_KIT_URL_ENV = "CPT_KIT_URL";
 
@@ -52,33 +53,79 @@ function escapeHtml(value: string): string {
   return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-export function cptKitEmail(kitUrl: string): { subject: string; text: string; html: string } {
+export const CPT_KIT_EMAIL_LOGO = `${SITE.host}/email/sop-mojo-logo.png`;
+
+const CPT_KIT_EMAIL_BODY =
+  "Your kit has two pieces. The one-page job aid covers the 2027 codes that replace 92507. The minutes-to-units calculator is where you enter your own payer rates.";
+
+const CPT_KIT_EMAIL_USE =
+  "Keep the job aid at the front desk or in the billing binder, and enter your payer rates in the calculator's yellow cells. Confirm with each payer.";
+
+const CPT_KIT_EMAIL_BUILDER =
+  "Want this as a written billing SOP your team actually follows? SOP Builder Pro helps you build it.";
+
+const CPT_KIT_EMAIL_BUILDER_LABEL = "See SOP Builder Pro";
+
+/** First word of the name, or empty when there is nothing safe to greet. */
+export function cptKitFirstName(name: string): string {
+  const cleaned = name.replace(/[\u0000-\u001f]/g, "").trim();
+  return (cleaned.split(/\s+/)[0] ?? "").slice(0, 40);
+}
+
+function bulletproofButton(input: { href: string; label: string; outline?: boolean }): string {
+  const href = escapeHtml(input.href);
+  const label = escapeHtml(input.label);
+  const fill = input.outline ? "#ffffff" : "#C1FF72";
+  const border = input.outline ? "border:2px solid #0C0E0C;" : "border:0;";
+  return [
+    `<table role="presentation" cellpadding="0" cellspacing="0" border="0">`,
+    `<tr><td align="left" bgcolor="${fill}" style="background:${fill};${border}border-radius:4px;">`,
+    `<a href="${href}" style="display:inline-block;padding:14px 24px;font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:16px;line-height:20px;font-weight:700;color:#0C0E0C;text-decoration:none;">${label}</a>`,
+    `</td></tr></table>`,
+  ].join("");
+}
+
+export function cptKitEmail(kitUrl: string, name = ""): { subject: string; text: string; html: string } {
+  const first = cptKitFirstName(name);
+  const greeting = first ? `Hi ${first},` : "Hi there,";
+  const safeGreeting = escapeHtml(greeting);
   const text = [
-    CPT_KIT_EMAIL_LEAD,
+    greeting,
     "",
-    "CPT 92507 is deleted after 12/31/2026. On 1/1/2027 it is replaced by new timed base and add-on code pairs.",
+    CPT_KIT_EMAIL_BODY,
     "",
-    "In the kit:",
-    "One-page job aid",
-    "Minutes-to-units calculator. Enter your own payer rates.",
+    `Open your kit: ${kitUrl}`,
     "",
-    kitUrl,
+    CPT_KIT_EMAIL_USE,
     "",
-    CPT_KIT_DISCLAIMER,
-    "",
-    CPT_KIT_UPSELL,
+    CPT_KIT_EMAIL_BUILDER,
     CPT_KIT_BUILDER_PRO_GO,
+    "",
+    "Ryan Pease",
+    "SOP Mojo",
     "",
     QMS_SPAM,
   ].join("\n");
+  const cell = "padding:0 24px 24px 24px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:16px;line-height:24px;color:#0C0E0C;";
   const html = [
-    `<p>${escapeHtml(CPT_KIT_EMAIL_LEAD)}</p>`,
-    "<p>CPT 92507 is deleted after 12/31/2026. On 1/1/2027 it is replaced by new timed base and add-on code pairs.</p>",
-    "<ul><li>One-page job aid</li><li>Minutes-to-units calculator. Enter your own payer rates.</li></ul>",
-    `<p><a href="${escapeHtml(kitUrl)}">Open the 2027 SLP CPT Code Transition Kit</a></p>`,
-    `<p>${escapeHtml(CPT_KIT_DISCLAIMER)}</p>`,
-    `<p><a href="${CPT_KIT_BUILDER_PRO_GO}">${escapeHtml(CPT_KIT_UPSELL)}</a></p>`,
-    `<p>${escapeHtml(QMS_SPAM)}</p>`,
+    `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">`,
+    `<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">`,
+    `</head><body style="margin:0;padding:0;background:#f4f5f3;">`,
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f4f5f3;">`,
+    `<tr><td align="center" style="padding:24px;">`,
+    `<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;">`,
+    `<tr><td style="padding:24px 24px 24px 24px;">`,
+    `<img src="${CPT_KIT_EMAIL_LOGO}" alt="SOP Mojo" width="180" height="40" style="display:block;border:0;outline:none;text-decoration:none;">`,
+    `</td></tr>`,
+    `<tr><td style="${cell}font-family:'Space Grotesk',Arial,Helvetica,sans-serif;font-size:24px;line-height:32px;font-weight:650;">${safeGreeting}</td></tr>`,
+    `<tr><td style="${cell}">${escapeHtml(CPT_KIT_EMAIL_BODY)}</td></tr>`,
+    `<tr><td style="${cell}">${bulletproofButton({ href: kitUrl, label: "Open your kit" })}</td></tr>`,
+    `<tr><td style="${cell}">${escapeHtml(CPT_KIT_EMAIL_USE)}</td></tr>`,
+    `<tr><td style="${cell}">${escapeHtml(CPT_KIT_EMAIL_BUILDER)}</td></tr>`,
+    `<tr><td style="${cell}">${bulletproofButton({ href: CPT_KIT_BUILDER_PRO_GO, label: CPT_KIT_EMAIL_BUILDER_LABEL, outline: true })}</td></tr>`,
+    `<tr><td style="${cell}">Ryan Pease<br>SOP Mojo</td></tr>`,
+    `<tr><td style="padding:0 24px 24px 24px;font-family:'Open Sans',Arial,Helvetica,sans-serif;font-size:12px;line-height:18px;color:#3f3f46;">${escapeHtml(QMS_SPAM)}</td></tr>`,
+    `</table></td></tr></table></body></html>`,
   ].join("");
   return { subject: CPT_KIT_EMAIL_LEAD, text, html };
 }
@@ -127,7 +174,7 @@ export async function submitCptKit(input: {
     if (!claimed) return { ok: true };
   }
   try {
-    const content = cptKitEmail(kitUrl);
+    const content = cptKitEmail(kitUrl, name);
     const sent = await sendResendEmail({
       email,
       subject: content.subject,

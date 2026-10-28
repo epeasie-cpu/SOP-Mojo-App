@@ -34,15 +34,46 @@ beforeEach(() => {
 });
 
 describe("2027 SLP CPT kit", () => {
+  it("renders a plain CPT kit email with an escaped greeting", () => {
+    const letter = cptKitEmail(kit, "Alex Rivera");
+    expect(letter.subject).toBe("Your 2027 SLP CPT Code Transition Kit");
+    expect(letter.text.startsWith("Hi Alex,")).toBe(true);
+    expect(letter.text).toContain("Open your kit: " + kit);
+    expect(letter.text).toContain(CPT_KIT_BUILDER_PRO_GO);
+    expect(letter.text).toContain("Ryan Pease");
+    expect(letter.text).toContain("SOP Mojo");
+    expect(letter.html).toContain(`href="${kit}"`);
+    expect(letter.html).toContain(`href="${CPT_KIT_BUILDER_PRO_GO}"`);
+    expect(letter.html).toContain("Open your kit");
+    expect(letter.html).toContain("See SOP Builder Pro");
+    expect(letter.html).toContain('alt="SOP Mojo"');
+    expect(letter.html).toContain("https://pay.sopmojo.com/email/sop-mojo-logo.png");
+    expect(letter.html).toContain("max-width:600px");
+    expect(letter.html).toContain("#C1FF72");
+    expect(letter.html).toContain("#0C0E0C");
+    expect(letter.html).not.toContain("unsubscribe");
+    expect(letter.text).not.toMatch(/\p{Extended_Pictographic}/u);
+    expect(letter.html).not.toMatch(/\p{Extended_Pictographic}/u);
+
+    const escaped = cptKitEmail(kit, "<b>Ann</b>");
+    expect(escaped.html).toContain("Hi &lt;b&gt;Ann&lt;/b&gt;,");
+    expect(escaped.html).not.toContain("<b>Ann</b>");
+    expect(escaped.text.startsWith("Hi <b>Ann</b>,")).toBe(true);
+    expect(cptKitEmail(kit, "A&B Lee").html).toContain("Hi A&amp;B,");
+
+    expect(cptKitEmail(kit, "   ").text.startsWith("Hi there,")).toBe(true);
+    expect(cptKitEmail(kit).text.startsWith("Hi there,")).toBe(true);
+  });
+
   it("emails the kit once, tags Mailchimp, and refuses to send when the URL is not https", async () => {
     expect(CPT_KIT_SEO_DESCRIPTION.length).toBeLessThanOrEqual(160);
     expect(CPT_KIT_DISCLAIMER).toBe("Educational, not billing advice.");
-    const letter = cptKitEmail(kit);
+    const letter = cptKitEmail(kit, "Alex Rivera");
     expect(letter.subject).toBe("Your 2027 SLP CPT Code Transition Kit");
+    expect(letter.text).toContain("Hi Alex,");
     expect(letter.text).toContain(kit);
-    expect(letter.text).toContain("12/31/2026");
-    expect(letter.text).toContain("1/1/2027");
-    expect(letter.text).toContain(CPT_KIT_DISCLAIMER);
+    expect(letter.text).toContain("one-page job aid");
+    expect(letter.text).toContain("92507");
     expect(letter.text).toContain(CPT_KIT_BUILDER_PRO_GO);
     expect(letter.html).toContain(`href="${kit}"`);
     expect(letter.text).not.toMatch(/Cassidy|Red Hat|RHTC/i);
