@@ -88,7 +88,7 @@ export function listUnsubscribeHeaders(email: string, env: NodeJS.ProcessEnv = p
   if (!token) return null;
   const httpsUrl = unsubscribeApiUrl(token, env);
   return {
-    "List-Unsubscribe": `<${httpsUrl}>, <mailto:${REPLY_TO_ADDRESS}?subject=unsubscribe>`,
+    "List-Unsubscribe": `<${httpsUrl}>`,
     "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
   };
 }

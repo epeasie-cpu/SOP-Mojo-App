@@ -69,8 +69,10 @@ describe("CAN-SPAM", () => {
       expect(letter.text).toContain("you purchased");
       expect(letter.html).not.toContain(">Unsubscribe</a>");
     }
-    expect(listUnsubscribeHeaders(to, env)?.["List-Unsubscribe"]).toContain("mailto:ryan@sopmojo.com?subject=unsubscribe");
-    expect(listUnsubscribeHeaders(to, env)?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    const unsub = listUnsubscribeHeaders(to, env);
+    expect(unsub?.["List-Unsubscribe"]).toMatch(/^<https:\/\/[^>]+>$/);
+    expect(unsub?.["List-Unsubscribe"]).not.toContain("mailto:");
+    expect(unsub?.["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
     expect(fromHeader({ EMAIL_FROM: "SOP Mojo <orders@sopmojo.com>" } as unknown as NodeJS.ProcessEnv)).toBe(
       "Ryan Pease | SOP Mojo <orders@sopmojo.com>",
     );
@@ -163,7 +165,10 @@ describe("CAN-SPAM", () => {
     });
     expect(sent).toEqual({ id: "re_sent" });
     expect(seen[0]?.reply_to).toBe("ryan@sopmojo.com");
-    expect(seen[0]?.headers).toMatchObject({ "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" });
+    const sentHeaders = seen[0]?.headers as Record<string, string>;
+    expect(sentHeaders["List-Unsubscribe-Post"]).toBe("List-Unsubscribe=One-Click");
+    expect(sentHeaders["List-Unsubscribe"]).toMatch(/^<https:\/\/[^>]+>$/);
+    expect(sentHeaders["List-Unsubscribe"]).not.toContain("mailto:");
     await sendResendEmail({
       email: to,
       subject: "Receipt",
