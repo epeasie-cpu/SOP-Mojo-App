@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { BuilderProWalkthrough } from "@/components/BuilderProWalkthrough";
 import { createCatalogStore } from "@/lib/catalog-store";
 import { productJsonLd } from "@/lib/catalog";
 import { productPath, stablePath } from "@/lib/links";
@@ -53,6 +54,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         ) : null}
         <h1 className="font-display text-4xl font-semibold tracking-tight">{product.title}</h1>
         <p className="max-w-xl text-lg leading-7 text-zinc-300">{product.description}</p>
+        {product.id === "builder_pro" ? <BuilderProWalkthrough /> : null}
         <p className="text-2xl font-semibold text-lime">{quote.priceLabel}</p>
         {product.annual ? <p className="text-sm text-zinc-400">{product.annual.label}</p> : null}
         <Link

@@ -3,6 +3,7 @@
 import { CheckoutProvider, PaymentElement, useCheckout } from "@stripe/react-stripe-js/checkout";
 import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { BuilderProWalkthrough } from "@/components/BuilderProWalkthrough";
 import { formatUsd, type Product } from "@/lib/catalog";
 import { quoteProduct } from "@/lib/pricing";
 
@@ -272,6 +273,7 @@ export function CheckoutExperience({
             <p className="mt-1 text-sm leading-6 text-zinc-400">{product.description}</p>
           </div>
         </div>
+        {product.id === "builder_pro" && !embed ? <BuilderProWalkthrough className="mt-4" /> : null}
         <p className="mt-4 text-2xl font-semibold text-lime">{quote.summary}</p>
         {mode === "test" ? (
           <p className="mt-2 text-sm text-zinc-500">Test mode. Card 4242 4242 4242 4242, any future date, any CVC.</p>
