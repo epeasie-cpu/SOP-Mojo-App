@@ -136,10 +136,9 @@ describe("SOP template registry", () => {
 
 describe("Builder and Starter Kit links", () => {
   it("keeps the trial CTA on one constant and leaves checkout without UTMs", () => {
-    expect(BUILDER_TRY_URL).toBe(SITE.builder);
-    expect(BUILDER_TRY_URL).not.toContain("/try");
+    expect(BUILDER_TRY_URL).toBe(`${SITE.builder}/try`);
     const href = builderTryUrl("restaurant-sop-template");
-    expect(href.startsWith("https://builder.sopmojo.com/?")).toBe(true);
+    expect(new URL(href).pathname).toBe("/try");
     expect(href).toContain("utm_source=ai-sop-writer");
     expect(href).toContain("utm_medium=product");
     expect(href).toContain("utm_campaign=writer_to_builder");

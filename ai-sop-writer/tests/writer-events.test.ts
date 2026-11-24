@@ -128,6 +128,7 @@ describe("try Builder links", () => {
     const href = builderTryUrl("restaurant-sop-template");
     const linked = tryBuilderHref(href, anon);
     const url = new URL(linked);
+    expect(url.pathname).toBe("/try");
     expect(url.searchParams.get("anon")).toBe(anon);
     expect(url.searchParams.get("utm_source")).toBe("ai-sop-writer");
     expect(url.searchParams.get("utm_medium")).toBe("product");
