@@ -4,6 +4,7 @@ import {
   BUILDER_TRY_URL,
   SITE,
   STARTER_KIT_URL,
+  WRITER_EVENTS_URL,
   WRITER_TO_BUILDER_UTM,
   WRITER_UPGRADE_URL,
   absoluteUrl,
@@ -47,6 +48,7 @@ describe("canonical and upgrade URLs", () => {
       WRITER_UPGRADE_URL,
       BUILDER_TRY_URL,
       STARTER_KIT_URL,
+      WRITER_EVENTS_URL,
     ];
     for (const url of urls) {
       expect(url).not.toContain("ai-sop-writer-alpha.vercel.app");

@@ -11,6 +11,7 @@ import {
 } from "@/lib/leave-gate";
 import { buildRefinePrompt } from "@/lib/refine-prompt";
 import { formFromPrefill, mergePrefill } from "@/lib/prefill";
+import { templateSlugFromPath, trackWriterEvent } from "@/lib/writer-events";
 import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
 import type { TemplateVariant } from "@/lib/content";
@@ -135,6 +136,10 @@ export function Generator({
         throw new Error(data.error || "Could not generate a draft.");
       }
       setSop(data.sop);
+      trackWriterEvent("writer_sop_generated", {
+        path: window.location.pathname,
+        templateSlug: templateSlug ?? templateSlugFromPath(window.location.pathname),
+      });
       setDelivery(null);
       setMode(data.mode);
       setLlmFailed(Boolean(data.llmFailed));

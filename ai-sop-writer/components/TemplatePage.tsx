@@ -181,6 +181,8 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
         <div className="mt-5 flex flex-wrap gap-2">
           <a
             href={builderTryUrl(slug)}
+            data-try-builder=""
+            data-template-slug={slug}
             className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
           >
             Try Builder free
@@ -231,6 +233,8 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
         <div className="mt-6 flex flex-wrap gap-2">
           <a
             href={builderTryUrl(slug)}
+            data-try-builder=""
+            data-template-slug={slug}
             className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
           >
             Try Builder free

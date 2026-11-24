@@ -35,6 +35,9 @@ export const BUILDER_TRY_URL: string = SITE.builder;
 /** SOP Starter Kit on the main site. */
 export const STARTER_KIT_URL = "https://www.sopmojo.com/lp/sop-starter-kit";
 
+/** Builder ingest for Writer usage events. One constant. Not live until that route ships. */
+export const WRITER_EVENTS_URL = "https://builder.sopmojo.com/api/events";
+
 /** Tracked Builder link for a template page. Paid checkout does not use this. */
 export function builderTryUrl(content?: string): string {
   const url = new URL(BUILDER_TRY_URL);
