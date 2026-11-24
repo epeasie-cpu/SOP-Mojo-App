@@ -6,8 +6,14 @@ export function pageTitle(keyword: string): string {
   return `${keyword} | ${SITE.name} | ${SITE.parentName}`;
 }
 
+/** Template titles lead with the topic. Two long topics land at 62 characters. */
+export function templateDocumentTitle(heading: string): string {
+  return `${heading} (Free) + AI Writer | ${SITE.parentName}`;
+}
+
 export function buildMetadata(entry: ContentEntry): Metadata {
-  const title = pageTitle(entry.keyword);
+  const title =
+    entry.type === "template" ? templateDocumentTitle(entry.heading) : pageTitle(entry.keyword);
   const url = absoluteUrl(entry.path);
   return {
     title,

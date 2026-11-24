@@ -1,16 +1,19 @@
 "use client";
 
-import { useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { EmailSopModal } from "@/components/EmailSopModal";
+import { useSopDraft } from "@/components/SopDraftContext";
 import {
   draftDeliveryKey,
   leaveActionRequiresEmail,
   type LeaveBrowserAction,
 } from "@/lib/leave-gate";
 import { buildRefinePrompt } from "@/lib/refine-prompt";
+import { formFromPrefill, mergePrefill } from "@/lib/prefill";
 import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import type { GenerateMode, SopDraft, SopInput } from "@/lib/sop";
+import type { TemplateVariant } from "@/lib/content";
 import { sopFilename, sopToMarkdown, sopToPrintHtml } from "@/lib/sop-export";
 
 const fieldClass =
@@ -30,6 +33,9 @@ const BUSINESS_SUGGESTIONS = [
 type Props = {
   defaults?: Partial<SopInput>;
   outputSlotId?: string;
+  templateSlug?: string;
+  submitLabel?: string;
+  variants?: TemplateVariant[];
 };
 
 function downloadFile(filename: string, contents: string, type: string) {
@@ -42,7 +48,16 @@ function downloadFile(filename: string, contents: string, type: string) {
   URL.revokeObjectURL(url);
 }
 
-export function Generator({ defaults, outputSlotId }: Props) {
+export function Generator({
+  defaults,
+  outputSlotId,
+  templateSlug,
+  submitLabel,
+  variants,
+}: Props) {
+  const defaultsRef = useRef(defaults);
+  const draftContext = useSopDraft();
+  const [activeVariant, setActiveVariant] = useState<number | null>(variants?.length ? 0 : null);
   const [form, setForm] = useState<SopInput>({
     businessType: defaults?.businessType ?? "",
     processName: defaults?.processName ?? "",
@@ -69,6 +84,22 @@ export function Generator({ defaults, outputSlotId }: Props) {
     () => true,
     () => false,
   );
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const merged = mergePrefill(defaultsRef.current, {
+      process: params.get("process"),
+      business: params.get("business"),
+      role: params.get("role"),
+    });
+    if (!merged.fromQuery) return;
+    setForm(merged.form);
+    setActiveVariant(null);
+  }, []);
+
+  useEffect(() => {
+    draftContext?.setDraft(sop);
+  }, [sop, draftContext]);
 
   const markdown = useMemo(() => (sop ? sopToMarkdown(sop) : ""), [sop]);
   const refinePrompt = useMemo(
@@ -211,6 +242,31 @@ export function Generator({ defaults, outputSlotId }: Props) {
         <p className="text-xs font-semibold tracking-[0.16em] text-zinc-500 uppercase">
           First draft
         </p>
+        {variants?.length ? (
+          <fieldset className="mt-4">
+            <legend className="text-sm font-medium text-zinc-200">Start from</legend>
+            <div className="mt-2 flex flex-wrap gap-2">
+              {variants.map((variant, index) => (
+                <button
+                  key={variant.label}
+                  type="button"
+                  aria-pressed={index === activeVariant}
+                  onClick={() => {
+                    setActiveVariant(index);
+                    setForm(formFromPrefill(variant.prefill, defaults));
+                  }}
+                  className={
+                    index === activeVariant
+                      ? "rounded-sm bg-lime px-3 py-1.5 text-sm font-semibold text-lime-ink"
+                      : outlineButtonClass
+                  }
+                >
+                  {variant.label}
+                </button>
+              ))}
+            </div>
+          </fieldset>
+        ) : null}
         <div className="mt-3 grid gap-3 sm:grid-cols-2">
           <label className="block text-sm font-medium text-zinc-200">
             Business type
@@ -280,9 +336,10 @@ export function Generator({ defaults, outputSlotId }: Props) {
         <button
           type="submit"
           disabled={loading || gateBusy}
+          {...(templateSlug ? { "data-template-slug": templateSlug } : {})}
           className="mt-5 w-full rounded-sm bg-lime px-4 py-2.5 text-sm font-semibold text-lime-ink hover:bg-lime/90 disabled:opacity-60 sm:w-auto"
         >
-          {loading ? "Writing first draft…" : "Write first-draft SOP"}
+          {loading ? "Writing first draft…" : submitLabel || "Write first-draft SOP"}
         </button>
       </form>
 

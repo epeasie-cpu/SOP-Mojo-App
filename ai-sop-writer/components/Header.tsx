@@ -6,6 +6,7 @@ const NAV = [
   { href: "/how-it-works", label: "How it works" },
   { href: "/ai-sop-generator", label: "Generator" },
   { href: "/sop-template", label: "Template" },
+  { href: "/sop-templates", label: "SOP templates" },
   { href: "/use-cases", label: "Use cases" },
   { href: "/faq", label: "FAQ" },
 ];

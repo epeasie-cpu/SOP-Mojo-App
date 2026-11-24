@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { GET as llms } from "@/app/llms.txt/route";
 import {
+  BUILDER_TRY_URL,
   SITE,
+  STARTER_KIT_URL,
   WRITER_TO_BUILDER_UTM,
   WRITER_UPGRADE_URL,
   absoluteUrl,
@@ -36,7 +38,16 @@ describe("canonical and upgrade URLs", () => {
   });
 
   it("does not use the alpha Vercel host as a product URL", () => {
-    const urls = [SITE.host, SITE.parent, SITE.builder, SITE.library, SITE.upgradeLp, WRITER_UPGRADE_URL];
+    const urls = [
+      SITE.host,
+      SITE.parent,
+      SITE.builder,
+      SITE.library,
+      SITE.upgradeLp,
+      WRITER_UPGRADE_URL,
+      BUILDER_TRY_URL,
+      STARTER_KIT_URL,
+    ];
     for (const url of urls) {
       expect(url).not.toContain("ai-sop-writer-alpha.vercel.app");
       expect(url).not.toContain("get-started");
