@@ -22,9 +22,8 @@ export const WRITER_TO_BUILDER_UTM = {
   utm_campaign: "writer_to_builder",
 } as const;
 
-/** Locked SamCart Slide Checkout for hard $39 Builder Pro buy / upgrade CTAs. */
-export const WRITER_UPGRADE_URL =
-  "https://rpease1.mysamcart.com/checkout/builder-pro#samcart-slide-open-left";
+/** Builder Pro checkout on pay.sopmojo.com (Stripe). */
+export const WRITER_UPGRADE_URL = "https://pay.sopmojo.com/go/builder_pro";
 
 export function absoluteUrl(path: string): string {
   if (path === "/" || path === "") return SITE.host;
