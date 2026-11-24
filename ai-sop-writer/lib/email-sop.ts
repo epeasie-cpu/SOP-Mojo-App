@@ -50,7 +50,7 @@ export function resolveEmailFrom(env: NodeJS.ProcessEnv): string {
   return configured || DEFAULT_EMAIL_FROM;
 }
 
-function isEmail(value: string): boolean {
+export function isEmail(value: string): boolean {
   return value.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
 

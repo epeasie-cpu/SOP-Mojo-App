@@ -3,8 +3,14 @@ import { createHash } from "node:crypto";
 /** Mojo Business Solutions LLC audience. Override with MAILCHIMP_AUDIENCE_ID. */
 export const DEFAULT_MAILCHIMP_AUDIENCE_ID = "7c2226f741";
 
-export const LEAD_TAGS = ["writer", "flowchart"] as const;
+export const LEAD_TAGS = ["writer", "flowchart", "template"] as const;
 export type LeadTag = (typeof LEAD_TAGS)[number];
+
+const TEMPLATE_TAG = /^tpl-[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export function isLeadTag(tag: string): boolean {
+  return (LEAD_TAGS as readonly string[]).includes(tag) || TEMPLATE_TAG.test(tag);
+}
 
 export type MailchimpSettings = {
   apiKey: string;
@@ -89,26 +95,39 @@ export async function ensureAudienceTag(input: {
 
 export async function tagAudienceMember(input: {
   email: string;
-  tag: LeadTag;
+  tag?: string;
+  tags?: string[];
+  mergeFields?: { FNAME?: string };
   settings: MailchimpSettings;
   fetchImpl?: typeof fetch;
 }): Promise<CaptureResult> {
   const email = input.email.trim().toLowerCase();
   if (!email.includes("@")) return { ok: false, reason: "email" };
+  const tags = (input.tags?.length ? input.tags : input.tag ? [input.tag] : []).map((tag) =>
+    tag.trim(),
+  );
+  if (tags.length === 0 || tags.some((tag) => !isLeadTag(tag))) {
+    return { ok: false, reason: "tag" };
+  }
   const fetchImpl = input.fetchImpl ?? fetch;
+  const fname = input.mergeFields?.FNAME?.trim();
   try {
-    await ensureAudienceTag({ settings: input.settings, tag: input.tag, fetchImpl });
+    for (const tag of tags) {
+      await ensureAudienceTag({ settings: input.settings, tag, fetchImpl });
+    }
     const hash = mailchimpSubscriberHash(email);
     const listId = encodeURIComponent(input.settings.audienceId);
+    const memberBody: Record<string, unknown> = {
+      email_address: email,
+      status_if_new: "subscribed",
+    };
+    if (fname) memberBody.merge_fields = { FNAME: fname };
     const member = await mailchimpFetch(
       input.settings,
       `/lists/${listId}/members/${hash}`,
       {
         method: "PUT",
-        body: JSON.stringify({
-          email_address: email,
-          status_if_new: "subscribed",
-        }),
+        body: JSON.stringify(memberBody),
       },
       fetchImpl,
     );
@@ -118,7 +137,9 @@ export async function tagAudienceMember(input: {
       `/lists/${listId}/members/${hash}/tags`,
       {
         method: "POST",
-        body: JSON.stringify({ tags: [{ name: input.tag, status: "active" }] }),
+        body: JSON.stringify({
+          tags: tags.map((name) => ({ name, status: "active" })),
+        }),
       },
       fetchImpl,
     );

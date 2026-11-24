@@ -11,7 +11,10 @@ const entry = getEntry("/sitemap");
 export const metadata: Metadata = buildMetadata(entry);
 
 export default function HtmlSitemapPage() {
-  const pages = indexedContent().filter((item) => item.type !== "use-case");
+  const pages = indexedContent().filter(
+    (item) => item.type !== "use-case" && item.type !== "template",
+  );
+  const templates = indexedContent().filter((item) => item.type === "template");
   const useCases = indexedContent().filter((item) => item.type === "use-case");
   return (
     <PageShell className="py-12">
@@ -31,6 +34,19 @@ export default function HtmlSitemapPage() {
             <li key={item.path}>
               <Link href={item.path} className="font-medium underline-offset-2 hover:underline">
                 {item.heading}
+              </Link>
+              <span className="text-muted"> — {item.path}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+      <section className="mt-10">
+        <h2 className="font-display text-2xl font-semibold text-zinc-50">SOP templates</h2>
+        <ul className="mt-3 space-y-2">
+          {templates.map((item) => (
+            <li key={item.path}>
+              <Link href={item.path} className="font-medium underline-offset-2 hover:underline">
+                {item.keyword}
               </Link>
               <span className="text-muted"> — {item.path}</span>
             </li>

@@ -1,14 +1,17 @@
 import Link from "next/link";
 import { indexedContent } from "@/lib/content";
-import { SITE, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
+import { SITE, STARTER_KIT_URL, WRITER_UPGRADE_URL, hostLabel } from "@/lib/site";
 import { Logo } from "./Logo";
 
 export function Footer() {
-  const pages = indexedContent().filter((entry) => entry.type !== "use-case");
+  const pages = indexedContent().filter(
+    (entry) => entry.type !== "use-case" && entry.type !== "template",
+  );
+  const templates = indexedContent().filter((entry) => entry.type === "template");
   const useCases = indexedContent().filter((entry) => entry.type === "use-case");
   return (
     <footer className="no-print mt-auto border-t border-zinc-800 bg-zinc-950 text-zinc-300">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-4">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-2 xl:grid-cols-5">
         <div className="md:col-span-1">
           <Logo />
           <p className="mt-3 text-sm text-zinc-400">{SITE.tagline}</p>
@@ -28,6 +31,23 @@ export function Footer() {
               <li key={entry.path}>
                 <Link href={entry.path} className="hover:text-lime">
                   {entry.heading}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <p className="text-xs font-semibold tracking-[0.16em] text-lime uppercase">SOP templates</p>
+          <ul className="mt-3 space-y-2 text-sm text-zinc-400">
+            <li>
+              <Link href="/sop-templates" className="hover:text-lime">
+                All SOP templates
+              </Link>
+            </li>
+            {templates.map((entry) => (
+              <li key={entry.path}>
+                <Link href={entry.path} className="hover:text-lime">
+                  {entry.keyword}
                 </Link>
               </li>
             ))}
@@ -56,6 +76,11 @@ export function Footer() {
             <li>
               <a href={SITE.library} className="hover:text-lime">
                 SOP Library
+              </a>
+            </li>
+            <li>
+              <a href={STARTER_KIT_URL} className="hover:text-lime">
+                SOP Starter Kit
               </a>
             </li>
             <li>

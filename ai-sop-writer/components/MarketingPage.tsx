@@ -27,6 +27,20 @@ export function MarketingPage({
         </div>
       ) : null}
       <ArticleSections entry={entry} />
+      {entry.relatedLinks?.length ? (
+        <section className="mt-10">
+          <h2 className="font-display text-2xl font-semibold text-zinc-50">Related</h2>
+          <ul className="mt-4 space-y-2">
+            {entry.relatedLinks.map((link) => (
+              <li key={link.href}>
+                <Link href={link.href} className="font-medium text-lime hover:underline">
+                  {link.label}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {entry.path === "/use-cases" ? (
         <ul className="mt-8 grid gap-4 sm:grid-cols-2">
           {useCases.map((item) => (

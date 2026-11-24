@@ -45,6 +45,7 @@ npm test
 | `EMAIL_FROM` | No | From address. Defaults to `SOP Mojo Writer <onboarding@resend.dev>` for local/dev. Production should set a verified domain address, for example `SOP Mojo <writer@sopmojo.com>`. The Resend sandbox sender can only deliver to the Resend account email until a domain is verified. |
 | `MAILCHIMP_API_KEY` | No | Server-only. Adds or updates the submitted email on audience `7c2226f741` with tag `writer`. A Mailchimp error does not block the email or the page. |
 | `MAILCHIMP_AUDIENCE_ID` | No | Defaults to `7c2226f741` (Mojo Business Solutions LLC). |
+| `BUSINESS_ADDRESS` | No | Postal line in template-email footers. Leave unset until the legal address is confirmed. The footer still shows the legal name and founder email. |
 
 Generate and on-page review stay free. Copy Markdown, Copy AI prompt, Download Markdown, Download print HTML, and Print open an email-only prompt: “Enter email to get your SOP in your inbox.” No password and no Supabase account are required. `POST /api/email-sop` sends the current draft with Resend and, when `MAILCHIMP_API_KEY` is set, tags that address `writer`. Print and Download print HTML attach the print-ready HTML file (open it and use Print or Save as PDF). Copy and Markdown download attach Markdown and include it in the message. After a successful send, the pending copy, download, or print runs, and further leave actions on that same draft stay available. If Resend cannot send, the modal shows an error and the leave action does not run. A Mailchimp failure is logged and does not block the send.
 
@@ -64,6 +65,7 @@ JSON-LD (`Organization`, `WebSite` + `SearchAction`, `SoftwareApplication`, plus
 | `/sitemap.xml` | Sitemap index |
 | `/sitemap-pages.xml` | Marketing pages (`loc`, `lastmod`, `changefreq`, `priority`) |
 | `/sitemap-use-cases.xml` | Use-case URLs with the same tags |
+| `/sitemap-templates.xml` | SOP template URLs with the same tags |
 | `/content-tree.xml` | Scrapable tree: `loc`, `title`, `description`, `type`, `parent`, `lastmod` |
 | `/sitemap` | HTML sitemap (linked in the footer) |
 | `/llms.txt` | LLM-oriented site summary |

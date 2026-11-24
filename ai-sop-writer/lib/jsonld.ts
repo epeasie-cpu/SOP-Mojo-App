@@ -1,5 +1,5 @@
 import type { ContentEntry, FaqItem, HowToStep } from "./content";
-import { breadcrumbsFor } from "./content";
+import { breadcrumbsFor, getTemplateEntries } from "./content";
 import { SITE, absoluteUrl } from "./site";
 
 type JsonLd = Record<string, unknown>;
@@ -57,6 +57,12 @@ export function softwareApplicationLd(): JsonLd {
   };
 }
 
+function crumbName(entry: ContentEntry, crumb: ContentEntry): string {
+  const templateTrail = entry.type === "template" || entry.path === "/sop-templates";
+  if (crumb.path === "/") return templateTrail ? "Home" : SITE.name;
+  return crumb.heading;
+}
+
 export function breadcrumbLd(entry: ContentEntry): JsonLd {
   const crumbs = breadcrumbsFor(entry.path);
   return {
@@ -64,9 +70,30 @@ export function breadcrumbLd(entry: ContentEntry): JsonLd {
     itemListElement: crumbs.map((crumb, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      name: crumb.path === "/" ? SITE.name : crumb.heading,
+      name: crumbName(entry, crumb),
       item: absoluteUrl(crumb.path),
     })),
+  };
+}
+
+export function collectionLd(entry: ContentEntry, items: ContentEntry[]): JsonLd {
+  return {
+    "@type": "CollectionPage",
+    "@id": `${absoluteUrl(entry.path)}#collection`,
+    name: entry.heading,
+    description: entry.description,
+    url: absoluteUrl(entry.path),
+    isPartOf: { "@id": `${SITE.host}#website` },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: items.length,
+      itemListElement: items.map((item, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: item.keyword,
+        url: absoluteUrl(item.path),
+      })),
+    },
   };
 }
 
@@ -116,6 +143,20 @@ export function jsonLdGraph(entry: ContentEntry): JsonLd {
   }
   if (entry.howTo) {
     graph.push(howToLd(entry.howTo));
+  } else if (entry.templateSteps?.length) {
+    graph.push(
+      howToLd({
+        name: entry.heading,
+        description: entry.lede ?? entry.description,
+        steps: entry.templateSteps.map((step) => ({
+          name: step.step,
+          text: step.standard ? `${step.owner}. ${step.standard}` : step.owner,
+        })),
+      }),
+    );
+  }
+  if (entry.path === "/sop-templates") {
+    graph.push(collectionLd(entry, getTemplateEntries()));
   }
   return {
     "@context": "https://schema.org",

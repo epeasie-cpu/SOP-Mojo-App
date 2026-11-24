@@ -3,6 +3,7 @@ import { GET as robots } from "@/app/robots.txt/route";
 import { GET as sitemap } from "@/app/sitemap.xml/route";
 import { GET as sitemapPages } from "@/app/sitemap-pages.xml/route";
 import { GET as sitemapUseCases } from "@/app/sitemap-use-cases.xml/route";
+import { GET as sitemapTemplates } from "@/app/sitemap-templates.xml/route";
 import { GET as contentTree } from "@/app/content-tree.xml/route";
 import { GET as llms } from "@/app/llms.txt/route";
 import { CONTENT } from "@/lib/content";
@@ -15,9 +16,11 @@ const REQUIRED_PATHS = [
   "/ai-sop-generator",
   "/sop-template",
   "/how-to-write-an-sop",
+  "/sop-templates",
+  "/sop-templates/restaurant-sop-template",
+  "/sop-templates/employee-onboarding-sop-template",
   "/use-cases/client-onboarding",
   "/use-cases/sales",
-  "/use-cases/employee-onboarding",
   "/use-cases/housekeeping",
   "/use-cases/trades",
   "/use-cases/process-documentation",
@@ -40,6 +43,7 @@ describe("SEO routes", () => {
     expect(type).toContain("application/xml");
     expect(body).toContain("https://writer.sopmojo.com/sitemap-pages.xml");
     expect(body).toContain("https://writer.sopmojo.com/sitemap-use-cases.xml");
+    expect(body).toContain("https://writer.sopmojo.com/sitemap-templates.xml");
     expect(body).toContain("<lastmod>");
   });
 
@@ -83,7 +87,19 @@ describe("SEO routes", () => {
       expect(body).toContain("<priority>");
     }
     expect(pages.body).toContain("https://writer.sopmojo.com/how-it-works");
+    expect(pages.body).toContain("https://writer.sopmojo.com/sop-templates");
+    expect(pages.body).not.toContain("https://writer.sopmojo.com/sop-templates/restaurant-sop-template");
     expect(uses.body).toContain("https://writer.sopmojo.com/use-cases/trades");
+    expect(uses.body).not.toContain("employee-onboarding");
+    const templates = await read(sitemapTemplates());
+    expect(templates.status).toBe(200);
+    expect(templates.body).toContain("https://writer.sopmojo.com/sop-templates/restaurant-sop-template");
+    expect(templates.body).toContain(
+      "https://writer.sopmojo.com/sop-templates/opening-and-closing-procedures",
+    );
+    expect(templates.body).toContain("<lastmod>");
+    expect(templates.body).not.toContain("employee-onboarding</loc>");
+    expect(templates.body).not.toContain("/use-cases/");
   });
 
   it("llms.txt names AI SOP Writer and the canonical host", async () => {

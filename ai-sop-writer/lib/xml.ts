@@ -2,6 +2,7 @@ import {
   CONTENT,
   pagesForSitemap,
   getUseCaseSitemapEntries,
+  getTemplateSitemapEntries,
   type ContentEntry,
 } from "./content";
 import { SITE, WRITER_UPGRADE_URL, absoluteUrl } from "./site";
@@ -49,6 +50,10 @@ export function sitemapIndexXml(): string {
     <loc>${escapeXml(`${SITE.host}/sitemap-use-cases.xml`)}</loc>
     <lastmod>${lastmod}</lastmod>
   </sitemap>
+  <sitemap>
+    <loc>${escapeXml(`${SITE.host}/sitemap-templates.xml`)}</loc>
+    <lastmod>${lastmod}</lastmod>
+  </sitemap>
 </sitemapindex>
 `;
 }
@@ -59,6 +64,10 @@ export function sitemapPagesXml(): string {
 
 export function sitemapUseCasesXml(): string {
   return urlset(getUseCaseSitemapEntries());
+}
+
+export function sitemapTemplatesXml(): string {
+  return urlset(getTemplateSitemapEntries());
 }
 
 export function contentTreeXml(): string {

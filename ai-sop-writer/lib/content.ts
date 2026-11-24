@@ -1,6 +1,7 @@
 import type { SopInput } from "./sop";
+import { TEMPLATES } from "./templates";
 
-export type ContentType = "home" | "page" | "use-case" | "utility";
+export type ContentType = "home" | "page" | "use-case" | "utility" | "template";
 
 export type FaqItem = {
   question: string;
@@ -15,6 +16,22 @@ export type HowToStep = {
 export type ContentSection = {
   heading: string;
   body: string[];
+};
+
+export type TemplateStep = {
+  step: string;
+  owner: string;
+  standard?: string;
+};
+
+export type TemplateVariant = {
+  label: string;
+  prefill: Partial<SopInput>;
+};
+
+export type RelatedLink = {
+  href: string;
+  label: string;
 };
 
 export type ContentEntry = {
@@ -34,6 +51,26 @@ export type ContentEntry = {
   faqs?: FaqItem[];
   howTo?: { name: string; description: string; steps: HowToStep[] };
   prefill?: Partial<SopInput>;
+  /** Shown on the generate button: "Write my {topicLabel} SOP". */
+  topicLabel?: string;
+  industry?: string;
+  templateGroup?: "industry" | "function";
+  mcTag?: string;
+  purpose?: string;
+  scope?: string;
+  roles?: string[];
+  records?: string;
+  reviewCadence?: string;
+  customize?: string[];
+  templateSteps?: TemplateStep[];
+  checklist?: string[];
+  checklistLabel?: string;
+  extraLists?: { heading: string; items: string[] }[];
+  exceptions?: string[];
+  variants?: TemplateVariant[];
+  /** Template slugs. */
+  related?: string[];
+  relatedLinks?: RelatedLink[];
 };
 
 const LASTMOD = "2026-09-17";
@@ -56,7 +93,7 @@ const SHARED_FAQS: FaqItem[] = [
   },
 ];
 
-export const CONTENT: ContentEntry[] = [
+const BASE_CONTENT: ContentEntry[] = [
   {
     path: "/",
     keyword: "Write a Standard Operating Procedure",
@@ -238,8 +275,29 @@ export const CONTENT: ContentEntry[] = [
           "Steps are numbered, observable actions. Exceptions are the stalls you already know will happen. The checklist is the close-out. Safety notes are the foreseeable harm — not a dump of every regulation on the internet.",
         ],
       },
+      {
+        heading: "Filled templates for real jobs",
+        body: [
+          "The skeleton above is the structure. The SOP templates library fills it in for restaurants, cleaning crews, onboarding, payroll, and other jobs you can read before you generate anything.",
+        ],
+      },
     ],
+    relatedLinks: [{ href: "/sop-templates", label: "SOP templates" }],
     faqs: SHARED_FAQS,
+  },
+  {
+    path: "/sop-templates",
+    keyword: "SOP Templates",
+    heading: "SOP Templates",
+    description:
+      "Free SOP templates for restaurants, cleaning crews, onboarding, warehouses, and payroll. Read the full template on the page, then draft your version with the AI Writer.",
+    type: "page",
+    parent: "/",
+    lastmod: "2026-11-24",
+    changefreq: "weekly",
+    priority: 0.8,
+    index: true,
+    lede: "Each template is readable on the page. The writer at the top of every template is already filled in for that job, and emailing yourself a copy is optional.",
   },
   {
     path: "/how-to-write-an-sop",
@@ -399,14 +457,21 @@ export const CONTENT: ContentEntry[] = [
     keyword: "SOP Use Cases",
     heading: "SOP use cases",
     description:
-      "First-draft SOP use cases for client onboarding, sales, employee onboarding, housekeeping, trades, and process documentation.",
+      "First-draft SOP use cases for client onboarding, sales, housekeeping, trades, and process documentation.",
     type: "page",
     parent: "/",
     lastmod: LASTMOD,
     changefreq: "weekly",
     priority: 0.7,
     index: true,
-    lede: "Pick the job that is currently trapped in someone’s head. Each use case includes a generator prefill so you can produce a first-draft standard operating procedure immediately.",
+    lede: "Pick the job that is currently trapped in someone’s head. Each use case includes a generator prefill so you can produce a first-draft standard operating procedure immediately. Employee onboarding lives with the SOP templates.",
+    relatedLinks: [
+      { href: "/sop-templates", label: "SOP templates" },
+      {
+        href: "/sop-templates/employee-onboarding-sop-template",
+        label: "Employee Onboarding SOP Template",
+      },
+    ],
   },
   {
     path: "/use-cases/client-onboarding",
@@ -444,6 +509,12 @@ export const CONTENT: ContentEntry[] = [
       kpi: "Kickoff held and workspace live within 5 business days of signature",
       trigger: "Signed agreement received and matter opened in the CRM",
     },
+    relatedLinks: [
+      {
+        href: "/sop-templates/customer-service-sop-template",
+        label: "Customer Service SOP Template",
+      },
+    ],
     faqs: SHARED_FAQS,
   },
   {
@@ -482,44 +553,12 @@ export const CONTENT: ContentEntry[] = [
       kpi: "Proposal sent within 48 hours of a completed discovery call",
       trigger: "Opportunity marked qualified in the CRM",
     },
-    faqs: SHARED_FAQS,
-  },
-  {
-    path: "/use-cases/employee-onboarding",
-    slug: "employee-onboarding",
-    keyword: "Employee Onboarding SOP",
-    heading: "Employee onboarding SOP",
-    description:
-      "Draft an employee onboarding standard operating procedure for day one access, role ramp, and a 30-day checklist that is not a scavenger hunt.",
-    type: "use-case",
-    parent: "/use-cases",
-    lastmod: LASTMOD,
-    changefreq: "monthly",
-    priority: 0.7,
-    index: true,
-    lede: "Employee onboarding is a process with a start date, an owner, and a definition of “ready to work.” If those three are missing, you have a welcome lunch and a pile of unanswered questions.",
-    sections: [
+    relatedLinks: [
       {
-        heading: "What this SOP should make obvious",
-        body: [
-          "Who provisions accounts before day one, which role runs orientation, which SOPs the new hire must be walked through, and the 30-day KPI (time-to-first-solo-task, equipment ready on day one, or manager check-ins completed).",
-        ],
-      },
-      {
-        heading: "Exceptions worth writing down",
-        body: [
-          "Laptop delay. Background check pending. Hiring manager on PTO. Remote start with no camera. Write the backup owner or day one becomes an apology tour.",
-        ],
+        href: "/sop-templates/customer-service-sop-template",
+        label: "Customer Service SOP Template",
       },
     ],
-    prefill: {
-      businessType: "Small operating company",
-      processName: "New employee onboarding (day 1 to day 30)",
-      role: "People operations lead",
-      tools: "HRIS, email, chat, equipment tracker, SOP library",
-      kpi: "Day-one access complete and 30-day ramp checklist at 100%",
-      trigger: "Signed offer and confirmed start date",
-    },
     faqs: SHARED_FAQS,
   },
   {
@@ -558,6 +597,12 @@ export const CONTENT: ContentEntry[] = [
       kpi: "Inspection pass rate above 95% and rooms guest-ready by 3 p.m.",
       trigger: "Room status changes to vacant-dirty",
     },
+    relatedLinks: [
+      {
+        href: "/sop-templates/cleaning-business-sop-template",
+        label: "Cleaning Business SOP Template",
+      },
+    ],
     faqs: SHARED_FAQS,
   },
   {
@@ -596,6 +641,12 @@ export const CONTENT: ContentEntry[] = [
       kpi: "First-time fix rate and same-day close-out photos in the job file",
       trigger: "Dispatched work order with customer window confirmed",
     },
+    relatedLinks: [
+      {
+        href: "/sop-templates/opening-and-closing-procedures",
+        label: "Opening and Closing Procedures",
+      },
+    ],
     faqs: SHARED_FAQS,
   },
   {
@@ -634,6 +685,7 @@ export const CONTENT: ContentEntry[] = [
       kpi: "SME-reviewed SOP published within 10 business days of the interview",
       trigger: "A critical job is flagged as founder- or specialist-dependent",
     },
+    relatedLinks: [{ href: "/sop-templates", label: "SOP templates" }],
     faqs: SHARED_FAQS,
   },
   {
@@ -663,6 +715,8 @@ export const CONTENT: ContentEntry[] = [
   },
 ];
 
+export const CONTENT: ContentEntry[] = [...BASE_CONTENT, ...TEMPLATES];
+
 const byPath = new Map(CONTENT.map((entry) => [entry.path, entry]));
 
 export function getEntry(path: string): ContentEntry {
@@ -678,7 +732,9 @@ export function findEntry(path: string): ContentEntry | undefined {
 }
 
 export function pagesForSitemap(): ContentEntry[] {
-  return CONTENT.filter((entry) => entry.index && entry.type !== "use-case");
+  return CONTENT.filter(
+    (entry) => entry.index && entry.type !== "use-case" && entry.type !== "template",
+  );
 }
 
 export function getUseCaseSitemapEntries(): ContentEntry[] {
@@ -691,6 +747,14 @@ export function indexedContent(): ContentEntry[] {
 
 export function getUseCaseEntries(): ContentEntry[] {
   return CONTENT.filter((entry) => entry.type === "use-case");
+}
+
+export function getTemplateEntries(): ContentEntry[] {
+  return CONTENT.filter((entry) => entry.type === "template");
+}
+
+export function getTemplateSitemapEntries(): ContentEntry[] {
+  return CONTENT.filter((entry) => entry.index && entry.type === "template");
 }
 
 export function breadcrumbsFor(path: string): ContentEntry[] {
@@ -718,10 +782,20 @@ export function searchContent(query: string): ContentEntry[] {
       entry.heading,
       entry.description,
       entry.lede ?? "",
+      entry.industry ?? "",
+      entry.purpose ?? "",
+      entry.scope ?? "",
       ...(entry.sections ?? []).flatMap((section) => [
         section.heading,
         ...section.body,
       ]),
+      ...(entry.templateSteps ?? []).flatMap((step) => [
+        step.step,
+        step.owner,
+        step.standard ?? "",
+      ]),
+      ...(entry.checklist ?? []),
+      ...(entry.customize ?? []),
     ]
       .join(" ")
       .toLowerCase();

@@ -6,7 +6,7 @@ import { FaqList } from "@/components/FaqList";
 import { Generator } from "@/components/Generator";
 import { JsonLd } from "@/components/JsonLd";
 import { PageShell } from "@/components/JsonLd";
-import { getEntry, getUseCaseEntries } from "@/lib/content";
+import { getEntry, getTemplateEntries, getUseCaseEntries } from "@/lib/content";
 import { buildMetadata } from "@/lib/seo";
 import { SITE, hostLabel } from "@/lib/site";
 
@@ -16,6 +16,7 @@ export const metadata: Metadata = buildMetadata(entry);
 
 export default function HomePage() {
   const useCases = getUseCaseEntries();
+  const templates = getTemplateEntries();
   return (
     <>
       <JsonLd entry={entry} />
@@ -57,6 +58,26 @@ export default function HomePage() {
       <div id="sop-output-slot" className="mx-auto w-full max-w-6xl px-4 sm:px-6" />
       <PageShell className="py-12">
         <ArticleSections entry={entry} />
+        <section className="mt-12">
+          <h2 className="font-display text-2xl font-semibold text-zinc-50">SOP templates</h2>
+          <p className="mt-2 max-w-2xl text-zinc-400">
+            Read a full template on the page. The writer on each one is already filled in for that job.
+          </p>
+          <p className="mt-3">
+            <Link href="/sop-templates" className="font-medium text-lime hover:underline">
+              SOP templates
+            </Link>
+          </p>
+          <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+            {templates.map((item) => (
+              <li key={item.path}>
+                <Link href={item.path} className="text-zinc-200 hover:text-lime hover:underline">
+                  {item.keyword}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
         <section className="mt-12">
           <h2 className="font-display text-2xl font-semibold text-zinc-50">Use cases</h2>
           <p className="mt-2 max-w-2xl text-zinc-400">
