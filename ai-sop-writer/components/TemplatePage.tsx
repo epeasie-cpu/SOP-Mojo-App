@@ -178,6 +178,9 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
           draft, SOP Builder Pro keeps a named owner on it, attaches the KPI you want to watch,
           and stores the next revision when the work changes. The team opens the current version.
         </p>
+        <p className="mt-3 text-sm text-zinc-300">
+          Free 14-day Builder Pro trial. No card required.
+        </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <a
             href={builderTryUrl(slug)}
@@ -185,7 +188,7 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
             data-template-slug={slug}
             className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
           >
-            Try Builder free
+            Start 14-day trial
           </a>
           <a
             href={WRITER_UPGRADE_URL}
@@ -230,6 +233,9 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
         <h2 className="font-display text-2xl font-semibold text-zinc-50">
           Write the draft, then keep the version the team uses.
         </h2>
+        <p className="mt-3 text-sm text-zinc-300">
+          Free 14-day Builder Pro trial. No card required.
+        </p>
         <div className="mt-6 flex flex-wrap gap-2">
           <a
             href={builderTryUrl(slug)}
@@ -237,7 +243,7 @@ export function TemplatePage({ entry }: { entry: ContentEntry }) {
             data-template-slug={slug}
             className="rounded-sm bg-lime px-4 py-2 text-sm font-semibold text-lime-ink hover:bg-lime/90"
           >
-            Try Builder free
+            Start 14-day trial
           </a>
           <a
             href={WRITER_UPGRADE_URL}

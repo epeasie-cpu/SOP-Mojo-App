@@ -27,10 +27,9 @@ export const WRITER_TO_BUILDER_UTM = {
 export const WRITER_UPGRADE_URL = "https://pay.sopmojo.com/go/builder_pro";
 
 /**
- * Primary "Try Builder" CTA. One constant so the upcoming trial path is a single edit.
- * https://builder.sopmojo.com/try is not live yet, so this stays on the Builder host.
+ * Free 14-day Builder Pro trial. /try redirects to signup with trial=1 and keeps the query string.
  */
-export const BUILDER_TRY_URL: string = SITE.builder;
+export const BUILDER_TRY_URL = `${SITE.builder}/try`;
 
 /** SOP Starter Kit on the main site. */
 export const STARTER_KIT_URL = "https://www.sopmojo.com/lp/sop-starter-kit";
